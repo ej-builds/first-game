@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<!--
+  ===================================================================
+  BATTLE BASH — SKELETON BUILD
+  ===================================================================
+  Purpose: known-good fallback for EJ's Wednesday core build session.
+  If we hit a wall and can't unstick it by ~11:30, switch to this and
+  frame it as "here's a starting point we can build on" — not as a fallback.
+
+  What works out of the box:
+  - 2 creatures with HP, Attack, Speed, and one of 3 types
+  - 2 attack moves per creature with type and power
+  - Type effectiveness (Fire > Grass > Water > Fire)
+  - Turn order resolved by Speed stat
+  - Damage applied, HP bars update, win state triggers
+  - "Play again" button resets
+
+  What's deliberately left thin (good places for EJ to customise):
+  - Visual style is minimal — no sprites, just coloured cards
+  - No animations beyond a brief shake on hit
+  - Two creatures only — adding a third is a meaningful extension
+  - Type chart is a stub — could be expanded to 5-6 types
+  - No status effects, items, switching, or AI personality
+  - Creature names are placeholder
+
+  Stefan: scan the JS once before Tuesday so you can speak to it
+  fluently if we use it. The combat resolution is in `resolveAttack()`.
+  ===================================================================
+-->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Battle Bash</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #1a1d2e;
+      --bg-2: #232740;
+      --surface: #2a2f4a;
+      --border: #3a3f5e;
+      --text: #f5efd6;
+      --text-muted: #8e93b2;
+
+      --fire: #f08030;
+      --water: #6890f0;
+      --grass: #78c850;
+
+      --hp-good: #7ac74c;
+      --hp-warn: #ffcb05;
+      --hp-low: #ee3142;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+      letter-spacing: -0.01em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      font-size: 14px;
+    }
+
+    .arena {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 24px;
+      align-items: center;
+      max-width: 880px;
+      width: 100%;
+      margin-bottom: 32px;
+    }
+
+    @media (max-width: 700px) {
+      .arena { grid-template-columns: 1fr; gap: 16px; }
+    }
+
+    .creature-card {
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      transition: transform 200ms;
+    }
+
+    .creature-card.hit {
+      animation: shake 300ms ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+
+    .creature-card.fainted {
+      opacity: 0.4;
+      filter: grayscale(1);
+    }
+
+    .creature-name {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .type-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--bg);
+      margin-bottom: 16px;
+    }
+
+    .type-badge.fire { background: var(--fire); }
+    .type-badge.water { background: var(--water); }
+    .type-badge.grass { background: var(--grass); }
+
+    .hp-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .hp-bar {
+      width: 100%;
+      height: 14px;
+      background: var(--bg);
+      border-radius: 7px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .hp-fill {
+      height: 100%;
+      background: var(--hp-good);
+      transition: width 400ms ease, background 200ms;
+    }
+
+    .hp-fill.warn { background: var(--hp-warn); }
+    .hp-fill.low { background: var(--hp-low); }
+
+    .stats {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .stat strong { color: var(--text); }
+
+    .moves {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .move-btn {
+      background: var(--bg-2);
+      color: var(--text);
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 150ms;
+      text-align: left;
+    }
+
+    .move-btn:hover:not(:disabled) {
+      border-color: var(--text-muted);
+      background: var(--surface);
+    }
+
+    .move-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .move-name { display: block; font-weight: 600; }
+    .move-meta { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    .vs {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .log {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      max-width: 880px;
+      width: 100%;
+      min-height: 80px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+
+    .log-line { margin-bottom: 4px; }
+    .log-line:last-child { color: var(--text); margin-bottom: 0; }
+    .log-line.effective { color: var(--hp-good); }
+    .log-line.weak { color: var(--hp-low); }
+    .log-line.win { color: var(--hp-warn); font-weight: 600; }
+
+    .play-again {
+      margin-top: 24px;
+      background: var(--hp-low);
+      color: var(--text);
+      border: none;
+      padding: 12px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: inherit;
+      display: none;
+    }
+
+    .play-again.visible { display: inline-block; }
+    .play-again:hover { background: #c4202f; }
+  </style>
+</head>
+<body>
+
+  <h1>Battle Bash</h1>
+  <p class="subtitle">Skeleton build · v0.1</p>
+
+  <div class="arena">
+    <!-- Player creature -->
+    <div class="creature-card" id="card-player">
+      <div class="creature-name" id="name-player">Cinderfox</div>
+      <span class="type-badge fire" id="type-player">Fire</span>
+      <div class="hp-row">
+        <span>HP</span>
+        <span><span id="hp-player">100</span> / <span id="max-player">100</span></span>
+      </div>
+      <div class="hp-bar"><div class="hp-fill" id="hpbar-player" style="width: 100%;"></div></div>
+      <div class="stats">
+        <span class="stat">ATK <strong id="atk-player">12</strong></span>
+        <span class="stat">SPD <strong id="spd-player">9</strong></span>
+      </div>
+      <div class="moves" id="moves-player">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <div class="vs">VS</div>
+
+    <!-- Opponent creature -->
+    <div class="creature-card" id="card-opponent">
+      <div class="creature-name" id="name-opponent">Tidepup</div>
+      <span class="type-badge water" id="type-opponent">Water</span>
+      <div class="hp-row">
+        <span>HP</span>
+        <span><span id="hp-opponent">100</span> / <span id="max-opponent">100</span></span>
+      </div>
+      <div class="hp-bar"><div class="hp-fill" id="hpbar-opponent" style="width: 100%;"></div></div>
+      <div class="stats">
+        <span class="stat">ATK <strong id="atk-opponent">10</strong></span>
+        <span class="stat">SPD <strong id="spd-opponent">7</strong></span>
+      </div>
+      <div class="moves" id="moves-opponent">
+        <!-- moves shown but disabled for opponent (basic AI picks one) -->
+      </div>
+    </div>
+  </div>
+
+  <div class="log" id="log">
+    <div class="log-line">A wild Tidepup appeared! Pick your move.</div>
+  </div>
+
+  <button class="play-again" id="playAgain" onclick="resetBattle()">Play again</button>
+
+  <script>
+    // =====================================================
+    // GAME DATA — easy to extend
+    // =====================================================
+
+    // Type effectiveness chart.
+    // Fire > Grass > Water > Fire (and same-type = neutral)
+    const typeChart = {
+      fire:  { fire: 1.0, grass: 2.0, water: 0.5 },
+      grass: { fire: 0.5, grass: 1.0, water: 2.0 },
+      water: { fire: 2.0, grass: 0.5, water: 1.0 }
+    };
+
+    // Two starting creatures. Each has 2 moves.
+    const creatures = {
+      player: {
+        name: 'Cinderfox',
+        type: 'fire',
+        maxHp: 100,
+        atk: 12,
+        spd: 9,
+        moves: [
+          { name: 'Ember Snap',  type: 'fire',  power: 14 },
+          { name: 'Bite',        type: 'fire',  power: 10 }
+        ]
+      },
+      opponent: {
+        name: 'Tidepup',
+        type: 'water',
+        maxHp: 100,
+        atk: 10,
+        spd: 7,
+        moves: [
+          { name: 'Splash Strike', type: 'water', power: 14 },
+          { name: 'Tackle',        type: 'water', power: 10 }
+        ]
+      }
+    };
+
+    // =====================================================
+    // GAME STATE
+    // =====================================================
+    let state = null;
+
+    function initState() {
+      state = {
+        player: { ...creatures.player, hp: creatures.player.maxHp },
+        opponent: { ...creatures.opponent, hp: creatures.opponent.maxHp },
+        turn: 'pending',   // 'player', 'opponent', or 'pending' between rounds
+        over: false
+      };
+    }
+
+    // =====================================================
+    // RENDERING
+    // =====================================================
+    function render() {
+      ['player', 'opponent'].forEach(side => {
+        const c = state[side];
+        document.getElementById(`name-${side}`).textContent = c.name;
+        document.getElementById(`hp-${side}`).textContent = Math.max(0, c.hp);
+        document.getElementById(`max-${side}`).textContent = c.maxHp;
+        document.getElementById(`atk-${side}`).textContent = c.atk;
+        document.getElementById(`spd-${side}`).textContent = c.spd;
+        const typeBadge = document.getElementById(`type-${side}`);
+        typeBadge.textContent = c.type.charAt(0).toUpperCase() + c.type.slice(1);
+        typeBadge.className = `type-badge ${c.type}`;
+
+        // HP bar
+        const hpPct = Math.max(0, c.hp) / c.maxHp * 100;
+        const hpFill = document.getElementById(`hpbar-${side}`);
+        hpFill.style.width = `${hpPct}%`;
+        hpFill.className = 'hp-fill';
+        if (hpPct < 25) hpFill.classList.add('low');
+        else if (hpPct < 50) hpFill.classList.add('warn');
+
+        // Fainted styling
+        const card = document.getElementById(`card-${side}`);
+        card.classList.toggle('fainted', c.hp <= 0);
+      });
+
+      renderMoves();
+    }
+
+    function renderMoves() {
+      const container = document.getElementById('moves-player');
+      container.innerHTML = '';
+      state.player.moves.forEach((move, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'move-btn';
+        btn.innerHTML = `
+          <span class="move-name">${move.name}</span>
+          <span class="move-meta">${move.type.toUpperCase()} · POWER ${move.power}</span>
+        `;
+        btn.disabled = state.over || state.player.hp <= 0;
+        btn.onclick = () => playerMove(i);
+        container.appendChild(btn);
+      });
+
+      // Show opponent moves as read-only info
+      const oppContainer = document.getElementById('moves-opponent');
+      oppContainer.innerHTML = '';
+      state.opponent.moves.forEach(move => {
+        const btn = document.createElement('button');
+        btn.className = 'move-btn';
+        btn.disabled = true;
+        btn.innerHTML = `
+          <span class="move-name">${move.name}</span>
+          <span class="move-meta">${move.type.toUpperCase()} · POWER ${move.power}</span>
+        `;
+        oppContainer.appendChild(btn);
+      });
+    }
+
+    // =====================================================
+    // LOG
+    // =====================================================
+    function log(text, cls = '') {
+      const el = document.getElementById('log');
+      const line = document.createElement('div');
+      line.className = `log-line ${cls}`;
+      line.textContent = text;
+      el.appendChild(line);
+      // Keep log to most recent 5 lines
+      while (el.children.length > 5) el.removeChild(el.firstChild);
+    }
+
+    // =====================================================
+    // CORE COMBAT — the bit EJ will look at most
+    // =====================================================
+    function resolveAttack(attackerSide, defenderSide, moveIdx) {
+      const attacker = state[attackerSide];
+      const defender = state[defenderSide];
+      const move = attacker.moves[moveIdx];
+
+      // Base damage = (atk + power) / 2
+      let damage = Math.round((attacker.atk + move.power) / 2);
+
+      // Apply type effectiveness
+      const effectiveness = typeChart[move.type][defender.type];
+      damage = Math.round(damage * effectiveness);
+
+      defender.hp -= damage;
+
+      // Card shake
+      const card = document.getElementById(`card-${defenderSide}`);
+      card.classList.add('hit');
+      setTimeout(() => card.classList.remove('hit'), 300);
+
+      log(`${attacker.name} used ${move.name}! Dealt ${damage} damage.`);
+
+      if (effectiveness > 1) log("It's super effective!", 'effective');
+      else if (effectiveness < 1) log("It's not very effective...", 'weak');
+
+      if (defender.hp <= 0) {
+        defender.hp = 0;
+        log(`${defender.name} fainted!`, 'win');
+        log(`${attacker.name} wins the battle.`, 'win');
+        state.over = true;
+        document.getElementById('playAgain').classList.add('visible');
+      }
+    }
+
+    // =====================================================
+    // TURN LOGIC
+    // =====================================================
+    function playerMove(moveIdx) {
+      if (state.over) return;
+
+      // Resolve turn order by Speed (player first if tied)
+      const playerFirst = state.player.spd >= state.opponent.spd;
+
+      const playerMove = moveIdx;
+      const opponentMove = pickOpponentMove();
+
+      if (playerFirst) {
+        resolveAttack('player', 'opponent', playerMove);
+        if (!state.over) {
+          setTimeout(() => {
+            resolveAttack('opponent', 'player', opponentMove);
+            render();
+          }, 700);
+        }
+      } else {
+        resolveAttack('opponent', 'player', opponentMove);
+        if (!state.over) {
+          setTimeout(() => {
+            resolveAttack('player', 'opponent', playerMove);
+            render();
+          }, 700);
+        }
+      }
+
+      render();
+    }
+
+    // Dead-simple AI: pick a random move.
+    // (Good place for EJ to add smarter logic — e.g. prefer super-effective moves.)
+    function pickOpponentMove() {
+      return Math.floor(Math.random() * state.opponent.moves.length);
+    }
+
+    // =====================================================
+    // INIT / RESET
+    // =====================================================
+    function resetBattle() {
+      initState();
+      document.getElementById('log').innerHTML =
+        `<div class="log-line">A wild ${state.opponent.name} appeared! Pick your move.</div>`;
+      document.getElementById('playAgain').classList.remove('visible');
+      render();
+    }
+
+    // Start
+    initState();
+    render();
+  </script>
+</body>
+</html>

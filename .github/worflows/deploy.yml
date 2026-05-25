@@ -1,0 +1,45 @@
+name: Deploy to GitHub Pages
+
+# Fires on every push to main. Claude Code commits as it works,
+# so each iteration ships to the live URL roughly 30 seconds after the commit lands.
+on:
+  push:
+    branches: [main]
+  # Also allow manual triggering from the Actions tab if needed
+  workflow_dispatch:
+
+# Permissions needed for Pages deployment via Actions
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one deploy at a time. If a new push lands mid-deploy,
+# the in-flight one finishes; subsequent ones queue cleanly without piling up.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        # Uploads everything in the repo root as the site contents.
+        # If we ever need to build (we don't, it's static HTML), add a build step before this.
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
