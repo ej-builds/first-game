@@ -1,39 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
-<!--
-  ===================================================================
-  BATTLE BASH — SKELETON BUILD
-  ===================================================================
-  Purpose: known-good fallback for EJ's Wednesday core build session.
-  If we hit a wall and can't unstick it by ~11:30, switch to this and
-  frame it as "here's a starting point we can build on" — not as a fallback.
-
-  What works out of the box:
-  - 2 creatures with HP, Attack, Speed, and one of 3 types
-  - 2 attack moves per creature with type and power
-  - Type effectiveness (Fire > Grass > Water > Fire)
-  - Turn order resolved by Speed stat
-  - Damage applied, HP bars update, win state triggers
-  - "Play again" button resets
-
-  What's deliberately left thin (good places for EJ to customise):
-  - Visual style is minimal — no sprites, just coloured cards
-  - No animations beyond a brief shake on hit
-  - Two creatures only — adding a third is a meaningful extension
-  - Type chart is a stub — could be expanded to 5-6 types
-  - No status effects, items, switching, or AI personality
-  - Creature names are placeholder
-
-  Stefan: scan the JS once before Tuesday so you can speak to it
-  fluently if we use it. The combat resolution is in `resolveAttack()`.
-  ===================================================================
--->
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Battle Bash</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Gill+Sans:wght@400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -46,14 +18,6 @@
       --fire:  #f08030;
       --water: #6890f0;
       --grass: #78c850;
-
-      --fire-light:  #fde4c8;
-      --water-light: #d0dcff;
-      --grass-light: #d4f0c0;
-
-      --fire-mid:  #f5c09a;
-      --water-mid: #a8bef8;
-      --grass-mid: #b0dfa0;
 
       --hp-good: #7ac74c;
       --hp-warn: #ffcb05;
@@ -68,10 +32,80 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 40px 20px;
     }
 
-    h1 {
+    /* ============================================================
+       WORLD SECTION
+    ============================================================ */
+    #worldSection {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 20px 24px;
+      width: 100%;
+    }
+
+    #worldSection h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 20px;
+      color: #ffcb05;
+      text-shadow: 3px 3px 0 #8a6800, 0 0 20px rgba(255,203,5,0.4);
+      margin-bottom: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    #worldSection .subtitle {
+      color: var(--text-muted);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    #worldCanvas {
+      display: block;
+      border: 4px solid #e8c840;
+      border-radius: 4px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,220,80,0.2);
+      max-width: 640px;
+      width: 100%;
+      height: auto;
+    }
+
+    .world-hint {
+      margin-top: 12px;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* ============================================================
+       TRANSITION OVERLAY
+    ============================================================ */
+    #transitionOverlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 999;
+      opacity: 0;
+      background: white;
+    }
+
+    /* ============================================================
+       BATTLE SECTION
+    ============================================================ */
+    #battleSection {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      width: 100%;
+    }
+
+    #battleSection h1 {
       font-size: 36px;
       font-weight: 700;
       margin-bottom: 4px;
@@ -108,19 +142,16 @@
       padding: 4px;
       position: relative;
       transition: transform 200ms;
-      /* gold foil outer border */
       background: linear-gradient(145deg, #e8c840 0%, #b8962a 40%, #f0d060 60%, #c8a830 100%);
       box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,220,80,0.3);
     }
 
-    /* type-colored inner card */
     .creature-card .card-inner {
       border-radius: 13px;
       overflow: hidden;
       position: relative;
     }
 
-    /* subtle holographic shimmer overlay */
     .creature-card .card-inner::after {
       content: '';
       position: absolute;
@@ -134,22 +165,11 @@
       border-radius: 13px;
     }
 
-    /* fire card */
-    .creature-card.type-fire .card-inner {
-      background: linear-gradient(160deg, #fde4c8 0%, #f5c09a 35%, #f08030 100%);
-    }
-    /* water card */
-    .creature-card.type-water .card-inner {
-      background: linear-gradient(160deg, #d0dcff 0%, #a8bef8 35%, #6890f0 100%);
-    }
-    /* grass card */
-    .creature-card.type-grass .card-inner {
-      background: linear-gradient(160deg, #d4f0c0 0%, #b0dfa0 35%, #78c850 100%);
-    }
+    .creature-card.type-fire .card-inner  { background: linear-gradient(160deg, #fde4c8 0%, #f5c09a 35%, #f08030 100%); }
+    .creature-card.type-water .card-inner { background: linear-gradient(160deg, #d0dcff 0%, #a8bef8 35%, #6890f0 100%); }
+    .creature-card.type-grass .card-inner { background: linear-gradient(160deg, #d4f0c0 0%, #b0dfa0 35%, #78c850 100%); }
 
-    .creature-card.hit {
-      animation: shake 300ms ease-in-out;
-    }
+    .creature-card.hit { animation: shake 300ms ease-in-out; }
 
     @keyframes shake {
       0%, 100% { transform: translateX(0) rotate(0deg); }
@@ -157,12 +177,8 @@
       75%       { transform: translateX(8px) rotate(1deg); }
     }
 
-    .creature-card.fainted {
-      opacity: 0.35;
-      filter: grayscale(1);
-    }
+    .creature-card.fainted { opacity: 0.35; filter: grayscale(1); }
 
-    /* ── Card Header ── */
     .card-header {
       display: flex;
       justify-content: space-between;
@@ -193,7 +209,6 @@
       opacity: 0.6;
     }
 
-    /* ── Creature Illustration Area ── */
     .card-art {
       margin: 0 10px 8px;
       border-radius: 8px;
@@ -215,7 +230,6 @@
       background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 60%);
     }
 
-    /* ── Type + Stats strip ── */
     .card-type-row {
       display: flex;
       align-items: center;
@@ -261,7 +275,6 @@
 
     .card-stats-strip strong { color: #1a1000; }
 
-    /* ── HP Bar (inside card) ── */
     .card-hp-row {
       padding: 0 14px 6px;
       display: flex;
@@ -294,28 +307,16 @@
       box-shadow: 0 0 4px rgba(122,199,76,0.6);
     }
 
-    .hp-fill.warn {
-      background: var(--hp-warn);
-      box-shadow: 0 0 4px rgba(255,203,5,0.6);
-    }
+    .hp-fill.warn { background: var(--hp-warn); box-shadow: 0 0 4px rgba(255,203,5,0.6); }
+    .hp-fill.low  { background: var(--hp-low);  box-shadow: 0 0 4px rgba(238,49,66,0.6); }
 
-    .hp-fill.low {
-      background: var(--hp-low);
-      box-shadow: 0 0 4px rgba(238,49,66,0.6);
-    }
-
-    /* ── Moves Section ── */
     .card-moves-section {
       background: rgba(0,0,0,0.08);
       border-top: 1px solid rgba(0,0,0,0.12);
       padding: 10px 10px 12px;
     }
 
-    .moves {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 6px;
-    }
+    .moves { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 
     .move-btn {
       background: rgba(255,255,255,0.55);
@@ -338,15 +339,11 @@
       transform: translateY(-1px);
     }
 
-    .move-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+    .move-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .move-name { display: block; font-weight: 700; font-size: 12px; }
     .move-meta { display: block; font-size: 10px; color: rgba(0,0,0,0.5); margin-top: 2px; font-weight: 600; letter-spacing: 0.04em; }
 
-    /* ── VS divider ── */
     .vs {
       font-size: 28px;
       font-weight: 700;
@@ -355,7 +352,6 @@
       text-align: center;
     }
 
-    /* ── Battle Log ── */
     .log {
       background: rgba(255,255,255,0.04);
       border: 1px solid rgba(255,255,255,0.1);
@@ -373,8 +369,8 @@
     .log-line { margin-bottom: 4px; }
     .log-line:last-child { color: var(--text); margin-bottom: 0; }
     .log-line.effective { color: var(--hp-good); }
-    .log-line.weak { color: var(--hp-low); }
-    .log-line.win { color: var(--hp-warn); font-weight: 600; }
+    .log-line.weak      { color: var(--hp-low); }
+    .log-line.win       { color: var(--hp-warn); font-weight: 600; }
 
     .play-again {
       margin-top: 24px;
@@ -398,81 +394,581 @@
 </head>
 <body>
 
-  <h1>Battle Bash</h1>
-  <p class="subtitle">Skeleton build · v0.1</p>
+  <!-- ============================================================
+       WORLD SECTION
+  ============================================================ -->
+  <div id="worldSection">
+    <h1>Battle Bash</h1>
+    <p class="subtitle">Use arrow keys or WASD to explore</p>
+    <canvas id="worldCanvas" width="640" height="480"></canvas>
+    <p class="world-hint">Walk into tall grass to find creatures</p>
+  </div>
 
-  <div class="arena">
-    <!-- Player creature -->
-    <div class="creature-card type-fire" id="card-player">
-      <div class="card-inner">
-        <div class="card-header">
-          <div class="creature-name" id="name-player">Cinderfox</div>
-          <div class="card-hp-display">
-            <span id="hp-player">100</span><span class="hp-label"> HP</span>
+  <!-- ============================================================
+       BATTLE SECTION
+  ============================================================ -->
+  <div id="battleSection">
+    <h1>Battle Bash</h1>
+    <p class="subtitle">Skeleton build · v0.1</p>
+
+    <div class="arena">
+      <!-- Player creature -->
+      <div class="creature-card type-fire" id="card-player">
+        <div class="card-inner">
+          <div class="card-header">
+            <div class="creature-name" id="name-player">Cinderfox</div>
+            <div class="card-hp-display">
+              <span id="hp-player">100</span><span class="hp-label"> HP</span>
+            </div>
+          </div>
+          <div class="card-art" id="art-player">🦊</div>
+          <div class="card-type-row">
+            <span class="type-badge fire" id="type-player">Fire</span>
+            <div class="card-stats-strip">
+              <span>ATK <strong id="atk-player">12</strong></span>
+              <span>SPD <strong id="spd-player">9</strong></span>
+            </div>
+          </div>
+          <div class="card-hp-row">
+            <span class="hp-bar-label">HP</span>
+            <div class="hp-bar"><div class="hp-fill" id="hpbar-player" style="width:100%"></div></div>
+          </div>
+          <div class="card-moves-section">
+            <div class="moves" id="moves-player"></div>
           </div>
         </div>
-        <div class="card-art" id="art-player">🦊</div>
-        <div class="card-type-row">
-          <span class="type-badge fire" id="type-player">Fire</span>
-          <div class="card-stats-strip">
-            <span>ATK <strong id="atk-player">12</strong></span>
-            <span>SPD <strong id="spd-player">9</strong></span>
+      </div>
+
+      <div class="vs">VS</div>
+
+      <!-- Opponent creature -->
+      <div class="creature-card type-water" id="card-opponent">
+        <div class="card-inner">
+          <div class="card-header">
+            <div class="creature-name" id="name-opponent">Tidepup</div>
+            <div class="card-hp-display">
+              <span id="hp-opponent">100</span><span class="hp-label"> HP</span>
+            </div>
           </div>
-        </div>
-        <div class="card-hp-row">
-          <span class="hp-bar-label">HP</span>
-          <div class="hp-bar"><div class="hp-fill" id="hpbar-player" style="width:100%"></div></div>
-        </div>
-        <div class="card-moves-section">
-          <div class="moves" id="moves-player"></div>
+          <div class="card-art" id="art-opponent">🐶</div>
+          <div class="card-type-row">
+            <span class="type-badge water" id="type-opponent">Water</span>
+            <div class="card-stats-strip">
+              <span>ATK <strong id="atk-opponent">10</strong></span>
+              <span>SPD <strong id="spd-opponent">7</strong></span>
+            </div>
+          </div>
+          <div class="card-hp-row">
+            <span class="hp-bar-label">HP</span>
+            <div class="hp-bar"><div class="hp-fill" id="hpbar-opponent" style="width:100%"></div></div>
+          </div>
+          <div class="card-moves-section">
+            <div class="moves" id="moves-opponent"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="vs">VS</div>
-
-    <!-- Opponent creature -->
-    <div class="creature-card type-water" id="card-opponent">
-      <div class="card-inner">
-        <div class="card-header">
-          <div class="creature-name" id="name-opponent">Tidepup</div>
-          <div class="card-hp-display">
-            <span id="hp-opponent">100</span><span class="hp-label"> HP</span>
-          </div>
-        </div>
-        <div class="card-art" id="art-opponent">🐶</div>
-        <div class="card-type-row">
-          <span class="type-badge water" id="type-opponent">Water</span>
-          <div class="card-stats-strip">
-            <span>ATK <strong id="atk-opponent">10</strong></span>
-            <span>SPD <strong id="spd-opponent">7</strong></span>
-          </div>
-        </div>
-        <div class="card-hp-row">
-          <span class="hp-bar-label">HP</span>
-          <div class="hp-bar"><div class="hp-fill" id="hpbar-opponent" style="width:100%"></div></div>
-        </div>
-        <div class="card-moves-section">
-          <div class="moves" id="moves-opponent"></div>
-        </div>
-      </div>
+    <div class="log" id="log">
+      <div class="log-line">A wild Tidepup appeared! Pick your move.</div>
     </div>
+
+    <button class="play-again" id="playAgain" onclick="returnToWorld()">Return to World</button>
   </div>
 
-  <div class="log" id="log">
-    <div class="log-line">A wild Tidepup appeared! Pick your move.</div>
-  </div>
-
-  <button class="play-again" id="playAgain" onclick="resetBattle()">Play again</button>
+  <!-- Full-screen flash overlay for encounter transition -->
+  <div id="transitionOverlay"></div>
 
   <script>
-    // =====================================================
-    // GAME DATA — easy to extend
-    // =====================================================
+    // ============================================================
+    // GAME STATE SWITCHING
+    // ============================================================
+    let gameState = 'world';
 
-    // Type effectiveness chart.
-    // Fire > Grass > Water > Fire (and same-type = neutral)
-    // basic always hits for exactly the listed power — no multiplier
+    function showWorld() {
+      gameState = 'world';
+      document.getElementById('worldSection').style.display = 'flex';
+      document.getElementById('battleSection').style.display = 'none';
+    }
+
+    function showBattle() {
+      gameState = 'battle';
+      document.getElementById('worldSection').style.display = 'none';
+      document.getElementById('battleSection').style.display = 'flex';
+    }
+
+    // ── Encounter transition (Pokémon-style flash) ─────────────
+    function triggerEncounter() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+
+      // 3 white flashes then hold black
+      const sequence = [
+        { bg: '#fff', op: 1,   ms: 0   },
+        { bg: '#fff', op: 0,   ms: 100 },
+        { bg: '#fff', op: 1,   ms: 200 },
+        { bg: '#fff', op: 0,   ms: 300 },
+        { bg: '#fff', op: 1,   ms: 400 },
+        { bg: '#000', op: 1,   ms: 520 },
+      ];
+
+      sequence.forEach(({ bg, op, ms }) => {
+        setTimeout(() => {
+          overlay.style.background = bg;
+          overlay.style.opacity    = op;
+        }, ms);
+      });
+
+      // After black screen: swap to battle, then fade overlay out
+      setTimeout(() => {
+        resetBattle();
+        showBattle();
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 680);
+    }
+
+    // ── Return to world after battle ───────────────────────────
+    function returnToWorld() {
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+
+      showWorld();
+
+      setTimeout(() => {
+        overlay.style.transition = 'opacity 600ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 600);
+      }, 80);
+    }
+
+    // ============================================================
+    // WORLD — Tile map & player
+    // ============================================================
+    const TILE_SIZE = 32;
+    const MAP_COLS  = 30;
+    const MAP_ROWS  = 25;
+    const CANVAS_W  = 640;
+    const CANVAS_H  = 480;
+
+    // Tile type IDs
+    const GRASS = 0, TREE = 1, PATH = 2, TALL = 3, WATER = 4;
+    const SOLID_TILES = new Set([TREE, WATER]);
+
+    const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER;
+
+    // 30 cols × 25 rows
+    // Horizontal roads at rows 5 and 17; vertical road at col 14 between them
+    const MAP = [
+      [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
+      [T,G,G,G,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
+      [T,G,T,T,G,G,H,H,H,G,T,T,G,G,G,G,G,G,G,G,T,T,H,H,H,G,T,T,G,T],
+      [T,G,T,T,G,G,G,G,G,G,T,T,G,G,G,G,G,G,G,G,T,T,G,G,G,G,T,T,G,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,T,G,G,H,H,H,G,G,G,G,G,G,P,G,G,G,G,G,G,H,H,H,G,G,T,G,G,T],
+      [T,G,T,G,G,H,H,H,G,G,T,T,G,G,P,G,G,G,T,T,G,H,H,H,G,G,T,G,G,T],
+      [T,G,G,G,G,G,G,G,G,G,T,T,G,G,P,G,G,G,T,T,G,G,G,G,G,G,G,G,G,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,T,T,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,T,T,G,G,G,G,G,T],
+      [T,G,T,T,G,H,H,H,H,G,G,G,G,G,P,G,G,G,G,G,H,H,H,H,G,G,T,T,G,T],
+      [T,G,G,G,G,H,H,H,H,G,T,T,G,G,P,G,G,T,T,G,H,H,H,H,G,G,T,T,G,T],
+      [T,G,G,G,G,G,G,G,G,G,T,T,G,G,P,G,G,T,T,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,T,T,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,T,T,G,G,G,T],
+      [T,G,T,T,G,G,H,H,H,G,T,T,G,G,G,G,G,G,T,T,H,H,H,G,T,T,G,G,G,T],
+      [T,G,G,G,G,G,G,G,G,G,T,T,G,G,G,G,G,T,T,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,G,G,W,W,W,W,G,G,G,G,G,G,G,G,G,G,G,G,G,W,W,W,W,G,G,G,G,T],
+      [T,G,G,G,W,W,W,W,G,G,G,G,G,G,G,G,G,G,G,G,G,W,W,W,W,G,G,G,G,T],
+      [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
+    ];
+
+    // ── Tile drawing ──────────────────────────────────────────
+    function drawTile(ctx, type, sx, sy) {
+      const s = TILE_SIZE;
+      switch (type) {
+        case GRASS:
+          ctx.fillStyle = '#4a7c3f';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#3e6835';
+          ctx.fillRect(sx, sy, s, 1);
+          ctx.fillRect(sx, sy, 1, s);
+          ctx.fillStyle = '#527a40';
+          ctx.fillRect(sx+6,  sy+6,  3, 3);
+          ctx.fillRect(sx+20, sy+18, 3, 3);
+          ctx.fillRect(sx+26, sy+8,  2, 2);
+          break;
+
+        case TREE:
+          ctx.fillStyle = '#2a5e1a';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#347a20';
+          ctx.fillRect(sx+3, sy+2, s-6, s-14);
+          ctx.fillStyle = '#3e8a28';
+          ctx.fillRect(sx+6, sy+4, s-12, s-20);
+          ctx.fillStyle = '#6b3a1f';
+          ctx.fillRect(sx+12, sy+22, 8, 10);
+          break;
+
+        case PATH:
+          ctx.fillStyle = '#c4a060';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#b89050';
+          ctx.fillRect(sx, sy, s, 1);
+          ctx.fillRect(sx, sy, 1, s);
+          ctx.fillStyle = '#d4b070';
+          ctx.fillRect(sx+8,  sy+12, 4, 4);
+          ctx.fillRect(sx+22, sy+6,  3, 3);
+          break;
+
+        case TALL:
+          ctx.fillStyle = '#3a6a28';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#4a8038';
+          for (let i = 0; i < 5; i++) {
+            const bx = sx + 2 + i * 6;
+            ctx.fillRect(bx,   sy+6,  2, 18);
+            ctx.fillRect(bx+1, sy+2,  2, 10);
+          }
+          ctx.fillStyle = '#3e6a2a';
+          ctx.fillRect(sx, sy+28, s, 4);
+          break;
+
+        case WATER:
+          ctx.fillStyle = '#2858b8';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#3870d0';
+          ctx.fillRect(sx+2,  sy+6,  s-6,  4);
+          ctx.fillRect(sx+6,  sy+18, s-10, 4);
+          ctx.fillStyle = '#6898e8';
+          ctx.fillRect(sx+4,  sy+8,  6, 2);
+          ctx.fillRect(sx+18, sy+20, 6, 2);
+          break;
+      }
+    }
+
+    // ── Player drawing (with 4-frame walk cycle) ──────────────
+    function drawPlayer(ctx, sx, sy, dir, walkFrame) {
+      const s   = TILE_SIZE;
+      const cx  = sx + s / 2;
+      const cy  = sy + s / 2;
+      const bob = (walkFrame === 1 || walkFrame === 3) ? -1 : 0;
+
+      // Leg offsets: legs alternate up/down to simulate stride
+      const lLeg = walkFrame === 1 ? -2 : (walkFrame === 3 ?  1 : 0);
+      const rLeg = walkFrame === 3 ? -2 : (walkFrame === 1 ?  1 : 0);
+      // Arm swing is opposite to legs
+      const lArm = walkFrame === 3 ? -2 : (walkFrame === 1 ?  1 : 0);
+      const rArm = walkFrame === 1 ? -2 : (walkFrame === 3 ?  1 : 0);
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#203898';
+      ctx.fillRect(cx-5, cy+4+lLeg, 4, 8-Math.abs(lLeg));
+      ctx.fillRect(cx+1, cy+4+rLeg, 4, 8-Math.abs(rLeg));
+
+      // Body
+      ctx.fillStyle = '#d02020';
+      ctx.fillRect(cx-6, cy-4+bob, 12, 10);
+
+      // Arms
+      ctx.fillStyle = '#b01818';
+      ctx.fillRect(cx-8, cy-3+lArm, 3, 7);
+      ctx.fillRect(cx+5, cy-3+rArm, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13+bob, 10, 10);
+
+      // Hair
+      ctx.fillStyle = '#3a2010';
+      ctx.fillRect(cx-5, cy-14+bob, 10, 4);
+
+      // Face by direction
+      ctx.fillStyle = '#1a1a1a';
+      if (dir === 'down') {
+        ctx.fillRect(cx-3, cy-8+bob, 2, 2);
+        ctx.fillRect(cx+1, cy-8+bob, 2, 2);
+        ctx.fillStyle = '#c04030';
+        ctx.fillRect(cx-2, cy-5+bob, 4, 1);
+      } else if (dir === 'up') {
+        ctx.fillStyle = '#d4a060';
+        ctx.fillRect(cx-5, cy-12+bob, 10, 8);
+      } else if (dir === 'left') {
+        ctx.fillRect(cx-3, cy-8+bob, 2, 2);
+        ctx.fillStyle = '#c04030';
+        ctx.fillRect(cx-3, cy-5+bob, 3, 1);
+      } else {
+        ctx.fillRect(cx+1, cy-8+bob, 2, 2);
+        ctx.fillStyle = '#c04030';
+        ctx.fillRect(cx,   cy-5+bob, 3, 1);
+      }
+    }
+
+    // ── NPC ────────────────────────────────────────────────────
+    const NPC = { tileX: 12, tileY: 5 }; // on the road, west of player start
+
+    const NPC_DIALOG = [
+      ["Hello, trainer!",    "I'm Prof. Meadow.", "I study wild critters."],
+      ["The TALL GRASS hides", "wild creatures -",  "walk in to battle!"],
+      ["FIRE beats GRASS,",  "GRASS beats WATER,", "WATER beats FIRE."],
+      ["BASIC moves deal",   "flat damage. No",    "type bonus applies."],
+      ["Good luck out there!", "", "Press E to close."],
+    ];
+
+    let dialogActive = false;
+    let dialogPage   = 0;
+
+    function drawNPC(ctx, sx, sy, playerAdjacent) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#5a3010';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (green coat)
+      ctx.fillStyle = '#208050';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#186040';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (auburn, with side tufts)
+      ctx.fillStyle = '#8b3a0f';
+      ctx.fillRect(cx-5, cy-14, 10, 5);
+      ctx.fillRect(cx-7, cy-12, 3, 5);
+      ctx.fillRect(cx+4, cy-12, 3, 5);
+
+      // Eyes (facing down toward player)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      ctx.fillStyle = '#c04030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
+      // Exclamation mark above NPC (always visible as interaction hint)
+      const blink = Math.floor(Date.now() / 500) % 2 === 0;
+      ctx.fillStyle = blink ? '#ffcb05' : '#c89000';
+      ctx.fillRect(cx-2, cy-24, 4, 8); // ! bar
+      ctx.fillRect(cx-2, cy-13, 4, 3); // ! dot
+    }
+
+    // Canvas-based Pokémon-style dialog box
+    function drawDialog(ctx, lines) {
+      const pad = 12;
+      const bx  = pad;
+      const bh  = 108;
+      const by  = CANVAS_H - bh - pad;
+      const bw  = CANVAS_W - pad * 2;
+
+      // Background
+      ctx.fillStyle = '#0e0e1a';
+      ctx.fillRect(bx, by, bw, bh);
+
+      // Outer gold border
+      ctx.strokeStyle = '#ffcb05';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(bx+1, by+1, bw-2, bh-2);
+
+      // Inner white border
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx+5, by+5, bw-10, bh-10);
+
+      // Text
+      ctx.fillStyle = '#f5efd6';
+      ctx.font = '9px "Press Start 2P", monospace';
+      ctx.textBaseline = 'top';
+      (lines || []).forEach((line, i) => {
+        ctx.fillText(line, bx+16, by+16 + i*22);
+      });
+
+      // Blinking arrow (advance prompt)
+      if (Math.floor(Date.now() / 400) % 2 === 0) {
+        ctx.fillStyle = '#ffcb05';
+        ctx.fillText('▼', bx + bw - 28, by + bh - 22);
+      }
+    }
+
+    // ── Player state ───────────────────────────────────────────
+    const player = {
+      tileX: 14, tileY: 5,
+      pixelX: 14 * TILE_SIZE, pixelY: 5 * TILE_SIZE,
+      moving: false,
+      moveProgress: 0,
+      fromX: 14, fromY: 5,
+      toX:   14, toY:   5,
+      dir: 'down',
+    };
+
+    const keys = {};
+    window.addEventListener('keydown', e => {
+      // Dialog advance / close
+      if (dialogActive && (e.key === 'e' || e.key === 'E' || e.key === ' ' || e.key === 'Enter')) {
+        e.preventDefault();
+        dialogPage++;
+        if (dialogPage >= NPC_DIALOG.length) {
+          dialogActive = false;
+          dialogPage   = 0;
+        }
+        return;
+      }
+      keys[e.key] = true;
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+      }
+    });
+    window.addEventListener('keyup', e => { keys[e.key] = false; });
+
+    function isWalkable(col, row) {
+      if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return false;
+      return !SOLID_TILES.has(MAP[row][col]);
+    }
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function onTileLand(col, row) {
+      if (gameState !== 'world' || dialogActive) return;
+      if (MAP[row][col] === TALL && Math.random() < 0.35) {
+        triggerEncounter();
+      }
+    }
+
+    function updatePlayer(dt) {
+      if (dialogActive) return; // freeze player during dialog
+
+      if (player.moving) {
+        player.moveProgress += dt * 8; // ~125 ms per tile
+        if (player.moveProgress >= 1) {
+          player.tileX = player.toX;
+          player.tileY = player.toY;
+          player.moving = false;
+          player.moveProgress = 0;
+          player.pixelX = player.tileX * TILE_SIZE;
+          player.pixelY = player.tileY * TILE_SIZE;
+          onTileLand(player.tileX, player.tileY);
+        } else {
+          player.pixelX = lerp(player.fromX, player.toX, player.moveProgress) * TILE_SIZE;
+          player.pixelY = lerp(player.fromY, player.toY, player.moveProgress) * TILE_SIZE;
+        }
+        return;
+      }
+
+      let dx = 0, dy = 0;
+      if      (keys['ArrowLeft']  || keys['a'] || keys['A']) { dx = -1; player.dir = 'left'; }
+      else if (keys['ArrowRight'] || keys['d'] || keys['D']) { dx =  1; player.dir = 'right'; }
+      else if (keys['ArrowUp']    || keys['w'] || keys['W']) { dy = -1; player.dir = 'up'; }
+      else if (keys['ArrowDown']  || keys['s'] || keys['S']) { dy =  1; player.dir = 'down'; }
+
+      if (dx || dy) {
+        const nx = player.tileX + dx;
+        const ny = player.tileY + dy;
+        // Walking into the NPC triggers dialog instead of movement
+        if (nx === NPC.tileX && ny === NPC.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          return;
+        }
+        if (isWalkable(nx, ny)) {
+          player.fromX = player.tileX;
+          player.fromY = player.tileY;
+          player.toX   = nx;
+          player.toY   = ny;
+          player.moving = true;
+          player.moveProgress = 0;
+        }
+      }
+    }
+
+    // ── Camera ─────────────────────────────────────────────────
+    function getCameraOffset() {
+      const cx = player.pixelX + TILE_SIZE / 2 - CANVAS_W / 2;
+      const cy = player.pixelY + TILE_SIZE / 2 - CANVAS_H / 2;
+      return {
+        x: Math.max(0, Math.min(MAP_COLS * TILE_SIZE - CANVAS_W, cx)),
+        y: Math.max(0, Math.min(MAP_ROWS * TILE_SIZE - CANVAS_H, cy)),
+      };
+    }
+
+    // ── World render ───────────────────────────────────────────
+    function renderWorld(ctx) {
+      const { x: camX, y: camY } = getCameraOffset();
+      const startCol = Math.floor(camX / TILE_SIZE);
+      const startRow = Math.floor(camY / TILE_SIZE);
+      const endCol   = Math.min(MAP_COLS - 1, startCol + Math.ceil(CANVAS_W / TILE_SIZE) + 1);
+      const endRow   = Math.min(MAP_ROWS - 1, startRow + Math.ceil(CANVAS_H / TILE_SIZE) + 1);
+
+      for (let row = startRow; row <= endRow; row++) {
+        for (let col = startCol; col <= endCol; col++) {
+          drawTile(ctx, MAP[row][col], col * TILE_SIZE - camX, row * TILE_SIZE - camY);
+        }
+      }
+
+      // Draw NPC (below player in draw order if same row, above if north)
+      const npcSX = NPC.tileX * TILE_SIZE - camX;
+      const npcSY = NPC.tileY * TILE_SIZE - camY;
+      const adjacent = Math.abs(player.tileX - NPC.tileX) + Math.abs(player.tileY - NPC.tileY) === 1;
+      drawNPC(ctx, npcSX, npcSY, adjacent);
+
+      // Walk frame derived from move progress (0-3)
+      const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
+      drawPlayer(ctx, player.pixelX - camX, player.pixelY - camY, player.dir, walkFrame);
+
+      // Dialog box drawn on top of world
+      if (dialogActive) {
+        drawDialog(ctx, NPC_DIALOG[dialogPage]);
+      }
+    }
+
+    // ── World loop ─────────────────────────────────────────────
+    const worldCanvas = document.getElementById('worldCanvas');
+    const wCtx = worldCanvas.getContext('2d');
+    wCtx.imageSmoothingEnabled = false;
+
+    let lastTs = null;
+    function worldLoop(ts) {
+      const dt = lastTs ? Math.min((ts - lastTs) / 1000, 0.1) : 0;
+      lastTs = ts;
+
+      if (gameState === 'world') {
+        updatePlayer(dt);
+        wCtx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+        renderWorld(wCtx);
+      }
+
+      requestAnimationFrame(worldLoop);
+    }
+    requestAnimationFrame(worldLoop);
+
+    // ============================================================
+    // BATTLE
+    // ============================================================
+
     const typeChart = {
       fire:  { fire: 1.0, grass: 2.0, water: 0.5, basic: 1.0 },
       grass: { fire: 0.5, grass: 1.0, water: 2.0, basic: 1.0 },
@@ -480,7 +976,6 @@
       basic: { fire: 1.0, grass: 1.0, water: 1.0, basic: 1.0 }
     };
 
-    // Two starting creatures. Each has 2 moves.
     const creatures = {
       player: {
         name: 'Cinderfox',
@@ -489,8 +984,8 @@
         atk: 12,
         spd: 9,
         moves: [
-          { name: 'Ember Snap',  type: 'fire',  power: 14 },
-          { name: 'Bite',        type: 'basic', power: 10 }
+          { name: 'Ember Snap', type: 'fire',  power: 14 },
+          { name: 'Bite',       type: 'basic', power: 10 }
         ]
       },
       opponent: {
@@ -506,46 +1001,38 @@
       }
     };
 
-    // =====================================================
-    // GAME STATE
-    // =====================================================
     let state = null;
 
     function initState() {
       state = {
-        player: { ...creatures.player, hp: creatures.player.maxHp },
+        player:   { ...creatures.player,   hp: creatures.player.maxHp },
         opponent: { ...creatures.opponent, hp: creatures.opponent.maxHp },
-        turn: 'pending',   // 'player', 'opponent', or 'pending' between rounds
         over: false
       };
     }
 
-    // =====================================================
-    // RENDERING
-    // =====================================================
     const creatureEmoji = { fire: '🦊', water: '🐶', grass: '🌿' };
 
     function render() {
       ['player', 'opponent'].forEach(side => {
         const c = state[side];
         document.getElementById(`name-${side}`).textContent = c.name;
-        document.getElementById(`hp-${side}`).textContent = Math.max(0, c.hp);
-        document.getElementById(`atk-${side}`).textContent = c.atk;
-        document.getElementById(`spd-${side}`).textContent = c.spd;
+        document.getElementById(`hp-${side}`).textContent   = Math.max(0, c.hp);
+        document.getElementById(`atk-${side}`).textContent  = c.atk;
+        document.getElementById(`spd-${side}`).textContent  = c.spd;
 
         const typeBadge = document.getElementById(`type-${side}`);
         typeBadge.textContent = c.type.charAt(0).toUpperCase() + c.type.slice(1);
-        typeBadge.className = `type-badge ${c.type}`;
+        typeBadge.className   = `type-badge ${c.type}`;
 
         const card = document.getElementById(`card-${side}`);
         card.className = `creature-card type-${c.type}`;
         card.classList.toggle('fainted', c.hp <= 0);
 
-        // HP bar
-        const hpPct = Math.max(0, c.hp) / c.maxHp * 100;
+        const hpPct  = Math.max(0, c.hp) / c.maxHp * 100;
         const hpFill = document.getElementById(`hpbar-${side}`);
         hpFill.style.width = `${hpPct}%`;
-        hpFill.className = 'hp-fill';
+        hpFill.className   = 'hp-fill';
         if (hpPct < 25) hpFill.classList.add('low');
         else if (hpPct < 50) hpFill.classList.add('warn');
       });
@@ -564,17 +1051,16 @@
           <span class="move-meta">${move.type.toUpperCase()} · POWER ${move.power}</span>
         `;
         btn.disabled = state.over || state.player.hp <= 0;
-        btn.onclick = () => playerMove(i);
+        btn.onclick  = () => playerMove(i);
         container.appendChild(btn);
       });
 
-      // Show opponent moves as read-only info
       const oppContainer = document.getElementById('moves-opponent');
       oppContainer.innerHTML = '';
       state.opponent.moves.forEach(move => {
         const btn = document.createElement('button');
         btn.className = 'move-btn';
-        btn.disabled = true;
+        btn.disabled  = true;
         btn.innerHTML = `
           <span class="move-name">${move.name}</span>
           <span class="move-meta">${move.type.toUpperCase()} · POWER ${move.power}</span>
@@ -583,47 +1069,37 @@
       });
     }
 
-    // =====================================================
-    // LOG
-    // =====================================================
     function log(text, cls = '') {
-      const el = document.getElementById('log');
+      const el   = document.getElementById('log');
       const line = document.createElement('div');
-      line.className = `log-line ${cls}`;
+      line.className   = `log-line ${cls}`;
       line.textContent = text;
       el.appendChild(line);
-      // Keep log to most recent 5 lines
       while (el.children.length > 5) el.removeChild(el.firstChild);
     }
 
-    // =====================================================
-    // CORE COMBAT — the bit EJ will look at most
-    // =====================================================
     function resolveAttack(attackerSide, defenderSide, moveIdx) {
       const attacker = state[attackerSide];
       const defender = state[defenderSide];
-      const move = attacker.moves[moveIdx];
+      const move     = attacker.moves[moveIdx];
 
-      // Basic type always deals exactly move.power — no stat scaling, no type modifier
       let damage, effectiveness;
       if (move.type === 'basic') {
-        damage = move.power;
+        damage        = move.power;
         effectiveness = 1.0;
       } else {
-        damage = Math.round((attacker.atk + move.power) / 2);
+        damage        = Math.round((attacker.atk + move.power) / 2);
         effectiveness = typeChart[move.type][defender.type];
-        damage = Math.round(damage * effectiveness);
+        damage        = Math.round(damage * effectiveness);
       }
 
       defender.hp -= damage;
 
-      // Card shake
       const card = document.getElementById(`card-${defenderSide}`);
       card.classList.add('hit');
       setTimeout(() => card.classList.remove('hit'), 300);
 
       log(`${attacker.name} used ${move.name}! Dealt ${damage} damage.`);
-
       if (effectiveness > 1) log("It's super effective!", 'effective');
       else if (effectiveness < 1) log("It's not very effective...", 'weak');
 
@@ -636,48 +1112,27 @@
       }
     }
 
-    // =====================================================
-    // TURN LOGIC
-    // =====================================================
     function playerMove(moveIdx) {
       if (state.over) return;
 
-      // Resolve turn order by Speed (player first if tied)
-      const playerFirst = state.player.spd >= state.opponent.spd;
-
-      const playerMove = moveIdx;
+      const playerFirst  = state.player.spd >= state.opponent.spd;
       const opponentMove = pickOpponentMove();
 
       if (playerFirst) {
-        resolveAttack('player', 'opponent', playerMove);
-        if (!state.over) {
-          setTimeout(() => {
-            resolveAttack('opponent', 'player', opponentMove);
-            render();
-          }, 700);
-        }
+        resolveAttack('player', 'opponent', moveIdx);
+        if (!state.over) setTimeout(() => { resolveAttack('opponent', 'player', opponentMove); render(); }, 700);
       } else {
         resolveAttack('opponent', 'player', opponentMove);
-        if (!state.over) {
-          setTimeout(() => {
-            resolveAttack('player', 'opponent', playerMove);
-            render();
-          }, 700);
-        }
+        if (!state.over) setTimeout(() => { resolveAttack('player', 'opponent', moveIdx); render(); }, 700);
       }
 
       render();
     }
 
-    // Dead-simple AI: pick a random move.
-    // (Good place for EJ to add smarter logic — e.g. prefer super-effective moves.)
     function pickOpponentMove() {
       return Math.floor(Math.random() * state.opponent.moves.length);
     }
 
-    // =====================================================
-    // INIT / RESET
-    // =====================================================
     function resetBattle() {
       initState();
       document.getElementById('log').innerHTML =
@@ -686,7 +1141,8 @@
       render();
     }
 
-    // Start
+    // Start in the world
+    showWorld();
     initState();
     render();
   </script>
