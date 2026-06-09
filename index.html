@@ -33,29 +33,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Battle Bash</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Gill+Sans:wght@400;600;700&display=swap');
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg: #1a1d2e;
-      --bg-2: #232740;
-      --surface: #2a2f4a;
-      --border: #3a3f5e;
+      --bg: #1a1a2e;
+      --bg-2: #16213e;
       --text: #f5efd6;
       --text-muted: #8e93b2;
 
-      --fire: #f08030;
+      --fire:  #f08030;
       --water: #6890f0;
       --grass: #78c850;
 
+      --fire-light:  #fde4c8;
+      --water-light: #d0dcff;
+      --grass-light: #d4f0c0;
+
+      --fire-mid:  #f5c09a;
+      --water-mid: #a8bef8;
+      --grass-mid: #b0dfa0;
+
       --hp-good: #7ac74c;
       --hp-warn: #ffcb05;
-      --hp-low: #ee3142;
+      --hp-low:  #ee3142;
     }
 
     body {
-      background: var(--bg);
+      background: radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%);
       color: var(--text);
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: 'Gill Sans', 'Gill Sans MT', Calibri, system-ui, sans-serif;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
@@ -64,37 +72,79 @@
     }
 
     h1 {
-      font-size: 32px;
-      margin-bottom: 8px;
-      letter-spacing: -0.01em;
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 4px;
+      letter-spacing: 0.04em;
+      text-shadow: 0 0 20px rgba(255,203,5,0.4);
+      color: #ffcb05;
     }
 
     .subtitle {
       color: var(--text-muted);
-      margin-bottom: 32px;
-      font-size: 14px;
+      margin-bottom: 40px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
     .arena {
       display: grid;
       grid-template-columns: 1fr auto 1fr;
-      gap: 24px;
+      gap: 32px;
       align-items: center;
-      max-width: 880px;
+      max-width: 900px;
       width: 100%;
       margin-bottom: 32px;
     }
 
     @media (max-width: 700px) {
-      .arena { grid-template-columns: 1fr; gap: 16px; }
+      .arena { grid-template-columns: 1fr; gap: 20px; }
     }
 
+    /* ── Pokémon Card Shell ── */
     .creature-card {
-      background: var(--surface);
-      border: 2px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
+      border-radius: 16px;
+      padding: 4px;
+      position: relative;
       transition: transform 200ms;
+      /* gold foil outer border */
+      background: linear-gradient(145deg, #e8c840 0%, #b8962a 40%, #f0d060 60%, #c8a830 100%);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,220,80,0.3);
+    }
+
+    /* type-colored inner card */
+    .creature-card .card-inner {
+      border-radius: 13px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* subtle holographic shimmer overlay */
+    .creature-card .card-inner::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg,
+        rgba(255,255,255,0.08) 0%,
+        transparent 40%,
+        rgba(255,255,255,0.05) 60%,
+        transparent 100%);
+      pointer-events: none;
+      border-radius: 13px;
+    }
+
+    /* fire card */
+    .creature-card.type-fire .card-inner {
+      background: linear-gradient(160deg, #fde4c8 0%, #f5c09a 35%, #f08030 100%);
+    }
+    /* water card */
+    .creature-card.type-water .card-inner {
+      background: linear-gradient(160deg, #d0dcff 0%, #a8bef8 35%, #6890f0 100%);
+    }
+    /* grass card */
+    .creature-card.type-grass .card-inner {
+      background: linear-gradient(160deg, #d4f0c0 0%, #b0dfa0 35%, #78c850 100%);
     }
 
     .creature-card.hit {
@@ -102,126 +152,221 @@
     }
 
     @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-6px); }
-      75% { transform: translateX(6px); }
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      25%       { transform: translateX(-8px) rotate(-1deg); }
+      75%       { transform: translateX(8px) rotate(1deg); }
     }
 
     .creature-card.fainted {
-      opacity: 0.4;
+      opacity: 0.35;
       filter: grayscale(1);
     }
 
+    /* ── Card Header ── */
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 12px 14px 8px;
+    }
+
     .creature-name {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1000;
+      letter-spacing: 0.01em;
+      line-height: 1.1;
+    }
+
+    .card-hp-display {
       font-size: 22px;
       font-weight: 700;
-      margin-bottom: 4px;
+      color: #1a1000;
+      text-align: right;
+      line-height: 1;
+    }
+
+    .card-hp-display .hp-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      opacity: 0.6;
+    }
+
+    /* ── Creature Illustration Area ── */
+    .card-art {
+      margin: 0 10px 8px;
+      border-radius: 8px;
+      height: 110px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 72px;
+      position: relative;
+      overflow: hidden;
+      border: 2px solid rgba(0,0,0,0.15);
+      background: rgba(255,255,255,0.25);
+    }
+
+    .card-art::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 60%);
+    }
+
+    /* ── Type + Stats strip ── */
+    .card-type-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px 8px;
     }
 
     .type-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 10px 3px 7px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      color: var(--bg);
-      margin-bottom: 16px;
+      letter-spacing: 0.08em;
+      color: #fff;
+      border: 1.5px solid rgba(0,0,0,0.2);
     }
 
-    .type-badge.fire { background: var(--fire); }
-    .type-badge.water { background: var(--water); }
-    .type-badge.grass { background: var(--grass); }
+    .type-badge.fire  { background: #c03010; }
+    .type-badge.water { background: #3050c0; }
+    .type-badge.grass { background: #3a8a20; }
 
-    .hp-row {
+    .type-badge::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.6);
+      display: inline-block;
+    }
+
+    .card-stats-strip {
       display: flex;
-      justify-content: space-between;
+      gap: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(0,0,0,0.55);
+    }
+
+    .card-stats-strip strong { color: #1a1000; }
+
+    /* ── HP Bar (inside card) ── */
+    .card-hp-row {
+      padding: 0 14px 6px;
+      display: flex;
       align-items: center;
-      margin-bottom: 6px;
-      font-size: 13px;
-      color: var(--text-muted);
+      gap: 8px;
+    }
+
+    .hp-bar-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: rgba(0,0,0,0.5);
+      white-space: nowrap;
     }
 
     .hp-bar {
-      width: 100%;
-      height: 14px;
-      background: var(--bg);
-      border-radius: 7px;
+      flex: 1;
+      height: 10px;
+      background: rgba(0,0,0,0.15);
+      border-radius: 5px;
       overflow: hidden;
-      margin-bottom: 16px;
-      border: 1px solid var(--border);
+      border: 1px solid rgba(0,0,0,0.2);
     }
 
     .hp-fill {
       height: 100%;
       background: var(--hp-good);
+      border-radius: 5px;
       transition: width 400ms ease, background 200ms;
+      box-shadow: 0 0 4px rgba(122,199,76,0.6);
     }
 
-    .hp-fill.warn { background: var(--hp-warn); }
-    .hp-fill.low { background: var(--hp-low); }
-
-    .stats {
-      display: flex;
-      gap: 16px;
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-bottom: 16px;
+    .hp-fill.warn {
+      background: var(--hp-warn);
+      box-shadow: 0 0 4px rgba(255,203,5,0.6);
     }
 
-    .stat strong { color: var(--text); }
+    .hp-fill.low {
+      background: var(--hp-low);
+      box-shadow: 0 0 4px rgba(238,49,66,0.6);
+    }
+
+    /* ── Moves Section ── */
+    .card-moves-section {
+      background: rgba(0,0,0,0.08);
+      border-top: 1px solid rgba(0,0,0,0.12);
+      padding: 10px 10px 12px;
+    }
 
     .moves {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px;
+      gap: 6px;
     }
 
     .move-btn {
-      background: var(--bg-2);
-      color: var(--text);
-      border: 2px solid var(--border);
+      background: rgba(255,255,255,0.55);
+      color: #1a1000;
+      border: 1.5px solid rgba(0,0,0,0.18);
       border-radius: 8px;
-      padding: 10px 12px;
+      padding: 8px 10px;
       cursor: pointer;
       font-family: inherit;
-      font-size: 14px;
-      font-weight: 500;
+      font-size: 12px;
+      font-weight: 600;
       transition: all 150ms;
       text-align: left;
+      backdrop-filter: blur(4px);
     }
 
     .move-btn:hover:not(:disabled) {
-      border-color: var(--text-muted);
-      background: var(--surface);
+      background: rgba(255,255,255,0.85);
+      border-color: rgba(0,0,0,0.35);
+      transform: translateY(-1px);
     }
 
     .move-btn:disabled {
-      opacity: 0.4;
+      opacity: 0.5;
       cursor: not-allowed;
     }
 
-    .move-name { display: block; font-weight: 600; }
-    .move-meta { display: block; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .move-name { display: block; font-weight: 700; font-size: 12px; }
+    .move-meta { display: block; font-size: 10px; color: rgba(0,0,0,0.5); margin-top: 2px; font-weight: 600; letter-spacing: 0.04em; }
 
+    /* ── VS divider ── */
     .vs {
-      font-size: 24px;
+      font-size: 28px;
       font-weight: 700;
-      color: var(--text-muted);
+      color: #ffcb05;
+      text-shadow: 0 0 12px rgba(255,203,5,0.5);
+      text-align: center;
     }
 
+    /* ── Battle Log ── */
     .log {
-      background: var(--bg-2);
-      border: 1px solid var(--border);
-      border-radius: 8px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
       padding: 16px 20px;
-      max-width: 880px;
+      max-width: 900px;
       width: 100%;
       min-height: 80px;
       font-size: 14px;
       line-height: 1.6;
       color: var(--text-muted);
+      backdrop-filter: blur(4px);
     }
 
     .log-line { margin-bottom: 4px; }
@@ -232,20 +377,22 @@
 
     .play-again {
       margin-top: 24px;
-      background: var(--hp-low);
-      color: var(--text);
+      background: #ffcb05;
+      color: #1a1000;
       border: none;
-      padding: 12px 28px;
+      padding: 12px 32px;
       font-size: 15px;
-      font-weight: 600;
-      border-radius: 8px;
+      font-weight: 700;
+      border-radius: 24px;
       cursor: pointer;
       font-family: inherit;
       display: none;
+      letter-spacing: 0.04em;
+      box-shadow: 0 4px 16px rgba(255,203,5,0.4);
     }
 
     .play-again.visible { display: inline-block; }
-    .play-again:hover { background: #c4202f; }
+    .play-again:hover { background: #ffd83a; transform: translateY(-1px); }
   </style>
 </head>
 <body>
@@ -255,40 +402,58 @@
 
   <div class="arena">
     <!-- Player creature -->
-    <div class="creature-card" id="card-player">
-      <div class="creature-name" id="name-player">Cinderfox</div>
-      <span class="type-badge fire" id="type-player">Fire</span>
-      <div class="hp-row">
-        <span>HP</span>
-        <span><span id="hp-player">100</span> / <span id="max-player">100</span></span>
-      </div>
-      <div class="hp-bar"><div class="hp-fill" id="hpbar-player" style="width: 100%;"></div></div>
-      <div class="stats">
-        <span class="stat">ATK <strong id="atk-player">12</strong></span>
-        <span class="stat">SPD <strong id="spd-player">9</strong></span>
-      </div>
-      <div class="moves" id="moves-player">
-        <!-- populated by JS -->
+    <div class="creature-card type-fire" id="card-player">
+      <div class="card-inner">
+        <div class="card-header">
+          <div class="creature-name" id="name-player">Cinderfox</div>
+          <div class="card-hp-display">
+            <span id="hp-player">100</span><span class="hp-label"> HP</span>
+          </div>
+        </div>
+        <div class="card-art" id="art-player">🦊</div>
+        <div class="card-type-row">
+          <span class="type-badge fire" id="type-player">Fire</span>
+          <div class="card-stats-strip">
+            <span>ATK <strong id="atk-player">12</strong></span>
+            <span>SPD <strong id="spd-player">9</strong></span>
+          </div>
+        </div>
+        <div class="card-hp-row">
+          <span class="hp-bar-label">HP</span>
+          <div class="hp-bar"><div class="hp-fill" id="hpbar-player" style="width:100%"></div></div>
+        </div>
+        <div class="card-moves-section">
+          <div class="moves" id="moves-player"></div>
+        </div>
       </div>
     </div>
 
     <div class="vs">VS</div>
 
     <!-- Opponent creature -->
-    <div class="creature-card" id="card-opponent">
-      <div class="creature-name" id="name-opponent">Tidepup</div>
-      <span class="type-badge water" id="type-opponent">Water</span>
-      <div class="hp-row">
-        <span>HP</span>
-        <span><span id="hp-opponent">100</span> / <span id="max-opponent">100</span></span>
-      </div>
-      <div class="hp-bar"><div class="hp-fill" id="hpbar-opponent" style="width: 100%;"></div></div>
-      <div class="stats">
-        <span class="stat">ATK <strong id="atk-opponent">10</strong></span>
-        <span class="stat">SPD <strong id="spd-opponent">7</strong></span>
-      </div>
-      <div class="moves" id="moves-opponent">
-        <!-- moves shown but disabled for opponent (basic AI picks one) -->
+    <div class="creature-card type-water" id="card-opponent">
+      <div class="card-inner">
+        <div class="card-header">
+          <div class="creature-name" id="name-opponent">Tidepup</div>
+          <div class="card-hp-display">
+            <span id="hp-opponent">100</span><span class="hp-label"> HP</span>
+          </div>
+        </div>
+        <div class="card-art" id="art-opponent">🐶</div>
+        <div class="card-type-row">
+          <span class="type-badge water" id="type-opponent">Water</span>
+          <div class="card-stats-strip">
+            <span>ATK <strong id="atk-opponent">10</strong></span>
+            <span>SPD <strong id="spd-opponent">7</strong></span>
+          </div>
+        </div>
+        <div class="card-hp-row">
+          <span class="hp-bar-label">HP</span>
+          <div class="hp-bar"><div class="hp-fill" id="hpbar-opponent" style="width:100%"></div></div>
+        </div>
+        <div class="card-moves-section">
+          <div class="moves" id="moves-opponent"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -355,17 +520,23 @@
     // =====================================================
     // RENDERING
     // =====================================================
+    const creatureEmoji = { fire: '🦊', water: '🐶', grass: '🌿' };
+
     function render() {
       ['player', 'opponent'].forEach(side => {
         const c = state[side];
         document.getElementById(`name-${side}`).textContent = c.name;
         document.getElementById(`hp-${side}`).textContent = Math.max(0, c.hp);
-        document.getElementById(`max-${side}`).textContent = c.maxHp;
         document.getElementById(`atk-${side}`).textContent = c.atk;
         document.getElementById(`spd-${side}`).textContent = c.spd;
+
         const typeBadge = document.getElementById(`type-${side}`);
         typeBadge.textContent = c.type.charAt(0).toUpperCase() + c.type.slice(1);
         typeBadge.className = `type-badge ${c.type}`;
+
+        const card = document.getElementById(`card-${side}`);
+        card.className = `creature-card type-${c.type}`;
+        card.classList.toggle('fainted', c.hp <= 0);
 
         // HP bar
         const hpPct = Math.max(0, c.hp) / c.maxHp * 100;
@@ -374,10 +545,6 @@
         hpFill.className = 'hp-fill';
         if (hpPct < 25) hpFill.classList.add('low');
         else if (hpPct < 50) hpFill.classList.add('warn');
-
-        // Fainted styling
-        const card = document.getElementById(`card-${side}`);
-        card.classList.toggle('fainted', c.hp <= 0);
       });
 
       renderMoves();
