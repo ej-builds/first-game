@@ -212,6 +212,24 @@
       .arena { grid-template-columns: 1fr; gap: 20px; }
     }
 
+    /* ── Opponent wrapper & flick hint ── */
+    .opponent-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      max-width: 280px;
+    }
+
+    .flick-hint {
+      font-size: 11px;
+      color: rgba(255,255,255,0.35);
+      letter-spacing: 0.05em;
+      user-select: none;
+      pointer-events: none;
+    }
+
     /* ── Pokémon Card Shell ── */
     .creature-card {
       border-radius: 16px;
@@ -251,6 +269,8 @@
     .creature-card.type-water .card-inner { background: linear-gradient(160deg, #d0dcff 0%, #a8bef8 35%, #6890f0 100%); }
     .creature-card.type-grass .card-inner { background: linear-gradient(160deg, #d4f0c0 0%, #b0dfa0 35%, #78c850 100%); }
 
+    #card-opponent { cursor: grab; }
+    #card-opponent.dragging { cursor: grabbing; }
     .creature-card.hit { animation: shake 300ms ease-in-out; }
 
     @keyframes shake {
@@ -569,7 +589,9 @@
       <div class="vs">VS</div>
 
       <!-- Opponent creature -->
-      <div class="creature-card type-water" id="card-opponent">
+      <div class="opponent-wrapper">
+        <div class="flick-hint">👆 flick to run</div>
+        <div class="creature-card type-water" id="card-opponent">
         <div class="card-inner">
           <div class="card-header">
             <div class="creature-name" id="name-opponent">Sharqua</div>
@@ -598,6 +620,7 @@
           </div>
         </div>
       </div>
+      </div><!-- end opponent-wrapper -->
     </div>
 
     <div class="log" id="log">
@@ -1337,10 +1360,101 @@
       render();
     }
 
+    // ── Flick-to-run gesture on opponent card ─────────────────────
+    let flickState = null;
+
+    function startFlick(x, y) {
+      if (state && state.over) return;
+      flickState = { startX: x, startY: y, lastX: x, lastY: y, lastT: Date.now(), vx: 0, vy: 0 };
+      const card = document.getElementById('card-opponent');
+      card.classList.add('dragging');
+      card.style.transition = 'none';
+    }
+
+    function moveFlick(x, y) {
+      if (!flickState) return;
+      const now = Date.now();
+      const dt  = Math.max(1, now - flickState.lastT);
+      flickState.vx = (x - flickState.lastX) / dt;
+      flickState.vy = (y - flickState.lastY) / dt;
+      flickState.lastX = x;
+      flickState.lastY = y;
+      flickState.lastT = now;
+
+      const dx  = x - flickState.startX;
+      const dy  = y - flickState.startY;
+      const rot = dx * 0.12;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const card = document.getElementById('card-opponent');
+      card.style.transform = `translate(${dx}px, ${dy}px) rotate(${rot}deg)`;
+      card.style.opacity   = String(Math.max(0.2, 1 - dist / 350));
+    }
+
+    function endFlick(x, y) {
+      if (!flickState) return;
+      const card = document.getElementById('card-opponent');
+      card.classList.remove('dragging');
+
+      const dx    = x - flickState.startX;
+      const dy    = y - flickState.startY;
+      const dist  = Math.sqrt(dx * dx + dy * dy);
+      const speed = Math.sqrt(flickState.vx ** 2 + flickState.vy ** 2);
+
+      if (speed > 0.45 || dist > 110) {
+        // Flick fast enough — fly off in drag direction
+        const angle = Math.atan2(flickState.vy || dy, flickState.vx || dx);
+        const tx    = Math.cos(angle) * 1100;
+        const ty    = Math.sin(angle) * 1100;
+        const rot   = dx * 0.25 + (dx >= 0 ? 25 : -25);
+
+        card.style.transition = 'transform 0.35s ease-in, opacity 0.35s ease-in';
+        card.style.transform  = `translate(${tx}px, ${ty}px) rotate(${rot}deg)`;
+        card.style.opacity    = '0';
+
+        log('You ran away!', '');
+
+        setTimeout(() => {
+          card.style.transition = '';
+          card.style.transform  = '';
+          card.style.opacity    = '';
+          returnToWorld();
+        }, 370);
+      } else {
+        // Not fast enough — snap card back
+        card.style.transition = 'transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.3s ease';
+        card.style.transform  = '';
+        card.style.opacity    = '';
+        setTimeout(() => { card.style.transition = ''; }, 300);
+      }
+      flickState = null;
+    }
+
+    function initFlickGesture() {
+      const card = document.getElementById('card-opponent');
+
+      card.addEventListener('mousedown', e => { e.preventDefault(); startFlick(e.clientX, e.clientY); });
+      document.addEventListener('mousemove', e => { if (flickState) moveFlick(e.clientX, e.clientY); });
+      document.addEventListener('mouseup',   e => { if (flickState) endFlick(e.clientX, e.clientY); });
+
+      card.addEventListener('touchstart', e => {
+        e.preventDefault();
+        startFlick(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: false });
+      document.addEventListener('touchmove', e => {
+        if (!flickState) return;
+        e.preventDefault();
+        moveFlick(e.touches[0].clientX, e.touches[0].clientY);
+      }, { passive: false });
+      document.addEventListener('touchend', e => {
+        if (flickState) endFlick(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+      });
+    }
+
     // Start in the world
     showWorld();
     initState();
     render();
+    initFlickGesture();
   </script>
 </body>
 </html>
