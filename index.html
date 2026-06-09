@@ -782,6 +782,15 @@
 
     // ── Return to world after battle ───────────────────────────
     function returnToWorld() {
+      // Save active creature's current HP for the next battle
+      // If they were knocked out (hp=0), restore to full HP for next fight
+      if (state) {
+        persistentPlayer = {
+          ...state.player,
+          hp: state.player.hp > 0 ? state.player.hp : state.player.maxHp
+        };
+      }
+
       const overlay = document.getElementById('transitionOverlay');
       overlay.style.transition = 'none';
       overlay.style.background = '#000';
@@ -796,6 +805,58 @@
       }, 80);
     }
 
+    function enterBuilding() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea        = 'indoor';
+        player.tileX       = INDOOR_ENTRY.tileX;
+        player.tileY       = INDOOR_ENTRY.tileY;
+        player.pixelX      = INDOOR_ENTRY.tileX * TILE_SIZE;
+        player.pixelY      = INDOOR_ENTRY.tileY * TILE_SIZE;
+        player.fromX       = player.tileX;
+        player.fromY       = player.tileY;
+        player.toX         = player.tileX;
+        player.toY         = player.tileY;
+        player.moving      = false;
+        player.dir         = 'up';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function exitBuilding() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea        = 'outdoor';
+        player.tileX       = OUTDOOR_EXIT.tileX;
+        player.tileY       = OUTDOOR_EXIT.tileY;
+        player.pixelX      = OUTDOOR_EXIT.tileX * TILE_SIZE;
+        player.pixelY      = OUTDOOR_EXIT.tileY * TILE_SIZE;
+        player.fromX       = player.tileX;
+        player.fromY       = player.tileY;
+        player.toX         = player.tileX;
+        player.toY         = player.tileY;
+        player.moving      = false;
+        player.dir         = 'down';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
     // ============================================================
     // WORLD — Tile map & player
     // ============================================================
@@ -807,18 +868,21 @@
 
     // Tile type IDs
     const GRASS = 0, TREE = 1, PATH = 2, TALL = 3, WATER = 4;
-    const SOLID_TILES = new Set([TREE, WATER]);
+    const BROOF = 5, BWALL = 6, BDOOR = 7;
+    const FLOOR = 8, IWALL = 9, IBOOK = 10, ITABLE = 11, IEXIT = 12;
+    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, IWALL, IBOOK, ITABLE]);
 
-    const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER;
+    const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER, R=BROOF, B=BWALL, D=BDOOR;
+    const IV=IWALL, IF=FLOOR, IB=IBOOK, IT=ITABLE, IE=IEXIT;
 
     // 30 cols × 25 rows
     // Horizontal roads at rows 5 and 17; vertical road at col 14 between them
     const MAP = [
       [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
       [T,G,G,G,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
-      [T,G,T,T,G,G,H,H,H,G,T,T,G,G,G,G,G,G,G,G,T,T,H,H,H,G,T,T,G,T],
-      [T,G,T,T,G,G,G,G,G,G,T,T,G,G,G,G,G,G,G,G,T,T,G,G,G,G,T,T,G,T],
-      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,T,T,G,G,H,H,H,G,R,R,R,R,R,G,G,G,G,G,T,T,H,H,H,G,T,T,G,T],
+      [T,G,T,T,G,G,G,G,G,G,B,B,B,B,B,G,G,G,G,G,T,T,G,G,G,G,T,T,G,T],
+      [T,G,G,G,G,G,G,G,G,G,B,B,D,B,B,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,T,G,G,H,H,H,G,G,G,G,G,G,P,G,G,G,G,G,G,H,H,H,G,G,T,G,G,T],
@@ -841,17 +905,39 @@
       [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
     ];
 
+    // ── Professor's Lab — indoor map ──────────────────────────
+    const INDOOR_COLS = 14, INDOOR_ROWS = 12;
+    const INDOOR_OFFSET_X = (CANVAS_W - INDOOR_COLS * TILE_SIZE) / 2; // 96
+    const INDOOR_OFFSET_Y = (CANVAS_H - INDOOR_ROWS * TILE_SIZE) / 2; // 48
+    const INDOOR_ENTRY = { tileX: 6, tileY: 9 };  // where player appears inside
+    const OUTDOOR_EXIT = { tileX: 12, tileY: 6 }; // where player appears outside
+
+    const INDOOR_MAP = [
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+      [IV,IB,IB,IB,IB,IB,IB,IB,IB,IB,IB,IB,IB,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IT,IT,IT,IF,IF,IT,IT,IT,IF,IF,IV],
+      [IV,IF,IF,IT,IT,IT,IF,IF,IT,IT,IT,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IE,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+    ];
+
     // ── Tile drawing ──────────────────────────────────────────
     function drawTile(ctx, type, sx, sy) {
       const s = TILE_SIZE;
       switch (type) {
         case GRASS:
-          ctx.fillStyle = '#4a7c3f';
+          ctx.fillStyle = '#6ab04c';
           ctx.fillRect(sx, sy, s, s);
-          ctx.fillStyle = '#3e6835';
+          ctx.fillStyle = '#5a9e40';
           ctx.fillRect(sx, sy, s, 1);
           ctx.fillRect(sx, sy, 1, s);
-          ctx.fillStyle = '#527a40';
+          ctx.fillStyle = '#78c055';
           ctx.fillRect(sx+6,  sy+6,  3, 3);
           ctx.fillRect(sx+20, sy+18, 3, 3);
           ctx.fillRect(sx+26, sy+8,  2, 2);
@@ -880,15 +966,15 @@
           break;
 
         case TALL:
-          ctx.fillStyle = '#3a6a28';
+          ctx.fillStyle = '#5aa040';
           ctx.fillRect(sx, sy, s, s);
-          ctx.fillStyle = '#4a8038';
+          ctx.fillStyle = '#72c050';
           for (let i = 0; i < 5; i++) {
             const bx = sx + 2 + i * 6;
             ctx.fillRect(bx,   sy+6,  2, 18);
             ctx.fillRect(bx+1, sy+2,  2, 10);
           }
-          ctx.fillStyle = '#3e6a2a';
+          ctx.fillStyle = '#50902e';
           ctx.fillRect(sx, sy+28, s, 4);
           break;
 
@@ -901,6 +987,147 @@
           ctx.fillStyle = '#6898e8';
           ctx.fillRect(sx+4,  sy+8,  6, 2);
           ctx.fillRect(sx+18, sy+20, 6, 2);
+          break;
+
+        case BROOF:
+          // Green roof tile
+          ctx.fillStyle = '#2d6e1e';
+          ctx.fillRect(sx, sy, s, s);
+          // Lighter green roof panels
+          ctx.fillStyle = '#3a8a28';
+          ctx.fillRect(sx+1, sy+2,  s-2, 10);
+          ctx.fillRect(sx+1, sy+16, s-2, 10);
+          // Highlight ridge line
+          ctx.fillStyle = '#4ea035';
+          ctx.fillRect(sx+2, sy+3,  s-4, 2);
+          ctx.fillRect(sx+2, sy+17, s-4, 2);
+          // Dark underside of eave at bottom
+          ctx.fillStyle = '#1e4e12';
+          ctx.fillRect(sx, sy+28, s, 4);
+          break;
+
+        case BWALL:
+          // Brown brick wall
+          ctx.fillStyle = '#7a4f2e';
+          ctx.fillRect(sx, sy, s, s);
+          // Horizontal mortar lines
+          ctx.fillStyle = '#5a3518';
+          ctx.fillRect(sx, sy+7,  s, 2);
+          ctx.fillRect(sx, sy+15, s, 2);
+          ctx.fillRect(sx, sy+23, s, 2);
+          // Vertical mortar (offset per row for brick pattern)
+          ctx.fillStyle = '#5a3518';
+          ctx.fillRect(sx+15, sy,    2, 7);
+          ctx.fillRect(sx+7,  sy+9,  2, 6);
+          ctx.fillRect(sx+22, sy+9,  2, 6);
+          ctx.fillRect(sx+15, sy+17, 2, 6);
+          ctx.fillRect(sx+7,  sy+25, 2, 7);
+          ctx.fillRect(sx+22, sy+25, 2, 7);
+          // Bright brick face highlights
+          ctx.fillStyle = '#9a6040';
+          ctx.fillRect(sx+1, sy+1,  4, 2);
+          ctx.fillRect(sx+1, sy+9,  4, 2);
+          ctx.fillRect(sx+1, sy+17, 4, 2);
+          break;
+
+        case FLOOR:
+          // Wooden plank floor
+          ctx.fillStyle = '#c8924a';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#b07c38';
+          ctx.fillRect(sx, sy,    s, 1);
+          ctx.fillRect(sx, sy+10, s, 1);
+          ctx.fillRect(sx, sy+21, s, 1);
+          ctx.fillStyle = '#d8a860';
+          ctx.fillRect(sx+3, sy+2,  10, 7);
+          ctx.fillRect(sx+3, sy+13, 14, 7);
+          ctx.fillStyle = '#b88040';
+          ctx.fillRect(sx+16, sy+2, 13, 7);
+          break;
+
+        case IWALL:
+          // Interior stone/plaster wall
+          ctx.fillStyle = '#a89070';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#907860';
+          ctx.fillRect(sx,    sy, 1, s);
+          ctx.fillRect(sx, sy,    s, 1);
+          ctx.fillStyle = '#b8a080';
+          ctx.fillRect(sx+4, sy+4, s-8, s-8);
+          break;
+
+        case IBOOK:
+          // Bookcase (against back wall)
+          ctx.fillStyle = '#6b3a1f';
+          ctx.fillRect(sx, sy, s, s);
+          // Book spines — alternating colours
+          const bookColors = ['#c03030','#3050c0','#30a040','#c08020','#9030b0','#208080'];
+          for (let i = 0; i < 6; i++) {
+            ctx.fillStyle = bookColors[i % bookColors.length];
+            ctx.fillRect(sx + 2 + i * 5, sy + 4, 4, s - 10);
+          }
+          // Shelf line
+          ctx.fillStyle = '#4a2010';
+          ctx.fillRect(sx, sy + s - 6, s, 3);
+          break;
+
+        case ITABLE:
+          // Lab table / desk
+          ctx.fillStyle = '#5a8a5a';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#486848';
+          ctx.fillRect(sx, sy,   s, 2);
+          ctx.fillRect(sx, sy,   2, s);
+          ctx.fillRect(sx, sy+s-2, s, 2);
+          ctx.fillRect(sx+s-2, sy, 2, s);
+          // Table surface detail
+          ctx.fillStyle = '#6aaa6a';
+          ctx.fillRect(sx+4, sy+4, s-8, s-8);
+          // Small flask/item
+          ctx.fillStyle = '#80d0e0';
+          ctx.fillRect(sx+12, sy+10, 8, 12);
+          ctx.fillStyle = '#50b0c0';
+          ctx.fillRect(sx+14, sy+8,  4, 4);
+          break;
+
+        case IEXIT:
+          // Exit door tile (shows as a mat/threshold)
+          ctx.fillStyle = '#c8924a';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#8b5e3c';
+          ctx.fillRect(sx+4, sy, s-8, s);
+          ctx.fillStyle = '#6b3e1c';
+          ctx.fillRect(sx+6, sy+2, s-12, s-4);
+          // Arrow hint pointing down
+          ctx.fillStyle = '#e0c080';
+          ctx.fillRect(sx+13, sy+8,  6, 12);
+          ctx.fillRect(sx+10, sy+14, 12, 4);
+          ctx.fillRect(sx+12, sy+18, 8,  4);
+          ctx.fillRect(sx+14, sy+22, 4,  4);
+          break;
+
+        case BDOOR:
+          // Brown wall with green door
+          ctx.fillStyle = '#7a4f2e';
+          ctx.fillRect(sx, sy, s, s);
+          // Same mortar as wall
+          ctx.fillStyle = '#5a3518';
+          ctx.fillRect(sx, sy+7,  s, 2);
+          ctx.fillRect(sx+15, sy, 2, 7);
+          ctx.fillRect(sx+7,  sy+25, 2, 7);
+          ctx.fillRect(sx+22, sy+25, 2, 7);
+          // Green door frame
+          ctx.fillStyle = '#2a5e18';
+          ctx.fillRect(sx+7, sy+8, 18, 24);
+          // Door panel
+          ctx.fillStyle = '#3a8228';
+          ctx.fillRect(sx+9, sy+10, 14, 20);
+          // Door highlight
+          ctx.fillStyle = '#4ea035';
+          ctx.fillRect(sx+10, sy+11, 4, 8);
+          // Door knob
+          ctx.fillStyle = '#d4a020';
+          ctx.fillRect(sx+21, sy+20, 2, 2);
           break;
       }
     }
@@ -967,7 +1194,7 @@
     }
 
     // ── NPC ────────────────────────────────────────────────────
-    const NPC = { tileX: 12, tileY: 5 }; // on the road, west of player start
+    const NPC = { tileX: 6, tileY: 2 }; // inside the lab, in front of bookshelves
 
     const NPC_DIALOG = [
       ["Hello, trainer!",      "I'm Prof. Meadow.",   "I study wild critters."],
@@ -1067,14 +1294,16 @@
 
     // ── Player state ───────────────────────────────────────────
     const player = {
-      tileX: 14, tileY: 5,
-      pixelX: 14 * TILE_SIZE, pixelY: 5 * TILE_SIZE,
+      tileX: 6, tileY: 3,
+      pixelX: 6 * TILE_SIZE, pixelY: 3 * TILE_SIZE,
       moving: false,
       moveProgress: 0,
-      fromX: 14, fromY: 5,
-      toX:   14, toY:   5,
-      dir: 'down',
+      fromX: 6, fromY: 3,
+      toX:   6, toY:   3,
+      dir: 'up',
     };
+
+    let currentArea = 'indoor'; // start inside the professor's lab
 
     function advanceDialog() {
       if (!dialogActive) return;
@@ -1100,6 +1329,10 @@
     window.addEventListener('keyup', e => { keys[e.key] = false; });
 
     function isWalkable(col, row) {
+      if (currentArea === 'indoor') {
+        if (col < 0 || col >= INDOOR_COLS || row < 0 || row >= INDOOR_ROWS) return false;
+        return !SOLID_TILES.has(INDOOR_MAP[row][col]);
+      }
       if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return false;
       return !SOLID_TILES.has(MAP[row][col]);
     }
@@ -1108,8 +1341,11 @@
 
     function onTileLand(col, row) {
       if (gameState !== 'world' || dialogActive) return;
-      if (MAP[row][col] === TALL && Math.random() < 0.35) {
-        triggerEncounter();
+      if (currentArea === 'outdoor') {
+        if (MAP[row][col] === BDOOR) { enterBuilding(); return; }
+        if (MAP[row][col] === TALL && Math.random() < 0.35) triggerEncounter();
+      } else if (currentArea === 'indoor') {
+        if (INDOOR_MAP[row][col] === IEXIT) exitBuilding();
       }
     }
 
@@ -1142,8 +1378,8 @@
       if (dx || dy) {
         const nx = player.tileX + dx;
         const ny = player.tileY + dy;
-        // Walking into the NPC triggers dialog instead of movement
-        if (nx === NPC.tileX && ny === NPC.tileY) {
+        // Walking into the NPC triggers dialog (indoors only now)
+        if (currentArea === 'indoor' && nx === NPC.tileX && ny === NPC.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
@@ -1172,6 +1408,11 @@
 
     // ── World render ───────────────────────────────────────────
     function renderWorld(ctx) {
+      if (currentArea === 'indoor') {
+        renderIndoor(ctx);
+        return;
+      }
+
       const { x: camX, y: camY } = getCameraOffset();
       const startCol = Math.floor(camX / TILE_SIZE);
       const startRow = Math.floor(camY / TILE_SIZE);
@@ -1184,20 +1425,46 @@
         }
       }
 
-      // Draw NPC (below player in draw order if same row, above if north)
-      const npcSX = NPC.tileX * TILE_SIZE - camX;
-      const npcSY = NPC.tileY * TILE_SIZE - camY;
-      const adjacent = Math.abs(player.tileX - NPC.tileX) + Math.abs(player.tileY - NPC.tileY) === 1;
-      drawNPC(ctx, npcSX, npcSY, adjacent);
+      // (NPC is inside the lab — not drawn outdoors)
 
-      // Walk frame derived from move progress (0-3)
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, player.pixelX - camX, player.pixelY - camY, player.dir, walkFrame);
 
-      // Dialog box drawn on top of world
-      if (dialogActive) {
-        drawDialog(ctx, NPC_DIALOG[dialogPage]);
+      if (dialogActive) drawDialog(ctx, NPC_DIALOG[dialogPage]);
+    }
+
+    function renderIndoor(ctx) {
+      // Dark border around the room
+      ctx.fillStyle = '#1a1010';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Draw all indoor tiles
+      for (let row = 0; row < INDOOR_ROWS; row++) {
+        for (let col = 0; col < INDOOR_COLS; col++) {
+          const sx = INDOOR_OFFSET_X + col * TILE_SIZE;
+          const sy = INDOOR_OFFSET_Y + row * TILE_SIZE;
+          drawTile(ctx, INDOOR_MAP[row][col], sx, sy);
+        }
       }
+
+      // Draw room name banner
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, CANVAS_W, 24);
+      ctx.fillStyle = '#d4b060';
+      ctx.font = '10px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText("Prof. Meadow's Lab", CANVAS_W / 2, 16);
+      ctx.textAlign = 'left';
+
+      // Draw NPC (professor)
+      const npcSX   = INDOOR_OFFSET_X + NPC.tileX * TILE_SIZE;
+      const npcSY   = INDOOR_OFFSET_Y + NPC.tileY * TILE_SIZE;
+      const adjacent = Math.abs(player.tileX - NPC.tileX) + Math.abs(player.tileY - NPC.tileY) === 1;
+      drawNPC(ctx, npcSX, npcSY, adjacent);
+
+      // Draw player
+      const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
+      drawPlayer(ctx, INDOOR_OFFSET_X + player.pixelX, INDOOR_OFFSET_Y + player.pixelY, player.dir, walkFrame);
     }
 
     // ── World loop ─────────────────────────────────────────────
@@ -1310,12 +1577,15 @@
     ];
 
     let state = null;
+    let persistentPlayer = null; // carries HP (and active creature) between battles
 
     function initState() {
       const wild = wildCreatures[Math.floor(Math.random() * wildCreatures.length)];
+      // Use saved player state if available, otherwise start fresh
+      const playerBase = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
       state = {
-        player:   { ...creatures.player,   hp: creatures.player.maxHp },
-        opponent: { ...wild,               hp: wild.maxHp },
+        player:   { ...playerBase },
+        opponent: { ...wild, hp: wild.maxHp },
         over: false
       };
     }
