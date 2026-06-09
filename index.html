@@ -880,9 +880,9 @@
     const MAP = [
       [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
       [T,G,G,G,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
-      [T,G,T,T,G,G,H,H,H,G,R,R,R,R,R,G,G,G,G,G,T,T,H,H,H,G,T,T,G,T],
-      [T,G,T,T,G,G,G,G,G,G,B,B,B,B,B,G,G,G,G,G,T,T,G,G,G,G,T,T,G,T],
-      [T,G,G,G,G,G,G,G,G,G,B,B,D,B,B,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,T,T,G,G,H,H,H,R,R,R,R,R,G,G,G,G,G,G,T,T,H,H,H,G,T,T,G,T],
+      [T,G,T,T,G,G,G,G,G,B,B,B,B,B,G,G,G,G,G,G,T,T,G,G,G,G,T,T,G,T],
+      [T,G,G,G,G,G,G,G,G,B,B,D,B,B,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,T,G,G,H,H,H,G,G,G,G,G,G,P,G,G,G,G,G,G,H,H,H,G,G,T,G,G,T],
@@ -910,7 +910,7 @@
     const INDOOR_OFFSET_X = (CANVAS_W - INDOOR_COLS * TILE_SIZE) / 2; // 96
     const INDOOR_OFFSET_Y = (CANVAS_H - INDOOR_ROWS * TILE_SIZE) / 2; // 48
     const INDOOR_ENTRY = { tileX: 6, tileY: 9 };  // where player appears inside
-    const OUTDOOR_EXIT = { tileX: 12, tileY: 6 }; // where player appears outside
+    const OUTDOOR_EXIT = { tileX: 11, tileY: 6 }; // where player appears outside
 
     const INDOOR_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
@@ -1197,7 +1197,7 @@
     const NPC = { tileX: 6, tileY: 2 }; // inside the lab, in front of bookshelves
 
     const NPC_DIALOG = [
-      ["Hello, trainer!",      "I'm Prof. Meadow.",   "I study wild critters."],
+      ["Hello, trainer!",      "I'm Dr. Meadow.",   "I study wild critters."],
       ["The TALL GRASS hides", "wild creatures -",     "walk in to battle!"],
       ["FIRE beats GRASS,",    "GRASS beats WATER,",   "WATER beats FIRE."],
       ["BASIC moves deal",     "flat damage. No",      "type bonus applies."],
@@ -1453,7 +1453,7 @@
       ctx.fillStyle = '#d4b060';
       ctx.font = '10px "Press Start 2P"';
       ctx.textAlign = 'center';
-      ctx.fillText("Prof. Meadow's Lab", CANVAS_W / 2, 16);
+      ctx.fillText("Dr. Meadow's Lab", CANVAS_W / 2, 16);
       ctx.textAlign = 'left';
 
       // Draw NPC (professor)
