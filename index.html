@@ -545,6 +545,10 @@
       border-radius: 20px; cursor: pointer; font-family: inherit;
     }
     .btn-leave:hover { background: rgba(255,255,255,0.18); }
+    .replace-label {
+      font-size: 12px; color: var(--text-muted); margin-bottom: 10px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
 
     /* ── Roster select ── */
     .roster-select {
@@ -699,10 +703,17 @@
 
     <!-- Recruit prompt (shown after player wins) -->
     <div id="recruitPrompt" class="recruit-prompt" style="display:none">
-      <div class="recruit-msg">🎉 <strong id="recruitName"></strong> was defeated!<br>Add them to your party?</div>
-      <div class="recruit-btns">
+      <div class="recruit-msg">🎉 <strong id="recruitName"></strong> was defeated!<br><span id="recruitSubMsg">Add them to your party?</span></div>
+      <!-- Normal recruit buttons (party not full) -->
+      <div id="recruitBtns" class="recruit-btns">
         <button class="btn-recruit" onclick="doRecruit()">Recruit!</button>
         <button class="btn-leave"   onclick="returnToWorld()">Leave</button>
+      </div>
+      <!-- Replace picker (party full) -->
+      <div id="replaceSection" style="display:none">
+        <div class="replace-label">Choose a party member to replace:</div>
+        <div id="replaceList" class="roster-list"></div>
+        <button class="btn-leave" style="margin-top:10px" onclick="returnToWorld()">Leave</button>
       </div>
     </div>
 
@@ -959,11 +970,14 @@
     const NPC = { tileX: 12, tileY: 5 }; // on the road, west of player start
 
     const NPC_DIALOG = [
-      ["Hello, trainer!",    "I'm Prof. Meadow.", "I study wild critters."],
-      ["The TALL GRASS hides", "wild creatures -",  "walk in to battle!"],
-      ["FIRE beats GRASS,",  "GRASS beats WATER,", "WATER beats FIRE."],
-      ["BASIC moves deal",   "flat damage. No",    "type bonus applies."],
-      ["Good luck out there!", "", "Press E to close."],
+      ["Hello, trainer!",      "I'm Prof. Meadow.",   "I study wild critters."],
+      ["The TALL GRASS hides", "wild creatures -",     "walk in to battle!"],
+      ["FIRE beats GRASS,",    "GRASS beats WATER,",   "WATER beats FIRE."],
+      ["BASIC moves deal",     "flat damage. No",      "type bonus applies."],
+      ["Win a battle and",     "you can RECRUIT them", "to your party!"],
+      ["Your party holds",     "up to 6 critters.",    "Choose wisely!"],
+      ["Feeling outmatched?",  "FLICK the foe's card", "to run away!"],
+      ["Good luck out there!", "",                     "Press A to close."],
     ];
 
     let dialogActive = false;
@@ -1477,10 +1491,47 @@
       });
     }
 
+    const MAX_PARTY = 6; // 1 active + up to 5 in roster
+
     function showRecruitPrompt() {
       document.getElementById('recruitName').textContent = state.opponent.name;
       document.getElementById('recruitPrompt').style.display = 'block';
       document.getElementById('playAgain').classList.remove('visible');
+
+      const full = roster.length >= MAX_PARTY - 1;
+      document.getElementById('recruitBtns').style.display    = full ? 'none'  : 'flex';
+      document.getElementById('replaceSection').style.display = full ? 'block' : 'none';
+      document.getElementById('recruitSubMsg').textContent    = full
+        ? 'Your party is full — replace someone?'
+        : 'Add them to your party?';
+
+      if (full) {
+        const list = document.getElementById('replaceList');
+        list.innerHTML = '';
+        roster.forEach((c, i) => {
+          const btn = document.createElement('button');
+          btn.className = 'roster-btn';
+          btn.innerHTML = `
+            <img src="${c.img}" alt="${c.name}">
+            <div class="rb-info">
+              <div class="rb-name">${c.name}</div>
+              <div class="rb-hp">HP ${c.hp} / ${c.maxHp}</div>
+            </div>
+          `;
+          btn.onclick = () => replacePartyMember(i);
+          list.appendChild(btn);
+        });
+      }
+    }
+
+    function replacePartyMember(index) {
+      const released = roster.splice(index, 1)[0];
+      const recruit  = { ...state.opponent, hp: state.opponent.maxHp };
+      roster.push(recruit);
+      log(`${released.name} was released. ${recruit.name} joined your party!`, 'win');
+      document.getElementById('recruitPrompt').style.display = 'none';
+      renderRosterTray();
+      returnToWorld();
     }
 
     function doRecruit() {
