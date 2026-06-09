@@ -285,13 +285,13 @@
     }
 
     .card-art {
-      margin: 0 10px 8px;
+      margin: 0 10px 0;
       border-radius: 8px;
-      height: 110px;
+      height: 130px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 72px;
+      font-size: 80px;
       position: relative;
       overflow: hidden;
       border: 2px solid rgba(0,0,0,0.15);
@@ -305,25 +305,28 @@
       background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 60%);
     }
 
-    .card-type-row {
+    /* ── Stats row: oval type badge + 6-stat grid ── */
+    .card-stats-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      padding: 0 14px 8px;
+      gap: 8px;
+      padding: 8px 12px 4px;
     }
 
     .type-badge {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
-      padding: 3px 10px 3px 7px;
-      border-radius: 20px;
-      font-size: 10px;
+      justify-content: center;
+      padding: 5px 10px;
+      border-radius: 50px;
+      font-size: 9px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.06em;
       color: #fff;
       border: 1.5px solid rgba(0,0,0,0.2);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .type-badge.fire  { background: #c03010; }
@@ -331,24 +334,36 @@
     .type-badge.grass { background: #3a8a20; }
     .type-badge.basic { background: #7a7a8a; }
 
-    .type-badge::before {
-      content: '';
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: rgba(255,255,255,0.6);
-      display: inline-block;
+    .card-stat-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      flex: 1;
+      gap: 2px;
     }
 
-    .card-stats-strip {
-      display: flex;
-      gap: 12px;
-      font-size: 11px;
-      font-weight: 600;
-      color: rgba(0,0,0,0.55);
+    .stat-cell {
+      text-align: center;
+      background: rgba(0,0,0,0.06);
+      border-radius: 4px;
+      padding: 2px 0;
     }
 
-    .card-stats-strip strong { color: #1a1000; }
+    .stat-cell .stat-label {
+      display: block;
+      font-size: 7px;
+      font-weight: 700;
+      color: rgba(0,0,0,0.45);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .stat-cell .stat-val {
+      display: block;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1a1000;
+      line-height: 1.2;
+    }
 
     .card-hp-row {
       padding: 0 14px 6px;
@@ -512,11 +527,15 @@
             </div>
           </div>
           <div class="card-art" id="art-player">🦊</div>
-          <div class="card-type-row">
+          <div class="card-stats-row">
             <span class="type-badge fire" id="type-player">Fire</span>
-            <div class="card-stats-strip">
-              <span>ATK <strong id="atk-player">12</strong></span>
-              <span>SPD <strong id="spd-player">9</strong></span>
+            <div class="card-stat-grid">
+              <div class="stat-cell"><span class="stat-label">ATK</span><span class="stat-val" id="atk-player">12</span></div>
+              <div class="stat-cell"><span class="stat-label">DFC</span><span class="stat-val" id="dfc-player">7</span></div>
+              <div class="stat-cell"><span class="stat-label">MAG</span><span class="stat-val" id="mag-player">8</span></div>
+              <div class="stat-cell"><span class="stat-label">MDF</span><span class="stat-val" id="mdf-player">5</span></div>
+              <div class="stat-cell"><span class="stat-label">SPD</span><span class="stat-val" id="spd-player">9</span></div>
+              <div class="stat-cell"><span class="stat-label">LCK</span><span class="stat-val" id="lck-player">6</span></div>
             </div>
           </div>
           <div class="card-hp-row">
@@ -541,11 +560,15 @@
             </div>
           </div>
           <div class="card-art" id="art-opponent">🐶</div>
-          <div class="card-type-row">
+          <div class="card-stats-row">
             <span class="type-badge water" id="type-opponent">Water</span>
-            <div class="card-stats-strip">
-              <span>ATK <strong id="atk-opponent">10</strong></span>
-              <span>SPD <strong id="spd-opponent">7</strong></span>
+            <div class="card-stat-grid">
+              <div class="stat-cell"><span class="stat-label">ATK</span><span class="stat-val" id="atk-opponent">10</span></div>
+              <div class="stat-cell"><span class="stat-label">DFC</span><span class="stat-val" id="dfc-opponent">9</span></div>
+              <div class="stat-cell"><span class="stat-label">MAG</span><span class="stat-val" id="mag-opponent">7</span></div>
+              <div class="stat-cell"><span class="stat-label">MDF</span><span class="stat-val" id="mdf-opponent">8</span></div>
+              <div class="stat-cell"><span class="stat-label">SPD</span><span class="stat-val" id="spd-opponent">7</span></div>
+              <div class="stat-cell"><span class="stat-label">LCK</span><span class="stat-val" id="lck-opponent">5</span></div>
             </div>
           </div>
           <div class="card-hp-row">
@@ -1095,22 +1118,24 @@
         name: 'Cinderfox',
         type: 'fire',
         maxHp: 100,
-        atk: 12,
-        spd: 9,
+        atk: 12, dfc: 7, mag: 8, mdf: 5, spd: 9, lck: 6,
         moves: [
           { name: 'Ember Snap', type: 'fire',  power: 14 },
-          { name: 'Bite',       type: 'basic', power: 10 }
+          { name: 'Heat Wave',  type: 'fire',  power: 12 },
+          { name: 'Bite',       type: 'basic', power: 10 },
+          { name: 'Scratch',    type: 'basic', power:  8 },
         ]
       },
       opponent: {
         name: 'Tidepup',
         type: 'water',
         maxHp: 100,
-        atk: 10,
-        spd: 7,
+        atk: 10, dfc: 9, mag: 7, mdf: 8, spd: 7, lck: 5,
         moves: [
           { name: 'Splash Strike', type: 'water', power: 14 },
-          { name: 'Tackle',        type: 'basic', power: 10 }
+          { name: 'Whirlpool',     type: 'water', power: 12 },
+          { name: 'Tackle',        type: 'basic', power: 10 },
+          { name: 'Slam',          type: 'basic', power:  8 },
         ]
       }
     };
@@ -1133,7 +1158,11 @@
         document.getElementById(`name-${side}`).textContent = c.name;
         document.getElementById(`hp-${side}`).textContent   = Math.max(0, c.hp);
         document.getElementById(`atk-${side}`).textContent  = c.atk;
+        document.getElementById(`dfc-${side}`).textContent  = c.dfc;
+        document.getElementById(`mag-${side}`).textContent  = c.mag;
+        document.getElementById(`mdf-${side}`).textContent  = c.mdf;
         document.getElementById(`spd-${side}`).textContent  = c.spd;
+        document.getElementById(`lck-${side}`).textContent  = c.lck;
 
         const typeBadge = document.getElementById(`type-${side}`);
         typeBadge.textContent = c.type.charAt(0).toUpperCase() + c.type.slice(1);
