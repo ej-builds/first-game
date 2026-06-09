@@ -1465,6 +1465,9 @@
       // Draw player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, INDOOR_OFFSET_X + player.pixelX, INDOOR_OFFSET_Y + player.pixelY, player.dir, walkFrame);
+
+      // Dialog box drawn on top
+      if (dialogActive) drawDialog(ctx, NPC_DIALOG[dialogPage]);
     }
 
     // ── World loop ─────────────────────────────────────────────
