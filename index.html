@@ -83,6 +83,81 @@
     }
 
     /* ============================================================
+       MOBILE CONTROLS
+    ============================================================ */
+    #worldControls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 640px;
+      width: 100%;
+      padding: 10px 20px 4px;
+    }
+
+    .dpad {
+      display: grid;
+      grid-template-columns: 52px 52px 52px;
+      grid-template-rows: 52px 52px 52px;
+      gap: 3px;
+    }
+
+    .dpad-btn {
+      background: rgba(20,20,40,0.75);
+      border: 2px solid rgba(255,220,80,0.55);
+      border-radius: 8px;
+      color: #ffcb05;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      transition: background 60ms, transform 60ms;
+      padding: 0;
+    }
+
+    .dpad-btn:active {
+      background: rgba(255,220,80,0.25);
+      transform: scale(0.92);
+    }
+
+    .dpad-center {
+      background: rgba(255,220,80,0.08);
+      border: 2px solid rgba(255,220,80,0.2);
+      border-radius: 6px;
+    }
+
+    .dpad-empty { /* invisible spacer cells */ }
+
+    .btn-a {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: rgba(180,20,20,0.8);
+      border: 3px solid rgba(255,220,80,0.65);
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      transition: transform 60ms, background 60ms;
+      padding: 0;
+    }
+
+    .btn-a:active {
+      background: rgba(220,40,40,0.95);
+      transform: scale(0.92);
+    }
+
+    /* ============================================================
        TRANSITION OVERLAY
     ============================================================ */
     #transitionOverlay {
@@ -399,9 +474,24 @@
   ============================================================ -->
   <div id="worldSection">
     <h1>Battle Bash</h1>
-    <p class="subtitle">Use arrow keys or WASD to explore</p>
+    <p class="subtitle">Arrow keys · WASD · D-pad to move</p>
     <canvas id="worldCanvas" width="640" height="480"></canvas>
-    <p class="world-hint">Walk into tall grass to find creatures</p>
+    <div id="worldControls">
+      <!-- D-pad -->
+      <div class="dpad">
+        <div class="dpad-empty"></div>
+        <button class="dpad-btn" id="btn-up">▲</button>
+        <div class="dpad-empty"></div>
+        <button class="dpad-btn" id="btn-left">◀</button>
+        <div class="dpad-center"></div>
+        <button class="dpad-btn" id="btn-right">▶</button>
+        <div class="dpad-empty"></div>
+        <button class="dpad-btn" id="btn-down">▼</button>
+        <div class="dpad-empty"></div>
+      </div>
+      <!-- A button -->
+      <button class="btn-a" id="btn-a">A</button>
+    </div>
   </div>
 
   <!-- ============================================================
@@ -825,16 +915,20 @@
       dir: 'down',
     };
 
+    function advanceDialog() {
+      if (!dialogActive) return;
+      dialogPage++;
+      if (dialogPage >= NPC_DIALOG.length) {
+        dialogActive = false;
+        dialogPage   = 0;
+      }
+    }
+
     const keys = {};
     window.addEventListener('keydown', e => {
-      // Dialog advance / close
       if (dialogActive && (e.key === 'e' || e.key === 'E' || e.key === ' ' || e.key === 'Enter')) {
         e.preventDefault();
-        dialogPage++;
-        if (dialogPage >= NPC_DIALOG.length) {
-          dialogActive = false;
-          dialogPage   = 0;
-        }
+        advanceDialog();
         return;
       }
       keys[e.key] = true;
@@ -964,6 +1058,26 @@
       requestAnimationFrame(worldLoop);
     }
     requestAnimationFrame(worldLoop);
+
+    // ── Mobile D-pad & A button ────────────────────────────────
+    function bindDpadBtn(id, arrowKey) {
+      const el = document.getElementById(id);
+      el.addEventListener('touchstart', e => { e.preventDefault(); keys[arrowKey] = true;  }, { passive: false });
+      el.addEventListener('touchend',   e => { e.preventDefault(); keys[arrowKey] = false; }, { passive: false });
+      el.addEventListener('touchcancel',() => { keys[arrowKey] = false; });
+      el.addEventListener('mousedown',  () => { keys[arrowKey] = true;  });
+      el.addEventListener('mouseup',    () => { keys[arrowKey] = false; });
+      el.addEventListener('mouseleave', () => { keys[arrowKey] = false; });
+    }
+
+    bindDpadBtn('btn-up',    'ArrowUp');
+    bindDpadBtn('btn-left',  'ArrowLeft');
+    bindDpadBtn('btn-right', 'ArrowRight');
+    bindDpadBtn('btn-down',  'ArrowDown');
+
+    const btnA = document.getElementById('btn-a');
+    btnA.addEventListener('touchstart', e => { e.preventDefault(); advanceDialog(); }, { passive: false });
+    btnA.addEventListener('click', advanceDialog);
 
     // ============================================================
     // BATTLE
