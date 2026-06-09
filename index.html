@@ -518,6 +518,73 @@
 
     .play-again.visible { display: inline-block; }
     .play-again:hover { background: #ffd83a; transform: translateY(-1px); }
+
+    /* ── Recruit prompt ── */
+    .recruit-prompt {
+      margin-top: 20px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,203,5,0.3);
+      border-radius: 16px;
+      padding: 20px 28px;
+      text-align: center;
+      max-width: 380px;
+      width: 100%;
+    }
+    .recruit-msg { font-size: 15px; line-height: 1.6; margin-bottom: 16px; color: var(--text); }
+    .recruit-btns { display: flex; gap: 12px; justify-content: center; }
+    .btn-recruit {
+      background: #ffcb05; color: #1a1000; border: none;
+      padding: 10px 28px; font-size: 14px; font-weight: 700;
+      border-radius: 20px; cursor: pointer; font-family: inherit;
+      box-shadow: 0 4px 14px rgba(255,203,5,0.4);
+    }
+    .btn-recruit:hover { background: #ffd83a; transform: translateY(-1px); }
+    .btn-leave {
+      background: rgba(255,255,255,0.1); color: var(--text); border: 1px solid rgba(255,255,255,0.2);
+      padding: 10px 28px; font-size: 14px; font-weight: 600;
+      border-radius: 20px; cursor: pointer; font-family: inherit;
+    }
+    .btn-leave:hover { background: rgba(255,255,255,0.18); }
+
+    /* ── Roster select ── */
+    .roster-select {
+      margin-top: 20px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,100,100,0.35);
+      border-radius: 16px;
+      padding: 20px 28px;
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+    .roster-msg { font-size: 15px; line-height: 1.6; margin-bottom: 14px; color: var(--text); }
+    .roster-list { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .roster-btn {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px; padding: 10px 16px; cursor: pointer;
+      font-family: inherit; color: var(--text); font-size: 13px;
+      transition: background 150ms, transform 150ms;
+    }
+    .roster-btn:hover { background: rgba(255,255,255,0.16); transform: translateY(-2px); }
+    .roster-btn img { width: 40px; height: 40px; object-fit: contain; }
+    .roster-btn .rb-info { text-align: left; }
+    .roster-btn .rb-name { font-weight: 700; font-size: 14px; }
+    .roster-btn .rb-hp   { font-size: 11px; color: var(--text-muted); }
+
+    /* ── Roster badge on battle screen ── */
+    .roster-tray {
+      display: flex; gap: 6px; align-items: center;
+      margin-top: 6px; flex-wrap: wrap; justify-content: center;
+    }
+    .roster-pip {
+      width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.3);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; background: rgba(255,255,255,0.08);
+      cursor: default; overflow: hidden;
+    }
+    .roster-pip img { width: 100%; height: 100%; object-fit: contain; }
   </style>
 </head>
 <body>
@@ -553,6 +620,7 @@
   <div id="battleSection">
     <h1>Battle Bash</h1>
     <p class="subtitle">Skeleton build · v0.1</p>
+    <div class="roster-tray" id="rosterTray"></div>
 
     <div class="arena">
       <!-- Player creature -->
@@ -628,6 +696,21 @@
     </div>
 
     <button class="play-again" id="playAgain" onclick="returnToWorld()">Return to World</button>
+
+    <!-- Recruit prompt (shown after player wins) -->
+    <div id="recruitPrompt" class="recruit-prompt" style="display:none">
+      <div class="recruit-msg">🎉 <strong id="recruitName"></strong> was defeated!<br>Add them to your party?</div>
+      <div class="recruit-btns">
+        <button class="btn-recruit" onclick="doRecruit()">Recruit!</button>
+        <button class="btn-leave"   onclick="returnToWorld()">Leave</button>
+      </div>
+    </div>
+
+    <!-- Roster select (shown when player's creature faints and has recruits) -->
+    <div id="rosterSelect" class="roster-select" style="display:none">
+      <div class="roster-msg">💀 <strong id="faintedName"></strong> fainted!<br>Send in a recruit:</div>
+      <div id="rosterList" class="roster-list"></div>
+    </div>
   </div>
 
   <!-- Full-screen flash overlay for encounter transition -->
@@ -1324,10 +1407,21 @@
 
       if (defender.hp <= 0) {
         defender.hp = 0;
-        log(`${defender.name} fainted!`, 'win');
-        log(`${attacker.name} wins the battle.`, 'win');
         state.over = true;
-        document.getElementById('playAgain').classList.add('visible');
+        if (defenderSide === 'opponent') {
+          // Player won — offer recruit
+          log(`${defender.name} fainted!`, 'win');
+          showRecruitPrompt();
+        } else {
+          // Player's creature fainted
+          log(`${defender.name} fainted!`, 'win');
+          if (roster.length > 0) {
+            showRosterSelect();
+          } else {
+            log(`${attacker.name} wins the battle.`, 'win');
+            document.getElementById('playAgain').classList.add('visible');
+          }
+        }
       }
     }
 
@@ -1357,6 +1451,75 @@
       document.getElementById('log').innerHTML =
         `<div class="log-line">A wild ${state.opponent.name} appeared! Pick your move.</div>`;
       document.getElementById('playAgain').classList.remove('visible');
+      document.getElementById('recruitPrompt').style.display = 'none';
+      document.getElementById('rosterSelect').style.display  = 'none';
+      renderRosterTray();
+      render();
+    }
+
+    // ── Roster ────────────────────────────────────────────────────
+    let roster = [];
+
+    function renderRosterTray() {
+      const tray = document.getElementById('rosterTray');
+      tray.innerHTML = '';
+      if (roster.length === 0) return;
+      const label = document.createElement('span');
+      label.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.4);margin-right:4px;';
+      label.textContent = 'Party:';
+      tray.appendChild(label);
+      roster.forEach(c => {
+        const pip = document.createElement('div');
+        pip.className   = 'roster-pip';
+        pip.title       = `${c.name} · HP ${c.hp}/${c.maxHp}`;
+        pip.innerHTML   = `<img src="${c.img}" alt="${c.name}">`;
+        tray.appendChild(pip);
+      });
+    }
+
+    function showRecruitPrompt() {
+      document.getElementById('recruitName').textContent = state.opponent.name;
+      document.getElementById('recruitPrompt').style.display = 'block';
+      document.getElementById('playAgain').classList.remove('visible');
+    }
+
+    function doRecruit() {
+      // Add defeated opponent to roster at full HP
+      const recruit = { ...state.opponent, hp: state.opponent.maxHp };
+      roster.push(recruit);
+      log(`${recruit.name} joined your party!`, 'win');
+      document.getElementById('recruitPrompt').style.display = 'none';
+      renderRosterTray();
+      returnToWorld();
+    }
+
+    function showRosterSelect() {
+      document.getElementById('faintedName').textContent = state.player.name;
+      const list = document.getElementById('rosterList');
+      list.innerHTML = '';
+      roster.forEach((c, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'roster-btn';
+        btn.innerHTML = `
+          <img src="${c.img}" alt="${c.name}">
+          <div class="rb-info">
+            <div class="rb-name">${c.name}</div>
+            <div class="rb-hp">HP ${c.hp} / ${c.maxHp}</div>
+          </div>
+        `;
+        btn.onclick = () => sendInRecruit(i);
+        list.appendChild(btn);
+      });
+      document.getElementById('rosterSelect').style.display = 'block';
+    }
+
+    function sendInRecruit(index) {
+      const recruit = roster.splice(index, 1)[0];
+      state.player = { ...recruit };
+      state.over   = false;
+      document.getElementById('rosterSelect').style.display = 'none';
+      log(`Go, ${recruit.name}!`, 'win');
+      renderRosterTray();
       render();
     }
 
@@ -1365,6 +1528,8 @@
 
     function startFlick(x, y) {
       if (state && state.over) return;
+      // Don't allow flick while recruit prompt is showing
+      if (document.getElementById('recruitPrompt').style.display !== 'none') return;
       flickState = { startX: x, startY: y, lastX: x, lastY: y, lastT: Date.now(), vx: 0, vy: 0 };
       const card = document.getElementById('card-opponent');
       card.classList.add('dragging');
