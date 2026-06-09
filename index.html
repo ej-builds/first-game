@@ -205,6 +205,7 @@
       max-width: 900px;
       width: 100%;
       margin-bottom: 32px;
+      justify-items: center;
     }
 
     @media (max-width: 700px) {
@@ -217,6 +218,9 @@
       padding: 4px;
       position: relative;
       transition: transform 200ms;
+      width: 100%;
+      max-width: 280px;
+      aspect-ratio: 5 / 7;
       background: linear-gradient(145deg, #e8c840 0%, #b8962a 40%, #f0d060 60%, #c8a830 100%);
       box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,220,80,0.3);
     }
@@ -225,6 +229,9 @@
       border-radius: 13px;
       overflow: hidden;
       position: relative;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
 
     .creature-card .card-inner::after {
@@ -285,9 +292,10 @@
     }
 
     .card-art {
-      margin: 0 10px 0;
+      margin: 0 10px;
       border-radius: 8px;
-      height: 130px;
+      flex: 1;
+      min-height: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1127,6 +1135,7 @@
       player: {
         name: 'Scorchspine',
         type: 'fire',
+        img: 'scorchspine.png',
         maxHp: 100,
         atk: 12, dfc: 7, mag: 8, mdf: 5, spd: 9, lck: 6,
         moves: [
@@ -1136,9 +1145,13 @@
           { name: 'Scratch',    type: 'basic', power:  8 },
         ]
       },
-      opponent: {
+    };
+
+    const wildCreatures = [
+      {
         name: 'Sharqua',
         type: 'water',
+        img: 'sharqua.png',
         maxHp: 100,
         atk: 10, dfc: 9, mag: 7, mdf: 8, spd: 7, lck: 5,
         moves: [
@@ -1147,15 +1160,42 @@
           { name: 'Tackle',        type: 'basic', power: 10 },
           { name: 'Slam',          type: 'basic', power:  8 },
         ]
-      }
-    };
+      },
+      {
+        name: 'Embrawl',
+        type: 'fire',
+        img: 'embrawl.png',
+        maxHp: 105,
+        atk: 13, dfc: 8, mag: 6, mdf: 6, spd: 6, lck: 4,
+        moves: [
+          { name: 'Flame Charge', type: 'fire',  power: 14 },
+          { name: 'Lava Stomp',   type: 'fire',  power: 12 },
+          { name: 'Tusk Bash',    type: 'basic', power: 10 },
+          { name: 'Headbutt',     type: 'basic', power:  8 },
+        ]
+      },
+      {
+        name: 'Kiwivy',
+        type: 'grass',
+        img: 'kiwivy.png',
+        maxHp: 95,
+        atk: 8, dfc: 7, mag: 11, mdf: 9, spd: 10, lck: 7,
+        moves: [
+          { name: 'Vine Peck',  type: 'grass', power: 14 },
+          { name: 'Leaf Storm', type: 'grass', power: 12 },
+          { name: 'Peck',       type: 'basic', power: 10 },
+          { name: 'Quick Kick', type: 'basic', power:  8 },
+        ]
+      },
+    ];
 
     let state = null;
 
     function initState() {
+      const wild = wildCreatures[Math.floor(Math.random() * wildCreatures.length)];
       state = {
         player:   { ...creatures.player,   hp: creatures.player.maxHp },
-        opponent: { ...creatures.opponent, hp: creatures.opponent.maxHp },
+        opponent: { ...wild,               hp: wild.maxHp },
         over: false
       };
     }
@@ -1181,6 +1221,9 @@
         const card = document.getElementById(`card-${side}`);
         card.className = `creature-card type-${c.type}`;
         card.classList.toggle('fainted', c.hp <= 0);
+
+        const artEl = document.getElementById(`art-${side}`);
+        if (c.img) artEl.innerHTML = `<img src="${c.img}" alt="${c.name}">`;
 
         const hpPct  = Math.max(0, c.hp) / c.maxHp * 100;
         const hpFill = document.getElementById(`hpbar-${side}`);
