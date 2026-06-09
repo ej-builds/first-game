@@ -240,6 +240,7 @@
     .type-badge.fire  { background: #c03010; }
     .type-badge.water { background: #3050c0; }
     .type-badge.grass { background: #3a8a20; }
+    .type-badge.basic { background: #7a7a8a; }
 
     .type-badge::before {
       content: '';
@@ -471,10 +472,12 @@
 
     // Type effectiveness chart.
     // Fire > Grass > Water > Fire (and same-type = neutral)
+    // basic always hits for exactly the listed power — no multiplier
     const typeChart = {
-      fire:  { fire: 1.0, grass: 2.0, water: 0.5 },
-      grass: { fire: 0.5, grass: 1.0, water: 2.0 },
-      water: { fire: 2.0, grass: 0.5, water: 1.0 }
+      fire:  { fire: 1.0, grass: 2.0, water: 0.5, basic: 1.0 },
+      grass: { fire: 0.5, grass: 1.0, water: 2.0, basic: 1.0 },
+      water: { fire: 2.0, grass: 0.5, water: 1.0, basic: 1.0 },
+      basic: { fire: 1.0, grass: 1.0, water: 1.0, basic: 1.0 }
     };
 
     // Two starting creatures. Each has 2 moves.
@@ -487,7 +490,7 @@
         spd: 9,
         moves: [
           { name: 'Ember Snap',  type: 'fire',  power: 14 },
-          { name: 'Bite',        type: 'fire',  power: 10 }
+          { name: 'Bite',        type: 'basic', power: 10 }
         ]
       },
       opponent: {
@@ -498,7 +501,7 @@
         spd: 7,
         moves: [
           { name: 'Splash Strike', type: 'water', power: 14 },
-          { name: 'Tackle',        type: 'water', power: 10 }
+          { name: 'Tackle',        type: 'basic', power: 10 }
         ]
       }
     };
@@ -601,12 +604,16 @@
       const defender = state[defenderSide];
       const move = attacker.moves[moveIdx];
 
-      // Base damage = (atk + power) / 2
-      let damage = Math.round((attacker.atk + move.power) / 2);
-
-      // Apply type effectiveness
-      const effectiveness = typeChart[move.type][defender.type];
-      damage = Math.round(damage * effectiveness);
+      // Basic type always deals exactly move.power — no stat scaling, no type modifier
+      let damage, effectiveness;
+      if (move.type === 'basic') {
+        damage = move.power;
+        effectiveness = 1.0;
+      } else {
+        damage = Math.round((attacker.atk + move.power) / 2);
+        effectiveness = typeChart[move.type][defender.type];
+        damage = Math.round(damage * effectiveness);
+      }
 
       defender.hp -= damage;
 
