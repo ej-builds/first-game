@@ -1766,6 +1766,21 @@
         }
       }
 
+      // Medical plus on healer's house (centre of roof: tile col 17, row 2)
+      {
+        const px = 17 * TILE_SIZE + TILE_SIZE / 2 - camX;
+        const py =  2 * TILE_SIZE + TILE_SIZE / 2 - camY;
+        const pw = 6, ph = 18; // arm thickness and arm length
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillRect(px - pw / 2, py - ph / 2, pw, ph); // vertical arm
+        ctx.fillRect(px - ph / 2, py - pw / 2, ph, pw); // horizontal arm
+        // thin pink outline for contrast against roof
+        ctx.strokeStyle = '#c04070';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px - pw / 2, py - ph / 2, pw, ph);
+        ctx.strokeRect(px - ph / 2, py - pw / 2, ph, pw);
+      }
+
       // (Both NPCs are inside their buildings — not drawn outdoors)
 
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
