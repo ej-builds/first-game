@@ -1004,6 +1004,8 @@
 
       // After black screen: swap to battle, then fade overlay out
       setTimeout(() => {
+        isCatcherBattle = false;
+        activeCatcher   = null;
         resetBattle(triggerEncounter._fromSurf || false);
         showBattle();
         overlay.style.transition = 'opacity 400ms ease';
@@ -1016,6 +1018,9 @@
     function returnToWorld() {
       // Restore surfing if the battle was triggered on water
       isSurfing = !!(triggerEncounter._fromSurf);
+      // Clean up catcher battle state
+      isCatcherBattle = false;
+      activeCatcher   = null;
       // Close any open menus
       document.getElementById('swapPanel').style.display = 'none';
       // Save active creature's current HP (including if fainted — Nina can revive)
@@ -2159,7 +2164,7 @@
     const NPC2 = { tileX: 10, tileY: 2 }; // Dr. Fern   — right side of bookshelves
 
     const NPC_DIALOG = [
-      ["Hello, trainer!",      "I'm Dr. Meadow.",      "I study wild critters."],
+      ["Hello, catcher!",      "I'm Dr. Meadow.",      "I study wild critters."],
       ["The TALL GRASS hides", "wild creatures -",      "walk in to battle!"],
       ["FIRE beats GRASS,",    "GRASS beats WATER,",    "WATER beats FIRE."],
       ["BASIC moves deal",     "flat damage. No",       "type bonus applies."],
@@ -2192,12 +2197,17 @@
     ];
 
     const HOUSE_NPC_DIALOG = [
-      ["Oh, hey! You made",   "it inside. Nice",      "place, right?"],
+      ["Oh, hey! The name's", "Alvin. Nice place,",   "right?"],
       ["This is actually the","home of the triplets", "and your first..."],
       ["...Battleground!",    "Battlegrounds are",    "where you fight"],
       ["other catchers.",     "Beat a capture",       "champion..."],
       ["...and you earn",     "a medal!",             ""],
       ["Now that that's",     "sorted - I'll be",     "your first battle!"],
+    ];
+
+    const ALVIN_REMATCH_DIALOG = [
+      ["Dang, you're strong!","If that's how you",    "usually fight..."],
+      ["...I believe you can","defeat those",         "triplets!"],
     ];
 
     const HOUSE2_NPC_DIALOG = [
@@ -2217,7 +2227,7 @@
     ];
 
     const CLINIC_NURSE_DIALOG = [
-      ["We get lots of",     "trainers come in",    "here with defeated"],
+      ["We get lots of",     "catchers come in",    "here with defeated"],
       ["critters. Those",    "triplets are real",   "strong!"],
       ["",                   "",                    "Press A to close."],
     ];
@@ -2251,7 +2261,7 @@
     const CLINIC_NURSE = { tileX: 8, tileY: 5 }; // nurse doing rounds on the floor
 
     const HEALER_DIALOG = [
-      ["Hi there, trainer!", "I'm Nurse Nina.",   "Need a rest?"],
+      ["Hi there, catcher!", "I'm Nurse Nina.",   "Need a rest?"],
       ["I'll heal your",     "whole team back",   "to full health!"],
       ["All done!",          "Your critters are", "fully healed!"],
     ];
@@ -2261,6 +2271,7 @@
     let dialogType   = 'prof'; // 'prof' | 'healer'
     let meadowMet    = false;
     let houseNpcMet  = false;
+    let alvinDefeated = false;
 
     function drawNPC(ctx, sx, sy, playerAdjacent) {
       const s  = TILE_SIZE;
@@ -2890,14 +2901,20 @@
                           : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG
                           : dialogType === 'house2npc'   ? HOUSE2_NPC_DIALOG
                           : dialogType === 'housenpc'    ? HOUSE_NPC_DIALOG
+                          : dialogType === 'alvinwin'    ? ALVIN_REMATCH_DIALOG
                           : NPC_DIALOG;
       if (dialogPage >= currentDialog.length) {
+        const closingType = dialogType;
         if (dialogType === 'healer')   healAllCreatures();
         if (dialogType === 'prof')     meadowMet = true;
         if (dialogType === 'housenpc') houseNpcMet = true;
         dialogActive = false;
         dialogPage   = 0;
         dialogType   = 'prof';
+        // Trigger catcher battle at end of Alvin's intro dialog
+        if (closingType === 'housenpc' && !alvinDefeated) {
+          setTimeout(() => triggerCatcherBattle(ALVIN_CATCHER), 200);
+        }
       }
     }
 
@@ -3281,12 +3298,12 @@
           dialogType   = 'shopnpc';
           return;
         }
-        // Walking into floor-1 house NPC triggers dialog
+        // Walking into floor-1 house NPC (Alvin) triggers dialog or rematch
         if (currentArea === 'house' && nx === HOUSE_NPC.tileX && ny === HOUSE_NPC.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
-          dialogType   = 'housenpc';
+          dialogType   = alvinDefeated ? 'alvinwin' : 'housenpc';
           return;
         }
         // Walking into floor-2 wolf NPC triggers dialog
@@ -3388,7 +3405,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3433,7 +3450,7 @@
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3510,7 +3527,7 @@
 
       // Dialog
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3597,7 +3614,7 @@
       drawPlayer(ctx, HOUSE_OFFSET_X + player.pixelX, HOUSE_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = HOUSE_NPC_DIALOG;
+        const dlg = dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : HOUSE_NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3805,6 +3822,19 @@
         ]
       },
       {
+        name: 'Lumijell',
+        type: 'water',
+        img: 'lumijell.png',
+        maxHp: 90,
+        atk: 6, dfc: 8, mag: 16, mdf: 10, spd: 11, lck: 7,
+        moves: [
+          { name: 'Tentacle Zap',  type: 'water', cat: 'magic',    power: 14 },
+          { name: 'Bubble Burst',  type: 'water', cat: 'magic',    power: 11 },
+          { name: 'Venom Sting',   type: 'water', cat: 'status',   effect: { type: 'apply_status', status: 'toxic', target: 'opponent' } },
+          { name: 'Drift',         type: 'basic', cat: 'physical', power:  6 },
+        ]
+      },
+      {
         name: 'Treer',
         type: 'grass',
         img: 'treer.png',
@@ -3872,8 +3902,28 @@
       },
     ];
 
+    // ── Catcher data ──────────────────────────────────────────────
+    const ALVIN_CATCHER = {
+      name: 'Alvin',
+      critter: {
+        name: 'Treer',
+        type: 'grass',
+        img: 'treer.png',
+        maxHp: 100,
+        atk: 8, dfc: 10, mag: 14, mdf: 11, spd: 12, lck: 9,
+        moves: [
+          { name: 'Antler Slam',  type: 'grass', cat: 'physical', power: 14 },
+          { name: 'Leaf Cascade', type: 'grass', cat: 'magic',    power: 13 },
+          { name: 'Petal Dance',  type: 'grass', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 3 } },
+          { name: 'Hoof Strike',  type: 'basic', cat: 'physical', power:  8 },
+        ]
+      }
+    };
+
     let state = null;
     let persistentPlayer = null; // carries HP (and active creature) between battles
+    let isCatcherBattle  = false;
+    let activeCatcher    = null;
 
     const STAT_KEYS = ['atk', 'dfc', 'mag', 'mdf', 'spd', 'lck'];
 
@@ -3887,20 +3937,55 @@
       STAT_KEYS.forEach(k => critter[k] = critter._baseStats[k]);
     }
 
-    function initState(fromSurf = false) {
-      const pool = fromSurf
-        ? wildCreatures.filter(c => c.type === 'water')
-        : wildCreatures.filter(c => c.type !== 'water' || c.landSpawn);
-      const wild = pool[Math.floor(Math.random() * pool.length)];
+    function initState(fromSurf = false, catcherCritter = null) {
+      let opponent;
+      if (catcherCritter) {
+        opponent = catcherCritter;
+      } else {
+        const pool = fromSurf
+          ? wildCreatures.filter(c => c.type === 'water')
+          : wildCreatures.filter(c => c.type !== 'water' || c.landSpawn);
+        opponent = pool[Math.floor(Math.random() * pool.length)];
+      }
       // Use saved player state if available, otherwise start fresh
-      const playerBase = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
+      const playerBase   = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
       const playerCopy   = { ...playerBase };
-      const opponentCopy = { ...wild, hp: wild.maxHp };
+      const opponentCopy = { ...opponent, hp: opponent.maxHp };
       snapBaseStats(playerCopy);
       snapBaseStats(opponentCopy);
       playerCopy.statusEffects   = {};
       opponentCopy.statusEffects = {};
       state = { player: playerCopy, opponent: opponentCopy, over: false };
+    }
+
+    function triggerCatcherBattle(catcher) {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      activeCatcher    = catcher;
+      isCatcherBattle  = true;
+
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+
+      const sequence = [
+        { bg: '#fff', op: 1,   ms: 0   },
+        { bg: '#fff', op: 0,   ms: 100 },
+        { bg: '#fff', op: 1,   ms: 200 },
+        { bg: '#fff', op: 0,   ms: 300 },
+        { bg: '#fff', op: 1,   ms: 400 },
+        { bg: '#000', op: 1,   ms: 520 },
+      ];
+      sequence.forEach(({ bg, op, ms }) => {
+        setTimeout(() => { overlay.style.background = bg; overlay.style.opacity = op; }, ms);
+      });
+
+      setTimeout(() => {
+        resetBattle(false, catcher.critter);
+        showBattle();
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 680);
     }
 
     const creatureEmoji = { fire: '🦊', water: '🐶', grass: '🌿' };
@@ -4117,12 +4202,20 @@
         defender.hp = 0;
         state.over = true;
         if (defenderSide === 'opponent') {
-          // Player won — award coins and offer recruit
           const earned = 15 + Math.floor(Math.random() * 11); // 15–25
           coins += earned;
           log(`${defender.name} fainted!`, 'win');
           log(`💰 You earned ${earned} coins!`, 'win');
-          showRecruitPrompt();
+          if (isCatcherBattle) {
+            // Catcher battle win — no recruit, set defeated flag
+            if (activeCatcher === ALVIN_CATCHER) alvinDefeated = true;
+            log(`You beat ${activeCatcher.name}!`, 'win');
+            isCatcherBattle = false;
+            activeCatcher   = null;
+            document.getElementById('playAgain').classList.add('visible');
+          } else {
+            showRecruitPrompt();
+          }
         } else {
           // Player's creature fainted
           log(`${defender.name} fainted!`, 'win');
@@ -4150,7 +4243,15 @@
         coins += earned;
         log(`${c.name} fainted!`, 'win');
         log(`💰 You earned ${earned} coins!`, 'win');
-        showRecruitPrompt();
+        if (isCatcherBattle) {
+          if (activeCatcher === ALVIN_CATCHER) alvinDefeated = true;
+          log(`You beat ${activeCatcher.name}!`, 'win');
+          isCatcherBattle = false;
+          activeCatcher   = null;
+          document.getElementById('playAgain').classList.add('visible');
+        } else {
+          showRecruitPrompt();
+        }
       } else {
         log(`${c.name} fainted!`, 'win');
         const livingBench = roster.filter(b => b.hp > 0);
@@ -4228,14 +4329,17 @@
       return Math.floor(Math.random() * state.opponent.moves.length);
     }
 
-    function resetBattle(fromSurf = false) {
-      initState(fromSurf);
-      document.getElementById('log').innerHTML =
-        `<div class="log-line">A wild ${state.opponent.name} appeared! Pick your move.</div>`;
+    function resetBattle(fromSurf = false, catcherCritter = null) {
+      initState(fromSurf, catcherCritter);
+      const introMsg = isCatcherBattle && activeCatcher
+        ? `${activeCatcher.name} wants to battle! Go, ${state.opponent.name}!`
+        : `A wild ${state.opponent.name} appeared! Pick your move.`;
+      document.getElementById('log').innerHTML = `<div class="log-line">${introMsg}</div>`;
       document.getElementById('playAgain').classList.remove('visible');
       document.getElementById('recruitPrompt').style.display = 'none';
       document.getElementById('rosterSelect').style.display  = 'none';
       document.getElementById('swapPanel').style.display     = 'none';
+      document.querySelector('.flick-hint').style.visibility = isCatcherBattle ? 'hidden' : 'visible';
       renderRosterTray();
       render();
     }
@@ -4263,6 +4367,7 @@
     const MAX_PARTY = 6; // 1 active + up to 5 in roster
 
     function showRecruitPrompt() {
+      if (isCatcherBattle) return; // never recruit catcher critters
       document.getElementById('recruitName').textContent = state.opponent.name;
       document.getElementById('recruitPrompt').style.display = 'block';
       document.getElementById('playAgain').classList.remove('visible');
@@ -4445,24 +4550,29 @@
       const speed = Math.sqrt(flickState.vx ** 2 + flickState.vy ** 2);
 
       if (speed > 0.45 || dist > 110) {
-        // Flick fast enough — fly off in drag direction
-        const angle = Math.atan2(flickState.vy || dy, flickState.vx || dx);
-        const tx    = Math.cos(angle) * 1100;
-        const ty    = Math.sin(angle) * 1100;
-        const rot   = dx * 0.25 + (dx >= 0 ? 25 : -25);
+        if (isCatcherBattle) {
+          // Can't run from a catcher battle — snap back
+          log("You can't run from a catcher battle!", 'weak');
+        } else {
+          // Flick fast enough — fly off in drag direction
+          const angle = Math.atan2(flickState.vy || dy, flickState.vx || dx);
+          const tx    = Math.cos(angle) * 1100;
+          const ty    = Math.sin(angle) * 1100;
+          const rot   = dx * 0.25 + (dx >= 0 ? 25 : -25);
 
-        card.style.transition = 'transform 0.35s ease-in, opacity 0.35s ease-in';
-        card.style.transform  = `translate(${tx}px, ${ty}px) rotate(${rot}deg)`;
-        card.style.opacity    = '0';
+          card.style.transition = 'transform 0.35s ease-in, opacity 0.35s ease-in';
+          card.style.transform  = `translate(${tx}px, ${ty}px) rotate(${rot}deg)`;
+          card.style.opacity    = '0';
 
-        log('You ran away!', '');
+          log('You ran away!', '');
 
-        setTimeout(() => {
-          card.style.transition = '';
-          card.style.transform  = '';
-          card.style.opacity    = '';
-          returnToWorld();
-        }, 370);
+          setTimeout(() => {
+            card.style.transition = '';
+            card.style.transform  = '';
+            card.style.opacity    = '';
+            returnToWorld();
+          }, 370);
+        }
       } else {
         // Not fast enough — snap card back
         card.style.transition = 'transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.3s ease';
