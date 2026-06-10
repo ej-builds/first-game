@@ -958,9 +958,10 @@
     }
 
     // ── Encounter transition (Pokémon-style flash) ─────────────
-    function triggerEncounter() {
+    function triggerEncounter(fromSurf = false) {
       if (gameState !== 'world') return;
       gameState = 'transitioning';
+      triggerEncounter._fromSurf = fromSurf;
 
       const overlay = document.getElementById('transitionOverlay');
       overlay.style.transition = 'none';
@@ -984,7 +985,7 @@
 
       // After black screen: swap to battle, then fade overlay out
       setTimeout(() => {
-        resetBattle();
+        resetBattle(triggerEncounter._fromSurf || false);
         showBattle();
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
@@ -1146,6 +1147,48 @@
       }, 300);
     }
 
+    function enterHouse() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea   = 'house';
+        player.tileX  = HOUSE_ENTRY.tileX; player.tileY  = HOUSE_ENTRY.tileY;
+        player.pixelX = HOUSE_ENTRY.tileX * 32; player.pixelY = HOUSE_ENTRY.tileY * 32;
+        player.fromX  = player.tileX; player.fromY = player.tileY;
+        player.toX    = player.tileX; player.toY   = player.tileY;
+        player.moving = false; player.dir = 'up';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function exitHouse() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea   = 'outdoor';
+        player.tileX  = HOUSE_EXIT.tileX; player.tileY  = HOUSE_EXIT.tileY;
+        player.pixelX = HOUSE_EXIT.tileX * 32; player.pixelY = HOUSE_EXIT.tileY * 32;
+        player.fromX  = player.tileX; player.fromY = player.tileY;
+        player.toX    = player.tileX; player.toY   = player.tileY;
+        player.moving = false; player.dir = 'down';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
     function exitShop() {
       if (gameState !== 'world') return;
       gameState = 'transitioning';
@@ -1177,7 +1220,7 @@
     // ============================================================
     const TILE_SIZE = 32;
     const MAP_COLS  = 30;
-    const MAP_ROWS  = 25;
+    const MAP_ROWS  = 35;
     const CANVAS_W  = 640;
     const CANVAS_H  = 480;
 
@@ -1186,22 +1229,39 @@
     const BROOF = 5, BWALL = 6, BDOOR = 7;
     const FLOOR = 8, IWALL = 9, IBOOK = 10, ITABLE = 11, IEXIT = 12;
     const HROOF = 13, HWALL = 14, HDOOR = 15; // healer building: white walls, pink roof
-    const SDOOR = 16;                          // shop door
-    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, HROOF, HWALL, IWALL, IBOOK, ITABLE]);
+    const SDOOR  = 16;                          // shop door
+    const CBED   = 17;                          // clinic exam bed (solid)
+    const CFLOOR = 18;                          // clinic floor (white tiles)
+    const SFLOOR  = 19;                         // shop floor (warm wood)
+    const SSHELF  = 20;                         // shop display shelf (solid)
+    const H2ROOF  = 21;                         // 2-story house roof (light blue, solid)
+    const H2WIN   = 22;                         // 2-story house second-floor wall with windows (dark green, solid)
+    const H2DOOR  = 23;                         // 2-story house front door (light blue)
+    const H2FLOOR = 24;                         // 2-story house interior floor
+    const H2WALL  = 25;                         // 2-story house first-floor wall (red, solid)
+    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, HROOF, HWALL, IWALL, IBOOK, ITABLE, CBED, SSHELF, H2ROOF, H2WIN, H2WALL]);
 
     const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER, R=BROOF, B=BWALL, D=BDOOR;
     const IV=IWALL, IF=FLOOR, IB=IBOOK, IT=ITABLE, IE=IEXIT;
     const HR=HROOF, HW=HWALL, HD=HDOOR;
     const SD=SDOOR;
+    const CB=CBED, CF=CFLOOR;
+    const SF=SFLOOR, SS=SSHELF;
+    const H2R=H2ROOF, H2W=H2WIN, H2D=H2DOOR, HF=H2FLOOR, H2L=H2WALL;
 
     // 30 cols × 25 rows
     // Horizontal roads at rows 5 and 17; vertical road at col 14 between them
     const MAP = [
-      [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
-      [T,G,G,G,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
-      [T,G,T,T,G,G,H,H,R,R,R,R,R,G,G,HR,HR,HR,HR,HR,T,T,H,H,H,G,T,T,G,T],
-      [T,G,T,T,G,G,G,G,B,B,B,B,B,G,G,HW,HW,HW,HW,HW,T,T,G,G,G,G,T,T,G,T],
-      [T,G,G,G,G,G,G,G,B,B,D,B,B,G,G,HW,HW,HD,HW,HW,G,G,G,G,G,G,G,G,G,T],
+      [T,T,T,T,T,T,T,T,T,T,T,T,H2R,H2R,H2R,H2R,H2R,T,T,T,T,T,T,T,T,T,T,T,T,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,H2W,H2W,H2W,H2W,H2W,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,T,T,G,G,H,H,H,G,G,G,H2L,H2L,H2L,H2L,H2L,G,G,G,G,H,H,H,G,G,T,T,G,T],
+      [T,G,T,T,G,G,H,H,H,G,G,G,H2W,H2W,H2W,H2W,H2W,G,G,G,H,H,H,G,G,T,T,G,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,H2L,H2L,H2D,H2L,H2L,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,G,G,G,G,H,H,H,G,G,G,G,G,P,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
+      [T,G,T,T,G,G,H,H,R,R,R,R,R,G,P,HR,HR,HR,HR,HR,T,T,H,H,H,G,T,T,G,T],
+      [T,G,T,T,G,G,G,G,B,B,B,B,B,G,P,HW,HW,HW,HW,HW,T,T,G,G,G,G,T,T,G,T],
+      [T,G,G,G,G,G,G,G,B,B,D,B,B,G,P,HW,HW,HD,HW,HW,G,G,G,G,G,G,G,G,G,T],
       [T,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,T,G,G,H,H,H,G,G,G,G,G,G,P,G,G,G,G,G,G,H,H,H,G,G,T,G,G,T],
@@ -1219,8 +1279,14 @@
       [T,G,T,T,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,T,T,G,G,G,T],
       [T,G,T,T,G,G,H,H,H,G,T,T,G,G,G,G,G,G,T,T,H,H,H,G,T,T,G,G,G,T],
       [T,G,G,G,G,G,G,G,G,G,T,T,G,G,G,G,G,T,T,G,G,G,G,G,G,G,G,G,G,T],
-      [T,G,G,G,W,W,W,W,G,G,G,G,G,G,G,G,G,G,G,G,G,W,W,W,W,G,G,G,G,T],
-      [T,G,G,G,W,W,W,W,G,G,G,G,G,G,G,G,G,G,G,G,G,W,W,W,W,G,G,G,G,T],
+      [T,G,W,W,W,W,W,W,W,W,W,G,G,G,G,G,G,G,W,W,W,W,W,W,W,W,G,G,G,T],
+      [T,G,W,W,W,W,W,W,W,W,W,G,G,G,G,G,G,G,W,W,W,W,W,W,W,W,G,G,G,T],
+      [T,G,W,W,W,W,W,W,W,W,W,G,G,G,G,G,G,G,W,W,W,W,W,W,W,W,G,G,G,T],
+      [T,G,W,W,W,W,W,W,W,W,W,G,G,G,G,G,G,G,W,W,W,W,W,W,W,W,G,G,G,T],
+      [T,G,G,W,W,W,W,W,W,W,G,G,G,G,G,G,G,G,G,W,W,W,W,W,W,G,G,G,G,T],
+      [T,G,G,G,G,G,G,G,G,G,T,T,G,G,G,G,G,T,T,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,G,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,G,G,G,G,T],
+      [T,G,G,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,G,G,G,G,T],
       [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
     ];
 
@@ -1229,45 +1295,68 @@
     const INDOOR_OFFSET_X = (CANVAS_W - INDOOR_COLS * TILE_SIZE) / 2; // 96
     const INDOOR_OFFSET_Y = (CANVAS_H - INDOOR_ROWS * TILE_SIZE) / 2; // 48
     const INDOOR_ENTRY = { tileX: 6, tileY: 9 };  // where player appears inside lab
-    const OUTDOOR_EXIT = { tileX: 10, tileY: 6 }; // where player reappears after leaving lab
+    const OUTDOOR_EXIT = { tileX: 10, tileY: 11 }; // where player reappears after leaving lab
 
     // ── Healer clinic indoor area ─────────────────────────────
     const CLINIC_COLS = 12, CLINIC_ROWS = 10;
     const CLINIC_OFFSET_X = (CANVAS_W - CLINIC_COLS * TILE_SIZE) / 2; // 128
     const CLINIC_OFFSET_Y = (CANVAS_H - CLINIC_ROWS * TILE_SIZE) / 2; // 80
     const CLINIC_ENTRY = { tileX: 5, tileY: 8 };  // where player appears inside clinic
-    const CLINIC_EXIT  = { tileX: 17, tileY: 6 }; // where player reappears after leaving clinic
+    const CLINIC_EXIT  = { tileX: 17, tileY: 11 }; // where player reappears after leaving clinic
 
     const SHOP_COLS = 12, SHOP_ROWS = 10;
     const SHOP_OFFSET_X = 128, SHOP_OFFSET_Y = 80;
     const SHOP_ENTRY   = { tileX: 5, tileY: 7 };  // where player appears inside shop
-    const SHOP_EXIT    = { tileX: 22, tileY: 17 }; // where player reappears after leaving shop
+    const SHOP_EXIT    = { tileX: 22, tileY: 22 }; // where player reappears after leaving shop
     const SHOPKEEPER   = { tileX: 5, tileY: 2 };   // behind the counter
+    const SHOP_MOTHER  = { tileX: 3, tileY: 4 };   // mother shopping with her child
+    const SHOP_CHILD   = { tileX: 3, tileY: 5 };   // child browsing the shop floor
+    const SHOP_NPC     = { tileX: 8, tileY: 5 };   // customer on the shop floor
 
-    const SHOP_MAP = [
+    // ── 2-Story House ─────────────────────────────────────────────
+    const HOUSE_COLS = 12, HOUSE_ROWS = 10;
+    const HOUSE_ENTRY = { tileX: 5, tileY: 8 };
+    const HOUSE_EXIT  = { tileX: 14, tileY: 5 };
+    const HOUSE_OFFSET_X = (640 - HOUSE_COLS * 32) / 2;
+    const HOUSE_OFFSET_Y = (480 - HOUSE_ROWS * 32) / 2;
+
+    const HOUSE_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IT,IT,IT,IT,IT,IT,IT,IT,IT,IT,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IE,IF,IF,IF,IF,IF,IV],
+      [IV,HF,HF,HF,HF,HF,HF,HF,HF,HF,HF,IV],
+      [IV,IT,HF,HF,HF,HF,HF,HF,HF,HF,IT,IV],  // sofa/chairs near walls
+      [IV,HF,HF,IT,IT,HF,HF,IT,IT,HF,HF,IV],  // tables
+      [IV,HF,HF,IT,HF,HF,HF,HF,IT,HF,HF,IV],
+      [IV,HF,HF,HF,HF,HF,HF,HF,HF,HF,HF,IV],
+      [IV,HF,HF,HF,HF,HF,HF,HF,HF,HF,HF,IV],
+      [IV,IT,IT,IT,HF,HF,HF,HF,IT,IT,IV,IV],  // staircase block right side (solid)
+      [IV,HF,HF,HF,HF,IE,HF,HF,HF,HF,HF,IV],
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
     ];
 
+    const SHOP_MAP = [
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],  // top wall
+      [IV,SS,SS,SS,SS,SS,SS,SS,SS,SS,SS,IV],  // back wall shelves (goods on display)
+      [IV,IT,IT,IT,IT,IT,IT,IT,IT,IT,IT,IV],  // service counter (shopkeeper at col 5)
+      [IV,SF,SF,SF,SF,SF,SF,SF,SF,SF,SF,IV],  // shop floor
+      [IV,SS,SS,SF,SF,SF,SF,SF,SF,SS,SS,IV],  // side shelves (display cases left & right)
+      [IV,SS,SS,SF,SF,SF,SF,SF,SF,SS,SS,IV],  // side shelves continued (SHOP_NPC at col 8)
+      [IV,SF,SF,SF,SF,SF,SF,SF,SF,SF,SF,IV],  // open floor
+      [IV,SF,SF,SF,SF,SF,SF,SF,SF,SF,SF,IV],  // open floor (SHOP_ENTRY at col 5)
+      [IV,SF,SF,SF,SF,IE,SF,SF,SF,SF,SF,IV],  // exit
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],  // bottom wall
+    ];
+
     const CLINIC_MAP = [
-      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IT,IT,IF,IF,IF,IF,IT,IT,IF,IV],
-      [IV,IF,IT,IT,IF,IF,IF,IF,IT,IT,IF,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
-      [IV,IF,IF,IF,IF,IE,IF,IF,IF,IF,IF,IV],
-      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],  // top wall
+      [IV,CF,CF,CF,CF,CF,CF,CF,CF,CF,CF,IV],  // space behind desk
+      [IV,IT,IT,IT,IT,IT,IT,IT,IT,IT,IT,IV],  // reception counter (Nina at col 5)
+      [IV,CF,CF,CF,CF,CF,CF,CF,CF,CF,CF,IV],  // open floor
+      [IV,CB,CB,CF,CF,CF,CF,CF,CF,CB,CB,IV],  // exam beds left & right
+      [IV,CB,CB,CF,CF,CF,CF,CF,CF,CB,CB,IV],  // exam beds continued
+      [IV,CF,CF,CF,CF,CF,CF,CF,CF,CF,CF,IV],  // open floor
+      [IV,CF,CF,CF,CF,CF,CF,CF,CF,CF,CF,IV],  // waiting area
+      [IV,CF,CF,CF,CF,IE,CF,CF,CF,CF,CF,IV],  // exit
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],  // bottom wall
     ];
 
     const INDOOR_MAP = [
@@ -1348,19 +1437,19 @@
           break;
 
         case BROOF:
-          // Green roof tile
-          ctx.fillStyle = '#2d6e1e';
+          // Blue roof tile
+          ctx.fillStyle = '#1a4a8a';
           ctx.fillRect(sx, sy, s, s);
-          // Lighter green roof panels
-          ctx.fillStyle = '#3a8a28';
+          // Lighter blue roof panels
+          ctx.fillStyle = '#2a6abf';
           ctx.fillRect(sx+1, sy+2,  s-2, 10);
           ctx.fillRect(sx+1, sy+16, s-2, 10);
           // Highlight ridge line
-          ctx.fillStyle = '#4ea035';
+          ctx.fillStyle = '#4a8ae0';
           ctx.fillRect(sx+2, sy+3,  s-4, 2);
           ctx.fillRect(sx+2, sy+17, s-4, 2);
           // Dark underside of eave at bottom
-          ctx.fillStyle = '#1e4e12';
+          ctx.fillStyle = '#102e5a';
           ctx.fillRect(sx, sy+28, s, 4);
           break;
 
@@ -1489,19 +1578,19 @@
           break;
 
         case HROOF:
-          // Pink roof tile (healer's clinic)
-          ctx.fillStyle = '#d4507a';
+          // Green roof tile (healer's clinic)
+          ctx.fillStyle = '#2e7d32';
           ctx.fillRect(sx, sy, s, s);
-          // Lighter pink panels
-          ctx.fillStyle = '#e06090';
+          // Lighter green panels
+          ctx.fillStyle = '#43a047';
           ctx.fillRect(sx+1, sy+2,  s-2, 10);
           ctx.fillRect(sx+1, sy+16, s-2, 10);
           // Highlight ridge
-          ctx.fillStyle = '#f080a8';
+          ctx.fillStyle = '#66bb6a';
           ctx.fillRect(sx+2, sy+3,  s-4, 2);
           ctx.fillRect(sx+2, sy+17, s-4, 2);
           // Dark underside of eave
-          ctx.fillStyle = '#a03060';
+          ctx.fillStyle = '#1b5e20';
           ctx.fillRect(sx, sy+28, s, 4);
           break;
 
@@ -1566,6 +1655,173 @@
           ctx.fillStyle = '#d4a020';
           ctx.fillRect(sx+21, sy+20, 2, 2);
           break;
+
+        case SFLOOR:
+          // Warm wooden shop floor with plank lines
+          ctx.fillStyle = '#c47830';
+          ctx.fillRect(sx, sy, s, s);
+          // Plank grain
+          ctx.fillStyle = '#a86020';
+          ctx.fillRect(sx, sy, s, 1);
+          ctx.fillRect(sx, sy, 1, s);
+          ctx.fillStyle = '#d48838';
+          ctx.fillRect(sx+3, sy+5,  s-8, 2);
+          ctx.fillRect(sx+5, sy+18, s-8, 2);
+          // Knot detail
+          ctx.fillStyle = '#904818';
+          ctx.fillRect(sx+20, sy+10, 3, 3);
+          break;
+
+        case SSHELF:
+          // Wooden shop shelf with coloured items
+          ctx.fillStyle = '#7a4f2e';
+          ctx.fillRect(sx, sy, s, s);
+          // Shelf boards (horizontal dividers)
+          ctx.fillStyle = '#5a3518';
+          ctx.fillRect(sx, sy+11, s, 2);
+          ctx.fillRect(sx, sy+23, s, 2);
+          // Top shelf items: green potion, blue vial, red gem
+          ctx.fillStyle = '#30b040';
+          ctx.fillRect(sx+3,  sy+3, 6, 8);
+          ctx.fillStyle = '#4090e0';
+          ctx.fillRect(sx+13, sy+3, 5, 8);
+          ctx.fillStyle = '#e04040';
+          ctx.fillRect(sx+22, sy+4, 5, 7);
+          // Bottom shelf items: yellow coin, purple bottle
+          ctx.fillStyle = '#e0b020';
+          ctx.fillRect(sx+5,  sy+15, 6, 6);
+          ctx.fillStyle = '#9050c0';
+          ctx.fillRect(sx+17, sy+14, 5, 8);
+          // Wood highlight along top
+          ctx.fillStyle = '#9a6838';
+          ctx.fillRect(sx, sy, s, 2);
+          break;
+
+        case CFLOOR:
+          // Clean white clinical floor with subtle tile grout lines
+          ctx.fillStyle = '#f4f4f4';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#d8dce0';
+          ctx.fillRect(sx, sy, s, 1);       // horizontal grout
+          ctx.fillRect(sx, sy, 1, s);       // vertical grout
+          // Subtle sheen
+          ctx.fillStyle = 'rgba(255,255,255,0.4)';
+          ctx.fillRect(sx+2, sy+2, 6, 6);
+          break;
+
+        case CBED:
+          // Medical examination bed
+          // Metal frame
+          ctx.fillStyle = '#b0b8c0';
+          ctx.fillRect(sx, sy, s, s);
+          // White mattress
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(sx+2, sy+3, s-4, s-6);
+          // Pillow (top)
+          ctx.fillStyle = '#f0f4ff';
+          ctx.fillRect(sx+3, sy+4, s-6, 8);
+          // Pink cross on pillow
+          ctx.fillStyle = '#e0506a';
+          ctx.fillRect(sx+12, sy+6, 8, 2);
+          ctx.fillRect(sx+15, sy+4, 2, 6);
+          // Sheet crease
+          ctx.fillStyle = '#dde8f0';
+          ctx.fillRect(sx+3, sy+14, s-6, 2);
+          // Bed rail highlights
+          ctx.fillStyle = '#d0d8e0';
+          ctx.fillRect(sx, sy+3, 2, s-6);
+          ctx.fillRect(sx+s-2, sy+3, 2, s-6);
+          break;
+
+        case H2ROOF:
+          // Light blue roof
+          ctx.fillStyle = '#4a90c8';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#60a8e0';
+          ctx.fillRect(sx+1, sy+2,  s-2, 10);
+          ctx.fillRect(sx+1, sy+16, s-2, 10);
+          ctx.fillStyle = '#80c0f0';
+          ctx.fillRect(sx+2, sy+3,  s-4, 2);
+          ctx.fillRect(sx+2, sy+17, s-4, 2);
+          ctx.fillStyle = '#2a6090';
+          ctx.fillRect(sx, sy+28, s, 4);
+          break;
+
+        case H2WIN:
+          // Dark green second-floor wall with light blue windows
+          ctx.fillStyle = '#1a5a28';
+          ctx.fillRect(sx, sy, s, s);
+          // Window frame (darker green)
+          ctx.fillStyle = '#0e3a18';
+          ctx.fillRect(sx+4,  sy+6,  10, 12);
+          ctx.fillRect(sx+18, sy+6,  10, 12);
+          // Light blue window glass
+          ctx.fillStyle = '#90d0f0';
+          ctx.fillRect(sx+5,  sy+7,  8, 10);
+          ctx.fillRect(sx+19, sy+7,  8, 10);
+          // Window cross dividers
+          ctx.fillStyle = '#0e3a18';
+          ctx.fillRect(sx+9,  sy+7,  1, 10);
+          ctx.fillRect(sx+5,  sy+11, 8,  1);
+          ctx.fillRect(sx+23, sy+7,  1, 10);
+          ctx.fillRect(sx+19, sy+11, 8,  1);
+          break;
+
+        case H2WALL:
+          // Red first-floor wall
+          ctx.fillStyle = '#b02020';
+          ctx.fillRect(sx, sy, s, s);
+          // Darker red mortar lines
+          ctx.fillStyle = '#801010';
+          ctx.fillRect(sx, sy+7,  s, 2);
+          ctx.fillRect(sx, sy+15, s, 2);
+          ctx.fillRect(sx, sy+23, s, 2);
+          ctx.fillRect(sx+15, sy,    2, 7);
+          ctx.fillRect(sx+7,  sy+9,  2, 6);
+          ctx.fillRect(sx+22, sy+9,  2, 6);
+          ctx.fillRect(sx+15, sy+17, 2, 6);
+          // Bright brick highlights
+          ctx.fillStyle = '#d03030';
+          ctx.fillRect(sx+1, sy+1,  4, 2);
+          ctx.fillRect(sx+1, sy+9,  4, 2);
+          ctx.fillRect(sx+1, sy+17, 4, 2);
+          break;
+
+        case H2DOOR:
+          // Red wall with a light blue door
+          ctx.fillStyle = '#b02020';
+          ctx.fillRect(sx, sy, s, s);
+          // Red brick mortar on sides
+          ctx.fillStyle = '#801010';
+          ctx.fillRect(sx, sy+7, s, 2);
+          ctx.fillRect(sx+15, sy, 2, 7);
+          // Light blue door frame
+          ctx.fillStyle = '#2a70b8';
+          ctx.fillRect(sx+7, sy+6, 18, 26);
+          // Door panel
+          ctx.fillStyle = '#60a8e0';
+          ctx.fillRect(sx+9, sy+8, 14, 22);
+          // Door panel highlight
+          ctx.fillStyle = '#90c8f8';
+          ctx.fillRect(sx+10, sy+9, 4, 8);
+          // Gold knob
+          ctx.fillStyle = '#d4a020';
+          ctx.fillRect(sx+20, sy+19, 2, 2);
+          break;
+
+        case H2FLOOR:
+          // Warm honey-coloured wooden home floor
+          ctx.fillStyle = '#c8943a';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#a87830';
+          ctx.fillRect(sx, sy+10, s, 1);
+          ctx.fillRect(sx, sy+21, s, 1);
+          ctx.fillStyle = '#b88838';
+          ctx.fillRect(sx+8,  sy+2,  1, 7);
+          ctx.fillRect(sx+20, sy+13, 1, 7);
+          ctx.fillRect(sx+14, sy+23, 1, 6);
+          break;
+
       }
     }
 
@@ -1644,7 +1900,8 @@
     }
 
     // ── NPC ────────────────────────────────────────────────────
-    const NPC = { tileX: 6, tileY: 2 }; // inside the lab, in front of bookshelves
+    const NPC  = { tileX: 6,  tileY: 2 }; // Dr. Meadow — left side of bookshelves
+    const NPC2 = { tileX: 10, tileY: 2 }; // Dr. Fern   — right side of bookshelves
 
     const NPC_DIALOG = [
       ["Hello, trainer!",      "I'm Dr. Meadow.",      "I study wild critters."],
@@ -1663,8 +1920,56 @@
       ["Good luck out there!", "",                      "Press A to close."],
     ];
 
+    const NPC2_DIALOG = [
+      ["Hi! I'm Dr. Fern,",    "I study water routes", "and wild habitats."],
+      ["Did you know you",     "can SURF on water?",   ""],
+      ["If you have a WATER",  "type in your party,",  "head to the shore..."],
+      ["...stand next to",     "the water and press",  "the (A) button!"],
+      ["You'll hop on and",    "glide across. Some",   "critters hide there!"],
+      ["Step off the water",   "and you'll stop",      "surfing automatically."],
+      ["Happy exploring!",     "",                      "Press A to close."],
+    ];
+
+    const CLINIC_NPC_DIALOG = [
+      ["You aren't planning", "on fighting the",      "triplets are you?"],
+      ["They completely",     "crushed my team.",     "Press A to close."],
+    ];
+
+    const CLINIC_NPC2_DIALOG = [
+      ["If you're planning", "on fighting one of",   "the triplets..."],
+      ["Don't be like me.",  "Bring lots of",       "healing items!"],
+      ["",                   "",                    "Press A to close."],
+    ];
+
+    const CLINIC_NURSE_DIALOG = [
+      ["We get lots of",     "trainers come in",    "here with defeated"],
+      ["critters. Those",    "triplets are real",   "strong!"],
+      ["",                   "",                    "Press A to close."],
+    ];
+
+    const SHOP_MOTHER_DIALOG = [
+      ["Son this is",         "a fridge",             "Press A to close."],
+    ];
+
+    const SHOP_CHILD_DIALOG = [
+      ["Mum why is it",       "called Oven when",     "you of in the"],
+      ["cold food of out",    "hot eat the food",     "Press A to close."],
+    ];
+
+    const SHOP_NPC_DIALOG = [
+      ["Oh, hey! Shopping",   "here too?",            "Great spot."],
+      ["Potions heal 40 HP",  "on any critter —",     "even mid-explore!"],
+      ["Revives bring back",  "a fainted critter",    "at half HP."],
+      ["Press (B) anywhere",  "outside battle to",    "open your bag!"],
+      ["Save up coins —",     "battles earn you",     "15 to 25 each win."],
+      ["Good luck out there!","",                     "Press A to close."],
+    ];
+
     // ── Healer NPC ─────────────────────────────────────────────
-    const HEALER = { tileX: 5, tileY: 2 }; // inside the clinic, near the counter
+    const HEALER      = { tileX: 5, tileY: 2 }; // inside the clinic, near the counter
+    const CLINIC_NPC  = { tileX: 2, tileY: 7 }; // visitor in the clinic waiting area
+    const CLINIC_NPC2  = { tileX: 8, tileY: 7 }; // second staff member behind the counter
+    const CLINIC_NURSE = { tileX: 8, tileY: 5 }; // nurse doing rounds on the floor
 
     const HEALER_DIALOG = [
       ["Hi there, trainer!", "I'm Nurse Nina.",   "Need a rest?"],
@@ -1675,6 +1980,7 @@
     let dialogActive = false;
     let dialogPage   = 0;
     let dialogType   = 'prof'; // 'prof' | 'healer'
+    let meadowMet    = false;
 
     function drawNPC(ctx, sx, sy, playerAdjacent) {
       const s  = TILE_SIZE;
@@ -1714,11 +2020,52 @@
       ctx.fillStyle = '#c04030';
       ctx.fillRect(cx-2, cy-5, 4, 1);
 
-      // Exclamation mark above NPC (always visible as interaction hint)
-      const blink = Math.floor(Date.now() / 500) % 2 === 0;
-      ctx.fillStyle = blink ? '#ffcb05' : '#c89000';
-      ctx.fillRect(cx-2, cy-24, 4, 8); // ! bar
-      ctx.fillRect(cx-2, cy-13, 4, 3); // ! dot
+      // Exclamation mark — only shown before first conversation
+      if (!meadowMet) {
+        const blink = Math.floor(Date.now() / 500) % 2 === 0;
+        ctx.fillStyle = blink ? '#ffcb05' : '#c89000';
+        ctx.fillRect(cx-2, cy-24, 4, 8); // ! bar
+        ctx.fillRect(cx-2, cy-13, 4, 3); // ! dot
+      }
+    }
+
+    function drawNPC2(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#3a2a1a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (blue coat)
+      ctx.fillStyle = '#2050a0';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#1a4090';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (red, longer on sides)
+      ctx.fillStyle = '#c02010';
+      ctx.fillRect(cx-5, cy-15, 10, 5);
+      ctx.fillRect(cx-7, cy-13, 3, 8);
+      ctx.fillRect(cx+4, cy-13, 3, 8);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      ctx.fillStyle = '#c04030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
     }
 
     function drawHealer(ctx, sx, sy) {
@@ -1782,6 +2129,244 @@
       ctx.textAlign = 'center';
       ctx.fillText('♥', cx, cy - 24);
       ctx.textAlign = 'left';
+    }
+
+    function drawClinicNPC(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#3a2a1a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (orange jacket)
+      ctx.fillStyle = '#d06010';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#a04808';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (blonde)
+      ctx.fillStyle = '#d4aa20';
+      ctx.fillRect(cx-5, cy-15, 10, 5);
+      ctx.fillRect(cx-7, cy-13, 3, 6);
+      ctx.fillRect(cx+4, cy-13, 3, 6);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      ctx.fillStyle = '#a04030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
+    function drawClinicNPC2(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (jeans)
+      ctx.fillStyle = '#2a3a6a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (casual red jumper)
+      ctx.fillStyle = '#b83030';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#902020';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Collar detail
+      ctx.fillStyle = '#d05050';
+      ctx.fillRect(cx-2, cy-4, 4, 2);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (black, short)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-6, cy-13, 2, 4);
+      ctx.fillRect(cx+4, cy-13, 2, 4);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      // Smile
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
+    function drawClinicNurse(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#2a2a3a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (white uniform)
+      ctx.fillStyle = '#e8e8e8';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#c0c0c0';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Red cross on chest
+      ctx.fillStyle = '#cc2020';
+      ctx.fillRect(cx-1, cy-3, 2, 6);
+      ctx.fillRect(cx-3, cy-1, 6, 2);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Nurse cap (white with red stripe)
+      ctx.fillStyle = '#e8e8e8';
+      ctx.fillRect(cx-5, cy-16, 10, 5);
+      ctx.fillStyle = '#cc2020';
+      ctx.fillRect(cx-5, cy-13, 10, 1);
+
+      // Eyes (side profile — one visible eye on the right)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx+2, cy-8, 2, 2);
+      // Smile
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx+1, cy-5, 3, 1);
+    }
+
+    function drawShopNPC(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#2a2a3a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (purple jacket)
+      ctx.fillStyle = '#6030a0';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#4a2080';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (dark)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-5, cy-15, 10, 5);
+      ctx.fillRect(cx-6, cy-13, 2, 4);
+      ctx.fillRect(cx+4, cy-13, 2, 4);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      ctx.fillStyle = '#a04030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
+    function drawShopMother(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#2a2a3a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (teal dress/top)
+      ctx.fillStyle = '#2a9080';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#208070';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (dark brown, longer sides)
+      ctx.fillStyle = '#3a1a08';
+      ctx.fillRect(cx-5, cy-15, 10, 5);
+      ctx.fillRect(cx-7, cy-13, 3, 10);
+      ctx.fillRect(cx+4, cy-13, 3, 10);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+
+      // Smile
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
+    function drawShopChild(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2 + 6; // shift down so child appears shorter
+
+      // Shadow (smaller)
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillRect(cx-5, cy+6, 10, 3);
+
+      // Legs (short)
+      ctx.fillStyle = '#3a2a1a';
+      ctx.fillRect(cx-4, cy+2, 3, 6);
+      ctx.fillRect(cx+1, cy+2, 3, 6);
+
+      // Body (small blue vest, same as shopkeeper's dad)
+      ctx.fillStyle = '#2a5a9a';
+      ctx.fillRect(cx-5, cy-5, 10, 8);
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(cx-2, cy-4, 5, 6);
+      // Arms
+      ctx.fillStyle = '#2a5a9a';
+      ctx.fillRect(cx-7, cy-4, 3, 6);
+      ctx.fillRect(cx+4, cy-4, 3, 6);
+
+      // Head — back view (no face visible)
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-14, 10, 10);
+
+      // Hair from behind (covers most of the back of the head)
+      ctx.fillStyle = '#5a3010';
+      ctx.fillRect(cx-5, cy-15, 10, 8);
+      ctx.fillRect(cx-6, cy-13, 2, 5);
+      ctx.fillRect(cx+4, cy-13, 2, 5);
+      ctx.fillRect(cx+1, cy-16, 3, 2); // little tuft on top
     }
 
     function drawShopkeeper(ctx, sx, sy) {
@@ -1890,10 +2475,18 @@
     function advanceDialog() {
       if (!dialogActive) return;
       dialogPage++;
-      const currentDialog = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+      const currentDialog = dialogType === 'healer'      ? HEALER_DIALOG
+                          : dialogType === 'prof2'       ? NPC2_DIALOG
+                          : dialogType === 'shopnpc'     ? SHOP_NPC_DIALOG
+                          : dialogType === 'shopchild'   ? SHOP_CHILD_DIALOG
+                          : dialogType === 'shopmother'  ? SHOP_MOTHER_DIALOG
+                          : dialogType === 'clinicnpc'   ? CLINIC_NPC_DIALOG
+                          : dialogType === 'clinicnpc2'  ? CLINIC_NPC2_DIALOG
+                          : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG
+                          : NPC_DIALOG;
       if (dialogPage >= currentDialog.length) {
-        // Heal on last page of healer dialog
         if (dialogType === 'healer') healAllCreatures();
+        if (dialogType === 'prof')   meadowMet = true;
         dialogActive = false;
         dialogPage   = 0;
         dialogType   = 'prof';
@@ -2120,6 +2713,10 @@
         if (col < 0 || col >= SHOP_COLS || row < 0 || row >= SHOP_ROWS) return false;
         return !SOLID_TILES.has(SHOP_MAP[row][col]);
       }
+      if (currentArea === 'house') {
+        if (col < 0 || col >= HOUSE_COLS || row < 0 || row >= HOUSE_ROWS) return false;
+        return !SOLID_TILES.has(HOUSE_MAP[row][col]);
+      }
       if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return false;
       const tile = MAP[row][col];
       if (isSurfing && tile === WATER) return true;
@@ -2134,14 +2731,18 @@
         if (MAP[row][col] === BDOOR)  { enterBuilding(); return; }
         if (MAP[row][col] === HDOOR)  { enterClinic();   return; }
         if (MAP[row][col] === SDOOR)  { enterShop();     return; }
+        if (MAP[row][col] === H2DOOR) { enterHouse();    return; }
         if (isSurfing && MAP[row][col] !== WATER) isSurfing = false; // stepped off water
         if (MAP[row][col] === TALL && Math.random() < 0.35) triggerEncounter();
+        if (isSurfing && MAP[row][col] === WATER && Math.random() < 0.35) triggerEncounter(true);
       } else if (currentArea === 'indoor') {
         if (INDOOR_MAP[row][col] === IEXIT) exitBuilding();
       } else if (currentArea === 'healer') {
         if (CLINIC_MAP[row][col] === IEXIT) exitClinic();
       } else if (currentArea === 'shop') {
         if (SHOP_MAP[row][col] === IEXIT) exitShop();
+      } else if (currentArea === 'house') {
+        if (HOUSE_MAP[row][col] === IEXIT) exitHouse();
       }
     }
 
@@ -2174,12 +2775,20 @@
       if (dx || dy) {
         const nx = player.tileX + dx;
         const ny = player.tileY + dy;
-        // Walking into the professor triggers dialog (indoors only)
+        // Walking into Dr. Meadow triggers dialog (indoors only)
         if (currentArea === 'indoor' && nx === NPC.tileX && ny === NPC.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'prof';
+          return;
+        }
+        // Walking into Dr. Fern triggers her dialog (indoors only)
+        if (currentArea === 'indoor' && nx === NPC2.tileX && ny === NPC2.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'prof2';
           return;
         }
         // Walking into the healer triggers heal dialog (inside clinic only)
@@ -2190,10 +2799,58 @@
           dialogType   = 'healer';
           return;
         }
+        // Walking into shop mother triggers dialog
+        if (currentArea === 'shop' && nx === SHOP_MOTHER.tileX && ny === SHOP_MOTHER.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'shopmother';
+          return;
+        }
+        // Walking into shop child triggers dialog
+        if (currentArea === 'shop' && nx === SHOP_CHILD.tileX && ny === SHOP_CHILD.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'shopchild';
+          return;
+        }
         // Walking into shopkeeper opens the shop buy menu
         if (currentArea === 'shop' && nx === SHOPKEEPER.tileX && ny === SHOPKEEPER.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           openShopMenu();
+          return;
+        }
+        // Walking into clinic visitor NPC triggers dialog
+        if (currentArea === 'healer' && nx === CLINIC_NPC.tileX && ny === CLINIC_NPC.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'clinicnpc';
+          return;
+        }
+        // Walking into clinic second staff NPC triggers dialog
+        if (currentArea === 'healer' && nx === CLINIC_NPC2.tileX && ny === CLINIC_NPC2.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'clinicnpc2';
+          return;
+        }
+        // Walking into clinic nurse NPC triggers dialog
+        if (currentArea === 'healer' && nx === CLINIC_NURSE.tileX && ny === CLINIC_NURSE.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'clinicnurse';
+          return;
+        }
+        // Walking into shop customer NPC triggers dialog
+        if (currentArea === 'shop' && nx === SHOP_NPC.tileX && ny === SHOP_NPC.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'shopnpc';
           return;
         }
         if (isWalkable(nx, ny)) {
@@ -2222,6 +2879,7 @@
       if (currentArea === 'indoor') { renderIndoor(ctx); return; }
       if (currentArea === 'healer') { renderClinic(ctx); return; }
       if (currentArea === 'shop')   { renderShop(ctx);   return; }
+      if (currentArea === 'house')  { renderHouse(ctx);  return; }
 
       const { x: camX, y: camY } = getCameraOffset();
       const startCol = Math.floor(camX / TILE_SIZE);
@@ -2235,10 +2893,10 @@
         }
       }
 
-      // Medical plus on healer's house (centre of roof: tile col 17, row 2)
+      // Medical plus on healer's house (centre of roof: tile col 17, row 7)
       {
         const px = 17 * TILE_SIZE + TILE_SIZE / 2 - camX;
-        const py =  2 * TILE_SIZE + TILE_SIZE / 2 - camY;
+        const py =  7 * TILE_SIZE + TILE_SIZE / 2 - camY;
         const pw = 6, ph = 18; // arm thickness and arm length
         ctx.fillStyle = 'rgba(255,255,255,0.92)';
         ctx.fillRect(px - pw / 2, py - ph / 2, pw, ph); // vertical arm
@@ -2250,10 +2908,10 @@
         ctx.strokeRect(px - ph / 2, py - pw / 2, ph, pw);
       }
 
-      // Shop sign on roof (centre tile col 22, row 14)
+      // Shop sign on roof (centre tile col 22, row 19)
       {
         const px = 22 * TILE_SIZE + TILE_SIZE / 2 - camX;
-        const py = 14 * TILE_SIZE + TILE_SIZE / 2 - camY;
+        const py = 19 * TILE_SIZE + TILE_SIZE / 2 - camY;
         ctx.font = '16px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('🪙', px, py + 5);
@@ -2284,7 +2942,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -2312,11 +2970,16 @@
       ctx.fillText("Dr. Meadow's Lab", CANVAS_W / 2, 16);
       ctx.textAlign = 'left';
 
-      // Draw NPC (professor)
+      // Draw Dr. Meadow
       const npcSX   = INDOOR_OFFSET_X + NPC.tileX * TILE_SIZE;
       const npcSY   = INDOOR_OFFSET_Y + NPC.tileY * TILE_SIZE;
       const adjacent = Math.abs(player.tileX - NPC.tileX) + Math.abs(player.tileY - NPC.tileY) === 1;
       drawNPC(ctx, npcSX, npcSY, adjacent);
+
+      // Draw Dr. Fern
+      const npc2SX = INDOOR_OFFSET_X + NPC2.tileX * TILE_SIZE;
+      const npc2SY = INDOOR_OFFSET_Y + NPC2.tileY * TILE_SIZE;
+      drawNPC2(ctx, npc2SX, npc2SY);
 
       // Draw player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
@@ -2324,14 +2987,14 @@
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
 
     function renderClinic(ctx) {
-      // Dark background
-      ctx.fillStyle = '#1a1010';
+      // Light clinical background (outside the room bounds)
+      ctx.fillStyle = '#c8d8e8';
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
       // Draw all clinic tiles
@@ -2342,6 +3005,29 @@
           drawTile(ctx, CLINIC_MAP[row][col], sx, sy);
         }
       }
+
+      // Draw waiting chairs (row 7, cols 2, 4, 6, 8) as canvas decorations
+      [2, 4, 6, 8].forEach(col => {
+        const cx = CLINIC_OFFSET_X + col * TILE_SIZE + 16;
+        const cy = CLINIC_OFFSET_Y + 7 * TILE_SIZE + 16;
+        // Chair seat
+        ctx.fillStyle = '#d06080';
+        ctx.fillRect(cx-8, cy-4, 16, 10);
+        // Chair back
+        ctx.fillStyle = '#b04060';
+        ctx.fillRect(cx-8, cy-10, 16, 7);
+        // Chair legs
+        ctx.fillStyle = '#808080';
+        ctx.fillRect(cx-7, cy+6, 3, 5);
+        ctx.fillRect(cx+4, cy+6, 3, 5);
+      });
+
+      // Small wall-mounted cross on top wall (decoration)
+      const wallY = CLINIC_OFFSET_Y + 0 * TILE_SIZE + 16;
+      const wallX = CLINIC_OFFSET_X + 6 * TILE_SIZE + 16;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(wallX-2, wallY-8, 4, 12);
+      ctx.fillRect(wallX-6, wallY-4, 12, 4);
 
       // Banner
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
@@ -2357,19 +3043,35 @@
       const healerSY = CLINIC_OFFSET_Y + HEALER.tileY * TILE_SIZE;
       drawHealer(ctx, healerSX, healerSY);
 
+      // Draw clinic visitor NPC
+      const cnSX = CLINIC_OFFSET_X + CLINIC_NPC.tileX * TILE_SIZE;
+      const cnSY = CLINIC_OFFSET_Y + CLINIC_NPC.tileY * TILE_SIZE;
+      drawClinicNPC(ctx, cnSX, cnSY);
+
+      // Draw clinic second staff NPC
+      const cn2SX = CLINIC_OFFSET_X + CLINIC_NPC2.tileX * TILE_SIZE;
+      const cn2SY = CLINIC_OFFSET_Y + CLINIC_NPC2.tileY * TILE_SIZE;
+      drawClinicNPC2(ctx, cn2SX, cn2SY);
+
+      // Draw clinic nurse NPC
+      const cnurSX = CLINIC_OFFSET_X + CLINIC_NURSE.tileX * TILE_SIZE;
+      const cnurSY = CLINIC_OFFSET_Y + CLINIC_NURSE.tileY * TILE_SIZE;
+      drawClinicNurse(ctx, cnurSX, cnurSY);
+
       // Draw player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, CLINIC_OFFSET_X + player.pixelX, CLINIC_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       // Dialog
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
 
     function renderShop(ctx) {
-      ctx.fillStyle = '#1a1a10';
+      // Warm amber background (outside room)
+      ctx.fillStyle = '#3a2810';
       ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
       for (let row = 0; row < SHOP_ROWS; row++) {
@@ -2394,9 +3096,66 @@
       const skSY = SHOP_OFFSET_Y + SHOPKEEPER.tileY * TILE_SIZE;
       drawShopkeeper(ctx, skSX, skSY);
 
+      // Shop mother NPC
+      const smSX = SHOP_OFFSET_X + SHOP_MOTHER.tileX * TILE_SIZE;
+      const smSY = SHOP_OFFSET_Y + SHOP_MOTHER.tileY * TILE_SIZE;
+      drawShopMother(ctx, smSX, smSY);
+
+      // Shop child NPC
+      const scSX = SHOP_OFFSET_X + SHOP_CHILD.tileX * TILE_SIZE;
+      const scSY = SHOP_OFFSET_Y + SHOP_CHILD.tileY * TILE_SIZE;
+      drawShopChild(ctx, scSX, scSY);
+
+      // Customer NPC
+      const snSX = SHOP_OFFSET_X + SHOP_NPC.tileX * TILE_SIZE;
+      const snSY = SHOP_OFFSET_Y + SHOP_NPC.tileY * TILE_SIZE;
+      drawShopNPC(ctx, snSX, snSY);
+
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, SHOP_OFFSET_X + player.pixelX, SHOP_OFFSET_Y + player.pixelY, player.dir, walkFrame);
+
+      if (dialogActive) {
+        const dlg = dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : NPC_DIALOG;
+        drawDialog(ctx, dlg[dialogPage]);
+      }
+    }
+
+    function renderHouse(ctx) {
+      // Warm off-white background
+      ctx.fillStyle = '#2a1f10';
+      ctx.fillRect(0, 0, 640, 480);
+
+      for (let row = 0; row < HOUSE_ROWS; row++) {
+        for (let col = 0; col < HOUSE_COLS; col++) {
+          drawTile(ctx, HOUSE_MAP[row][col], HOUSE_OFFSET_X + col * 32, HOUSE_OFFSET_Y + row * 32);
+        }
+      }
+
+      // Staircase visual (drawn over tiles to suggest an upper floor)
+      const stairX = HOUSE_OFFSET_X + 7 * 32;
+      const stairY = HOUSE_OFFSET_Y + 7 * 32;
+      ctx.fillStyle = '#a87030';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(stairX + i * 6, stairY + (3 - i) * 7, 8, 28 - (3 - i) * 7);
+      }
+      ctx.fillStyle = '#7a5020';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(stairX + i * 6, stairY + (3 - i) * 7, 8, 2);
+      }
+
+      // Banner
+      ctx.fillStyle = 'rgba(90,40,10,0.8)';
+      ctx.fillRect(0, 0, 640, 24);
+      ctx.fillStyle = '#f0c878';
+      ctx.font = '10px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('House', 320, 16);
+      ctx.textAlign = 'left';
+
+      // Player
+      const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
+      drawPlayer(ctx, HOUSE_OFFSET_X + player.pixelX, HOUSE_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
         const dlg = NPC_DIALOG;
@@ -2542,8 +3301,11 @@
     let state = null;
     let persistentPlayer = null; // carries HP (and active creature) between battles
 
-    function initState() {
-      const wild = wildCreatures[Math.floor(Math.random() * wildCreatures.length)];
+    function initState(fromSurf = false) {
+      const pool = fromSurf
+        ? wildCreatures.filter(c => c.type === 'water')
+        : wildCreatures.filter(c => c.type !== 'water');
+      const wild = pool[Math.floor(Math.random() * pool.length)];
       // Use saved player state if available, otherwise start fresh
       const playerBase = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
       state = {
@@ -2740,8 +3502,8 @@
       return Math.floor(Math.random() * state.opponent.moves.length);
     }
 
-    function resetBattle() {
-      initState();
+    function resetBattle(fromSurf = false) {
+      initState(fromSurf);
       document.getElementById('log').innerHTML =
         `<div class="log-line">A wild ${state.opponent.name} appeared! Pick your move.</div>`;
       document.getElementById('playAgain').classList.remove('visible');
