@@ -271,12 +271,23 @@
 
     #card-opponent { cursor: grab; }
     #card-opponent.dragging { cursor: grabbing; }
-    .creature-card.hit { animation: shake 300ms ease-in-out; }
+    .creature-card.hit      { animation: shake    300ms ease-in-out; }
+    .creature-card.dodge    { animation: dodgeAnim 300ms ease-in-out; }
+    .creature-card.critical { animation: critAnim  300ms ease-in-out; }
 
     @keyframes shake {
       0%, 100% { transform: translateX(0) rotate(0deg); }
       25%       { transform: translateX(-8px) rotate(-1deg); }
       75%       { transform: translateX(8px) rotate(1deg); }
+    }
+    @keyframes dodgeAnim {
+      0%, 100% { transform: translateX(0); opacity: 1; }
+      30%       { transform: translateX(14px); opacity: 0.6; }
+      70%       { transform: translateX(-6px); opacity: 0.8; }
+    }
+    @keyframes critAnim {
+      0%, 100% { transform: scale(1);    box-shadow: none; }
+      40%       { transform: scale(1.06); box-shadow: 0 0 24px #ffd700; }
     }
 
     .creature-card.fainted { opacity: 0.35; filter: grayscale(1); }
@@ -461,6 +472,8 @@
       backdrop-filter: blur(4px);
     }
 
+    .move-btn.cat-physical { border-left: 3px solid #e07030; }
+    .move-btn.cat-magic    { border-left: 3px solid #9060e0; }
     .move-btn:hover:not(:disabled) {
       background: rgba(255,255,255,0.85);
       border-color: rgba(0,0,0,0.35);
@@ -576,6 +589,39 @@
     .roster-btn .rb-name { font-weight: 700; font-size: 14px; }
     .roster-btn .rb-hp   { font-size: 11px; color: var(--text-muted); }
 
+    /* ── Swap button ── */
+    .btn-swap {
+      margin-top: 8px; width: 100%;
+      background: rgba(100,180,255,0.15); color: var(--text);
+      border: 1px solid rgba(100,180,255,0.4);
+      padding: 8px 0; font-size: 11px; font-family: inherit;
+      border-radius: 12px; cursor: pointer; letter-spacing: 0.04em;
+      transition: background 150ms, transform 150ms;
+    }
+    .btn-swap:hover { background: rgba(100,180,255,0.28); transform: translateY(-1px); }
+    .btn-swap:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+    /* ── Swap panel ── */
+    .swap-panel {
+      margin-top: 20px;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(100,180,255,0.35);
+      border-radius: 16px;
+      padding: 20px 28px;
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+    }
+    .swap-msg { font-size: 15px; line-height: 1.6; margin-bottom: 14px; color: var(--text); }
+    .swap-cancel {
+      margin-top: 10px;
+      background: rgba(255,255,255,0.08); color: var(--text);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px 22px; font-size: 12px; font-family: inherit;
+      border-radius: 16px; cursor: pointer;
+    }
+    .swap-cancel:hover { background: rgba(255,255,255,0.16); }
+
     /* ── Roster badge on battle screen ── */
     .roster-tray {
       display: flex; gap: 6px; align-items: center;
@@ -589,6 +635,7 @@
       cursor: default; overflow: hidden;
     }
     .roster-pip img { width: 100%; height: 100%; object-fit: contain; }
+    .roster-pip.fainted-pip { opacity: 0.35; filter: grayscale(1); border-color: rgba(255,255,255,0.1); }
   </style>
 </head>
 <body>
@@ -654,6 +701,7 @@
           </div>
           <div class="card-moves-section">
             <div class="moves" id="moves-player"></div>
+            <button class="btn-swap" id="btn-swap" onclick="openSwapMenu()" style="display:none">⇄ Swap Creature</button>
           </div>
         </div>
       </div>
@@ -722,6 +770,13 @@
       <div class="roster-msg">💀 <strong id="faintedName"></strong> fainted!<br>Send in a recruit:</div>
       <div id="rosterList" class="roster-list"></div>
     </div>
+
+    <!-- Swap panel (mid-battle swap) -->
+    <div id="swapPanel" class="swap-panel" style="display:none">
+      <div class="swap-msg">🔄 Choose a creature to swap in:</div>
+      <div id="swapList" class="roster-list"></div>
+      <button class="swap-cancel" onclick="closeSwapMenu()">Cancel</button>
+    </div>
   </div>
 
   <!-- Full-screen flash overlay for encounter transition -->
@@ -782,13 +837,12 @@
 
     // ── Return to world after battle ───────────────────────────
     function returnToWorld() {
-      // Save active creature's current HP for the next battle
-      // If they were knocked out (hp=0), restore to full HP for next fight
+      isSurfing = false;
+      // Close any open menus
+      document.getElementById('swapPanel').style.display = 'none';
+      // Save active creature's current HP (including if fainted — Nina can revive)
       if (state) {
-        persistentPlayer = {
-          ...state.player,
-          hp: state.player.hp > 0 ? state.player.hp : state.player.maxHp
-        };
+        persistentPlayer = { ...state.player };
       }
 
       const overlay = document.getElementById('transitionOverlay');
@@ -857,6 +911,58 @@
       }, 300);
     }
 
+    function enterClinic() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea        = 'healer';
+        player.tileX       = CLINIC_ENTRY.tileX;
+        player.tileY       = CLINIC_ENTRY.tileY;
+        player.pixelX      = CLINIC_ENTRY.tileX * TILE_SIZE;
+        player.pixelY      = CLINIC_ENTRY.tileY * TILE_SIZE;
+        player.fromX       = player.tileX;
+        player.fromY       = player.tileY;
+        player.toX         = player.tileX;
+        player.toY         = player.tileY;
+        player.moving      = false;
+        player.dir         = 'up';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function exitClinic() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea        = 'outdoor';
+        player.tileX       = CLINIC_EXIT.tileX;
+        player.tileY       = CLINIC_EXIT.tileY;
+        player.pixelX      = CLINIC_EXIT.tileX * TILE_SIZE;
+        player.pixelY      = CLINIC_EXIT.tileY * TILE_SIZE;
+        player.fromX       = player.tileX;
+        player.fromY       = player.tileY;
+        player.toX         = player.tileX;
+        player.toY         = player.tileY;
+        player.moving      = false;
+        player.dir         = 'down';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
     // ============================================================
     // WORLD — Tile map & player
     // ============================================================
@@ -870,19 +976,21 @@
     const GRASS = 0, TREE = 1, PATH = 2, TALL = 3, WATER = 4;
     const BROOF = 5, BWALL = 6, BDOOR = 7;
     const FLOOR = 8, IWALL = 9, IBOOK = 10, ITABLE = 11, IEXIT = 12;
-    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, IWALL, IBOOK, ITABLE]);
+    const HROOF = 13, HWALL = 14, HDOOR = 15; // healer building: white walls, pink roof
+    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, HROOF, HWALL, IWALL, IBOOK, ITABLE]);
 
     const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER, R=BROOF, B=BWALL, D=BDOOR;
     const IV=IWALL, IF=FLOOR, IB=IBOOK, IT=ITABLE, IE=IEXIT;
+    const HR=HROOF, HW=HWALL, HD=HDOOR;
 
     // 30 cols × 25 rows
     // Horizontal roads at rows 5 and 17; vertical road at col 14 between them
     const MAP = [
       [T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T,T],
       [T,G,G,G,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
-      [T,G,T,T,G,G,H,H,H,R,R,R,R,R,G,G,G,G,G,G,T,T,H,H,H,G,T,T,G,T],
-      [T,G,T,T,G,G,G,G,G,B,B,B,B,B,G,G,G,G,G,G,T,T,G,G,G,G,T,T,G,T],
-      [T,G,G,G,G,G,G,G,G,B,B,D,B,B,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,T,T,G,G,H,H,R,R,R,R,R,G,G,HR,HR,HR,HR,HR,T,T,H,H,H,G,T,T,G,T],
+      [T,G,T,T,G,G,G,G,B,B,B,B,B,G,G,HW,HW,HW,HW,HW,T,T,G,G,G,G,T,T,G,T],
+      [T,G,G,G,G,G,G,G,B,B,D,B,B,G,G,HW,HW,HD,HW,HW,G,G,G,G,G,G,G,G,G,T],
       [T,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,T,G,G,H,H,H,G,G,G,G,G,G,P,G,G,G,G,G,G,H,H,H,G,G,T,G,G,T],
@@ -909,8 +1017,28 @@
     const INDOOR_COLS = 14, INDOOR_ROWS = 12;
     const INDOOR_OFFSET_X = (CANVAS_W - INDOOR_COLS * TILE_SIZE) / 2; // 96
     const INDOOR_OFFSET_Y = (CANVAS_H - INDOOR_ROWS * TILE_SIZE) / 2; // 48
-    const INDOOR_ENTRY = { tileX: 6, tileY: 9 };  // where player appears inside
-    const OUTDOOR_EXIT = { tileX: 11, tileY: 6 }; // where player appears outside
+    const INDOOR_ENTRY = { tileX: 6, tileY: 9 };  // where player appears inside lab
+    const OUTDOOR_EXIT = { tileX: 10, tileY: 6 }; // where player reappears after leaving lab
+
+    // ── Healer clinic indoor area ─────────────────────────────
+    const CLINIC_COLS = 12, CLINIC_ROWS = 10;
+    const CLINIC_OFFSET_X = (CANVAS_W - CLINIC_COLS * TILE_SIZE) / 2; // 128
+    const CLINIC_OFFSET_Y = (CANVAS_H - CLINIC_ROWS * TILE_SIZE) / 2; // 80
+    const CLINIC_ENTRY = { tileX: 5, tileY: 8 };  // where player appears inside clinic
+    const CLINIC_EXIT  = { tileX: 17, tileY: 6 }; // where player reappears after leaving clinic
+
+    const CLINIC_MAP = [
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IT,IT,IF,IF,IF,IF,IT,IT,IF,IV],
+      [IV,IF,IT,IT,IF,IF,IF,IF,IT,IT,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IE,IF,IF,IF,IF,IF,IV],
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+    ];
 
     const INDOOR_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
@@ -1129,6 +1257,62 @@
           ctx.fillStyle = '#d4a020';
           ctx.fillRect(sx+21, sy+20, 2, 2);
           break;
+
+        case HROOF:
+          // Pink roof tile (healer's clinic)
+          ctx.fillStyle = '#d4507a';
+          ctx.fillRect(sx, sy, s, s);
+          // Lighter pink panels
+          ctx.fillStyle = '#e06090';
+          ctx.fillRect(sx+1, sy+2,  s-2, 10);
+          ctx.fillRect(sx+1, sy+16, s-2, 10);
+          // Highlight ridge
+          ctx.fillStyle = '#f080a8';
+          ctx.fillRect(sx+2, sy+3,  s-4, 2);
+          ctx.fillRect(sx+2, sy+17, s-4, 2);
+          // Dark underside of eave
+          ctx.fillStyle = '#a03060';
+          ctx.fillRect(sx, sy+28, s, 4);
+          break;
+
+        case HWALL:
+          // White plaster wall (healer's clinic)
+          ctx.fillStyle = '#f0eeea';
+          ctx.fillRect(sx, sy, s, s);
+          // Subtle panel lines
+          ctx.fillStyle = '#d8d4ce';
+          ctx.fillRect(sx, sy+10, s, 1);
+          ctx.fillRect(sx, sy+21, s, 1);
+          ctx.fillRect(sx+15, sy, 1, s);
+          // Pink trim at top
+          ctx.fillStyle = '#e8a0b8';
+          ctx.fillRect(sx, sy, s, 3);
+          // Soft shadow at bottom
+          ctx.fillStyle = '#c8c4be';
+          ctx.fillRect(sx, sy+28, s, 4);
+          break;
+
+        case HDOOR:
+          // White wall with pink door (healer's clinic)
+          ctx.fillStyle = '#f0eeea';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#d8d4ce';
+          ctx.fillRect(sx, sy+10, s, 1);
+          ctx.fillStyle = '#e8a0b8';
+          ctx.fillRect(sx, sy, s, 3);
+          // Pink door frame
+          ctx.fillStyle = '#c03878';
+          ctx.fillRect(sx+7, sy+8, 18, 24);
+          // Door panel
+          ctx.fillStyle = '#e0508a';
+          ctx.fillRect(sx+9, sy+10, 14, 20);
+          // Door highlight
+          ctx.fillStyle = '#f080a8';
+          ctx.fillRect(sx+10, sy+11, 4, 8);
+          // Heart instead of knob
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(sx+20, sy+19, 2, 2);
+          break;
       }
     }
 
@@ -1145,6 +1329,19 @@
       // Arm swing is opposite to legs
       const lArm = walkFrame === 3 ? -2 : (walkFrame === 1 ?  1 : 0);
       const rArm = walkFrame === 1 ? -2 : (walkFrame === 3 ?  1 : 0);
+
+      // Surf wave under player (when surfing on water)
+      if (isSurfing) {
+        const wave = Math.sin(Date.now() / 300) * 2;
+        ctx.fillStyle = 'rgba(80,160,255,0.55)';
+        ctx.fillRect(sx, cy + 6 + wave, s, 10);
+        ctx.fillStyle = 'rgba(120,200,255,0.35)';
+        ctx.fillRect(sx + 4, cy + 10 + wave, s - 8, 6);
+        // Foam
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.fillRect(sx + 2, cy + 6 + wave, 6, 2);
+        ctx.fillRect(sx + s - 10, cy + 8 + wave, 8, 2);
+      }
 
       // Shadow
       ctx.fillStyle = 'rgba(0,0,0,0.25)';
@@ -1207,8 +1404,18 @@
       ["Good luck out there!", "",                     "Press A to close."],
     ];
 
+    // ── Healer NPC ─────────────────────────────────────────────
+    const HEALER = { tileX: 5, tileY: 2 }; // inside the clinic, near the counter
+
+    const HEALER_DIALOG = [
+      ["Hi there, trainer!", "I'm Nurse Nina.",   "Need a rest?"],
+      ["I'll heal your",     "whole team back",   "to full health!"],
+      ["All done!",          "Your critters are", "fully healed!"],
+    ];
+
     let dialogActive = false;
     let dialogPage   = 0;
+    let dialogType   = 'prof'; // 'prof' | 'healer'
 
     function drawNPC(ctx, sx, sy, playerAdjacent) {
       const s  = TILE_SIZE;
@@ -1253,6 +1460,69 @@
       ctx.fillStyle = blink ? '#ffcb05' : '#c89000';
       ctx.fillRect(cx-2, cy-24, 4, 8); // ! bar
       ctx.fillRect(cx-2, cy-13, 4, 3); // ! dot
+    }
+
+    function drawHealer(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (white)
+      ctx.fillStyle = '#e0e0e0';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (pink uniform)
+      ctx.fillStyle = '#e8607a';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      // White apron front
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx-3, cy-3, 6, 8);
+      // Pink cross on apron
+      ctx.fillStyle = '#e8607a';
+      ctx.fillRect(cx-1, cy-2, 2, 6);
+      ctx.fillRect(cx-3, cy, 6, 2);
+      // Arms
+      ctx.fillStyle = '#e8607a';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (blonde)
+      ctx.fillStyle = '#dba820';
+      ctx.fillRect(cx-5, cy-14, 10, 4);
+      ctx.fillRect(cx-7, cy-12, 3, 6);
+      ctx.fillRect(cx+4, cy-12, 3, 6);
+
+      // Nurse cap (white with pink cross)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx-5, cy-18, 10, 5);
+      ctx.fillStyle = '#e8607a';
+      ctx.fillRect(cx-1, cy-17, 2, 3);
+      ctx.fillRect(cx-3, cy-16, 6, 1);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      // Smile
+      ctx.fillStyle = '#c04060';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
+      // Blinking heart above healer (interaction hint)
+      const blink = Math.floor(Date.now() / 500) % 2 === 0;
+      ctx.fillStyle = blink ? '#ff6b8a' : '#cc3355';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('♥', cx, cy - 24);
+      ctx.textAlign = 'left';
     }
 
     // Canvas-based Pokémon-style dialog box
@@ -1308,17 +1578,65 @@
     function advanceDialog() {
       if (!dialogActive) return;
       dialogPage++;
-      if (dialogPage >= NPC_DIALOG.length) {
+      const currentDialog = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+      if (dialogPage >= currentDialog.length) {
+        // Heal on last page of healer dialog
+        if (dialogType === 'healer') healAllCreatures();
         dialogActive = false;
         dialogPage   = 0;
+        dialogType   = 'prof';
+      }
+    }
+
+    function healAllCreatures() {
+      // Heal active creature
+      if (persistentPlayer) {
+        persistentPlayer = { ...persistentPlayer, hp: persistentPlayer.maxHp };
+      }
+      if (state && state.player) {
+        state.player.hp = state.player.maxHp;
+      }
+      // Heal all roster members
+      roster = roster.map(c => ({ ...c, hp: c.maxHp }));
+    }
+
+    // ── Surfing ────────────────────────────────────────────────
+    let isSurfing = false;
+
+    function hasWaterType() {
+      const active = persistentPlayer || creatures.player;
+      if (active.type === 'water') return true;
+      return roster.some(c => c.type === 'water');
+    }
+
+    function handleAButton() {
+      if (dialogActive) { advanceDialog(); return; }
+
+      // Surf check — only outdoors, only when not moving
+      if (gameState === 'world' && currentArea === 'outdoor' && !player.moving) {
+        const dx = player.dir === 'left' ? -1 : player.dir === 'right' ? 1 : 0;
+        const dy = player.dir === 'up'   ? -1 : player.dir === 'down'  ? 1 : 0;
+        const tx = player.tileX + dx;
+        const ty = player.tileY + dy;
+
+        if (tx >= 0 && tx < MAP_COLS && ty >= 0 && ty < MAP_ROWS && MAP[ty][tx] === WATER) {
+          if (!isSurfing && hasWaterType()) {
+            // Step onto water and start surfing
+            isSurfing = true;
+            player.fromX = player.tileX; player.fromY = player.tileY;
+            player.toX   = tx;           player.toY   = ty;
+            player.tileX = tx;           player.tileY = ty;
+            player.pixelX = tx * TILE_SIZE; player.pixelY = ty * TILE_SIZE;
+          }
+        }
       }
     }
 
     const keys = {};
     window.addEventListener('keydown', e => {
-      if (dialogActive && (e.key === 'e' || e.key === 'E' || e.key === ' ' || e.key === 'Enter')) {
+      if (e.key === 'e' || e.key === 'E' || e.key === ' ' || e.key === 'Enter') {
         e.preventDefault();
-        advanceDialog();
+        handleAButton();
         return;
       }
       keys[e.key] = true;
@@ -1333,8 +1651,14 @@
         if (col < 0 || col >= INDOOR_COLS || row < 0 || row >= INDOOR_ROWS) return false;
         return !SOLID_TILES.has(INDOOR_MAP[row][col]);
       }
+      if (currentArea === 'healer') {
+        if (col < 0 || col >= CLINIC_COLS || row < 0 || row >= CLINIC_ROWS) return false;
+        return !SOLID_TILES.has(CLINIC_MAP[row][col]);
+      }
       if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return false;
-      return !SOLID_TILES.has(MAP[row][col]);
+      const tile = MAP[row][col];
+      if (isSurfing && tile === WATER) return true;
+      return !SOLID_TILES.has(tile);
     }
 
     function lerp(a, b, t) { return a + (b - a) * t; }
@@ -1343,9 +1667,13 @@
       if (gameState !== 'world' || dialogActive) return;
       if (currentArea === 'outdoor') {
         if (MAP[row][col] === BDOOR) { enterBuilding(); return; }
+        if (MAP[row][col] === HDOOR) { enterClinic();   return; }
+        if (isSurfing && MAP[row][col] !== WATER) isSurfing = false; // stepped off water
         if (MAP[row][col] === TALL && Math.random() < 0.35) triggerEncounter();
       } else if (currentArea === 'indoor') {
         if (INDOOR_MAP[row][col] === IEXIT) exitBuilding();
+      } else if (currentArea === 'healer') {
+        if (CLINIC_MAP[row][col] === IEXIT) exitClinic();
       }
     }
 
@@ -1378,11 +1706,20 @@
       if (dx || dy) {
         const nx = player.tileX + dx;
         const ny = player.tileY + dy;
-        // Walking into the NPC triggers dialog (indoors only now)
+        // Walking into the professor triggers dialog (indoors only)
         if (currentArea === 'indoor' && nx === NPC.tileX && ny === NPC.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
+          dialogType   = 'prof';
+          return;
+        }
+        // Walking into the healer triggers heal dialog (inside clinic only)
+        if (currentArea === 'healer' && nx === HEALER.tileX && ny === HEALER.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'healer';
           return;
         }
         if (isWalkable(nx, ny)) {
@@ -1408,10 +1745,8 @@
 
     // ── World render ───────────────────────────────────────────
     function renderWorld(ctx) {
-      if (currentArea === 'indoor') {
-        renderIndoor(ctx);
-        return;
-      }
+      if (currentArea === 'indoor') { renderIndoor(ctx); return; }
+      if (currentArea === 'healer') { renderClinic(ctx); return; }
 
       const { x: camX, y: camY } = getCameraOffset();
       const startCol = Math.floor(camX / TILE_SIZE);
@@ -1425,12 +1760,33 @@
         }
       }
 
-      // (NPC is inside the lab — not drawn outdoors)
+      // (Both NPCs are inside their buildings — not drawn outdoors)
 
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, player.pixelX - camX, player.pixelY - camY, player.dir, walkFrame);
 
-      if (dialogActive) drawDialog(ctx, NPC_DIALOG[dialogPage]);
+      // Surf hint — show "A: Surf" when facing water with a water-type on team
+      if (!dialogActive && !isSurfing && hasWaterType()) {
+        const dx = player.dir === 'left' ? -1 : player.dir === 'right' ? 1 : 0;
+        const dy = player.dir === 'up'   ? -1 : player.dir === 'down'  ? 1 : 0;
+        const tx = player.tileX + dx, ty = player.tileY + dy;
+        if (tx >= 0 && tx < MAP_COLS && ty >= 0 && ty < MAP_ROWS && MAP[ty][tx] === WATER) {
+          const px = player.pixelX - camX + TILE_SIZE / 2;
+          const py = player.pixelY - camY - 8;
+          ctx.fillStyle = 'rgba(0,0,0,0.55)';
+          ctx.fillRect(px - 28, py - 13, 56, 15);
+          ctx.fillStyle = '#60d0ff';
+          ctx.font = '7px "Press Start 2P"';
+          ctx.textAlign = 'center';
+          ctx.fillText('A: SURF', px, py);
+          ctx.textAlign = 'left';
+        }
+      }
+
+      if (dialogActive) {
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+        drawDialog(ctx, dlg[dialogPage]);
+      }
     }
 
     function renderIndoor(ctx) {
@@ -1467,7 +1823,49 @@
       drawPlayer(ctx, INDOOR_OFFSET_X + player.pixelX, INDOOR_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       // Dialog box drawn on top
-      if (dialogActive) drawDialog(ctx, NPC_DIALOG[dialogPage]);
+      if (dialogActive) {
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+        drawDialog(ctx, dlg[dialogPage]);
+      }
+    }
+
+    function renderClinic(ctx) {
+      // Dark background
+      ctx.fillStyle = '#1a1010';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      // Draw all clinic tiles
+      for (let row = 0; row < CLINIC_ROWS; row++) {
+        for (let col = 0; col < CLINIC_COLS; col++) {
+          const sx = CLINIC_OFFSET_X + col * TILE_SIZE;
+          const sy = CLINIC_OFFSET_Y + row * TILE_SIZE;
+          drawTile(ctx, CLINIC_MAP[row][col], sx, sy);
+        }
+      }
+
+      // Banner
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, CANVAS_W, 24);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '10px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText("Nurse Nina's Clinic", CANVAS_W / 2, 16);
+      ctx.textAlign = 'left';
+
+      // Draw healer NPC
+      const healerSX = CLINIC_OFFSET_X + HEALER.tileX * TILE_SIZE;
+      const healerSY = CLINIC_OFFSET_Y + HEALER.tileY * TILE_SIZE;
+      drawHealer(ctx, healerSX, healerSY);
+
+      // Draw player
+      const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
+      drawPlayer(ctx, CLINIC_OFFSET_X + player.pixelX, CLINIC_OFFSET_Y + player.pixelY, player.dir, walkFrame);
+
+      // Dialog
+      if (dialogActive) {
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+        drawDialog(ctx, dlg[dialogPage]);
+      }
     }
 
     // ── World loop ─────────────────────────────────────────────
@@ -1507,8 +1905,8 @@
     bindDpadBtn('btn-down',  'ArrowDown');
 
     const btnA = document.getElementById('btn-a');
-    btnA.addEventListener('touchstart', e => { e.preventDefault(); advanceDialog(); }, { passive: false });
-    btnA.addEventListener('click', advanceDialog);
+    btnA.addEventListener('touchstart', e => { e.preventDefault(); handleAButton(); }, { passive: false });
+    btnA.addEventListener('click', handleAButton);
 
     // ============================================================
     // BATTLE
@@ -1527,12 +1925,12 @@
         type: 'fire',
         img: 'scorchspine.png',
         maxHp: 100,
-        atk: 12, dfc: 7, mag: 8, mdf: 5, spd: 9, lck: 6,
+        atk: 12, dfc: 6, mag: 11, mdf: 5, spd: 9, lck: 8,
         moves: [
-          { name: 'Ember Snap', type: 'fire',  power: 14 },
-          { name: 'Heat Wave',  type: 'fire',  power: 12 },
-          { name: 'Bite',       type: 'basic', power: 10 },
-          { name: 'Scratch',    type: 'basic', power:  8 },
+          { name: 'Ember Snap', type: 'fire',  cat: 'physical', power: 14 },
+          { name: 'Heat Wave',  type: 'fire',  cat: 'magic',    power: 12 },
+          { name: 'Bite',       type: 'basic', cat: 'physical', power: 10 },
+          { name: 'Scratch',    type: 'basic', cat: 'physical', power:  8 },
         ]
       },
     };
@@ -1543,12 +1941,12 @@
         type: 'water',
         img: 'sharqua.png',
         maxHp: 100,
-        atk: 10, dfc: 9, mag: 7, mdf: 8, spd: 7, lck: 5,
+        atk: 14, dfc: 11, mag: 6, mdf: 7, spd: 7, lck: 5,
         moves: [
-          { name: 'Splash Strike', type: 'water', power: 14 },
-          { name: 'Whirlpool',     type: 'water', power: 12 },
-          { name: 'Tackle',        type: 'basic', power: 10 },
-          { name: 'Slam',          type: 'basic', power:  8 },
+          { name: 'Splash Strike', type: 'water', cat: 'physical', power: 14 },
+          { name: 'Whirlpool',     type: 'water', cat: 'magic',    power: 12 },
+          { name: 'Tackle',        type: 'basic', cat: 'physical', power: 10 },
+          { name: 'Slam',          type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
@@ -1556,12 +1954,12 @@
         type: 'fire',
         img: 'embrawl.png',
         maxHp: 105,
-        atk: 13, dfc: 8, mag: 6, mdf: 6, spd: 6, lck: 4,
+        atk: 16, dfc: 8, mag: 3, mdf: 5, spd: 6, lck: 4,
         moves: [
-          { name: 'Flame Charge', type: 'fire',  power: 14 },
-          { name: 'Lava Stomp',   type: 'fire',  power: 12 },
-          { name: 'Tusk Bash',    type: 'basic', power: 10 },
-          { name: 'Headbutt',     type: 'basic', power:  8 },
+          { name: 'Flame Charge', type: 'fire',  cat: 'physical', power: 14 },
+          { name: 'Lava Stomp',   type: 'fire',  cat: 'physical', power: 12 },
+          { name: 'Tusk Bash',    type: 'basic', cat: 'physical', power: 10 },
+          { name: 'Headbutt',     type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
@@ -1569,12 +1967,38 @@
         type: 'grass',
         img: 'kiwivy.png',
         maxHp: 95,
-        atk: 8, dfc: 7, mag: 11, mdf: 9, spd: 10, lck: 7,
+        atk: 5, dfc: 5, mag: 15, mdf: 12, spd: 10, lck: 8,
         moves: [
-          { name: 'Vine Peck',  type: 'grass', power: 14 },
-          { name: 'Leaf Storm', type: 'grass', power: 12 },
-          { name: 'Peck',       type: 'basic', power: 10 },
-          { name: 'Quick Kick', type: 'basic', power:  8 },
+          { name: 'Vine Peck',  type: 'grass', cat: 'physical', power: 14 },
+          { name: 'Leaf Storm', type: 'grass', cat: 'magic',    power: 12 },
+          { name: 'Peck',       type: 'basic', cat: 'physical', power: 10 },
+          { name: 'Quick Kick', type: 'basic', cat: 'physical', power:  8 },
+        ]
+      },
+      {
+        name: 'Frostusk',
+        type: 'water',
+        img: 'frostusk.png',
+        maxHp: 115,
+        atk: 9, dfc: 16, mag: 8, mdf: 14, spd: 4, lck: 5,
+        moves: [
+          { name: 'Ice Fang',    type: 'water', cat: 'physical', power: 16 },
+          { name: 'Frost Wave',  type: 'water', cat: 'magic',    power: 13 },
+          { name: 'Tusk Slam',   type: 'basic', cat: 'physical', power: 12 },
+          { name: 'Body Crush',  type: 'basic', cat: 'physical', power:  9 },
+        ]
+      },
+      {
+        name: 'Shroomkin',
+        type: 'grass',
+        img: 'shroomkin.png',
+        maxHp: 90,
+        atk: 7, dfc: 6, mag: 12, mdf: 8, spd: 7, lck: 13,
+        moves: [
+          { name: 'Spore Burst', type: 'grass', cat: 'magic',    power: 15 },
+          { name: 'Toxic Bloom', type: 'grass', cat: 'magic',    power: 13 },
+          { name: 'Headbonk',    type: 'basic', cat: 'physical', power: 11 },
+          { name: 'Tackle',      type: 'basic', cat: 'physical', power:  8 },
         ]
       },
     ];
@@ -1634,25 +2058,34 @@
       container.innerHTML = '';
       state.player.moves.forEach((move, i) => {
         const btn = document.createElement('button');
-        btn.className = 'move-btn';
+        const catLabel = move.cat === 'magic' ? 'MAGIC' : 'PHYS';
+        btn.className = `move-btn cat-${move.cat}`;
         btn.innerHTML = `
           <span class="move-name">${move.name}</span>
-          <span class="move-meta">${move.type.toUpperCase()} · POWER ${move.power}</span>
+          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel} · PWR ${move.power}</span>
         `;
         btn.disabled = state.over || state.player.hp <= 0;
         btn.onclick  = () => playerMove(i);
         container.appendChild(btn);
       });
 
+      // Show swap button only when there are living bench members and battle is active
+      const swapBtn = document.getElementById('btn-swap');
+      const hasBench = roster.some(c => c.hp > 0);
+      const showSwap = !state.over && state.player.hp > 0 && hasBench;
+      swapBtn.style.display = showSwap ? 'block' : 'none';
+      if (showSwap) swapBtn.disabled = false;
+
       const oppContainer = document.getElementById('moves-opponent');
       oppContainer.innerHTML = '';
       state.opponent.moves.forEach(move => {
         const btn = document.createElement('button');
-        btn.className = 'move-btn';
+        const catLabel = move.cat === 'magic' ? 'MAGIC' : 'PHYS';
+        btn.className = `move-btn cat-${move.cat}`;
         btn.disabled  = true;
         btn.innerHTML = `
           <span class="move-name">${move.name}</span>
-          <span class="move-meta">${move.type.toUpperCase()} · POWER ${move.power}</span>
+          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel} · PWR ${move.power}</span>
         `;
         oppContainer.appendChild(btn);
       });
@@ -1671,24 +2104,54 @@
       const attacker = state[attackerSide];
       const defender = state[defenderSide];
       const move     = attacker.moves[moveIdx];
+      const catTag   = move.cat === 'magic' ? '✨' : '⚔️';
+
+      // ── LCK: Dodge check (defender's luck) ──────────────────────────────
+      const dodgeChance = (defender.lck ?? 0) * 0.008;  // lck 9 → 7.2%
+      if (Math.random() < dodgeChance) {
+        const defCard = document.getElementById(`card-${defenderSide}`);
+        defCard.classList.add('dodge');
+        setTimeout(() => defCard.classList.remove('dodge'), 300);
+        log(`${catTag} ${attacker.name} used ${move.name}!`);
+        log(`🌟 ${defender.name} dodged the attack!`, 'effective');
+        return; // no damage
+      }
 
       let damage, effectiveness;
-      if (move.type === 'basic') {
-        damage        = move.power;
-        effectiveness = 1.0;
-      } else {
-        damage        = Math.round((attacker.atk + move.power) / 2);
-        effectiveness = typeChart[move.type][defender.type];
+      const isMagic = move.cat === 'magic';
+
+      if (isMagic) {
+        // Magic — uses MAG stat, type effectiveness applies, MDF reduces (DFC ignored)
+        damage        = Math.round((attacker.mag + move.power) / 2);
+        effectiveness = typeChart[move.type]?.[defender.type] ?? 1.0;
         damage        = Math.round(damage * effectiveness);
+        // MDF reduction: same formula as DFC — 30/(30+mdf)
+        damage        = Math.max(1, Math.round(damage * (30 / (30 + defender.mdf))));
+      } else {
+        // Physical (including basic) — uses ATK stat, DFC reduces damage
+        damage        = Math.round((attacker.atk + move.power) / 2);
+        effectiveness = move.type === 'basic' ? 1.0 : (typeChart[move.type]?.[defender.type] ?? 1.0);
+        damage        = Math.round(damage * effectiveness);
+        // DFC reduction: 30/(30+dfc) → ~19% at dfc 7, ~26% at dfc 13
+        damage        = Math.max(1, Math.round(damage * (30 / (30 + defender.dfc))));
+      }
+
+      // ── LCK: Lucky hit check (attacker's luck) ──────────────────────────
+      const critChance = (attacker.lck ?? 0) * 0.02;    // lck 9 → 18%
+      let isCrit = false;
+      if (Math.random() < critChance) {
+        damage = Math.round(damage * 1.5);
+        isCrit = true;
       }
 
       defender.hp -= damage;
 
       const card = document.getElementById(`card-${defenderSide}`);
-      card.classList.add('hit');
-      setTimeout(() => card.classList.remove('hit'), 300);
+      card.classList.add(isCrit ? 'critical' : 'hit');
+      setTimeout(() => card.classList.remove(isCrit ? 'critical' : 'hit'), 300);
 
-      log(`${attacker.name} used ${move.name}! Dealt ${damage} damage.`);
+      log(`${catTag} ${attacker.name} used ${move.name}! Dealt ${damage} dmg.`);
+      if (isCrit) log('⭐ Lucky hit! Extra damage!', 'effective');
       if (effectiveness > 1) log("It's super effective!", 'effective');
       else if (effectiveness < 1) log("It's not very effective...", 'weak');
 
@@ -1702,10 +2165,15 @@
         } else {
           // Player's creature fainted
           log(`${defender.name} fainted!`, 'win');
-          if (roster.length > 0) {
+          const livingBench = roster.filter(c => c.hp > 0);
+          if (livingBench.length > 0) {
             showRosterSelect();
           } else {
-            log(`${attacker.name} wins the battle.`, 'win');
+            // All creatures fainted — blackout, heal everything
+            log('All critters fainted!', 'win');
+            log('Visit Nurse Nina to heal.', '');
+            healAllCreatures();
+            state.player.hp = state.player.maxHp;
             document.getElementById('playAgain').classList.add('visible');
           }
         }
@@ -1740,6 +2208,7 @@
       document.getElementById('playAgain').classList.remove('visible');
       document.getElementById('recruitPrompt').style.display = 'none';
       document.getElementById('rosterSelect').style.display  = 'none';
+      document.getElementById('swapPanel').style.display     = 'none';
       renderRosterTray();
       render();
     }
@@ -1757,8 +2226,8 @@
       tray.appendChild(label);
       roster.forEach(c => {
         const pip = document.createElement('div');
-        pip.className   = 'roster-pip';
-        pip.title       = `${c.name} · HP ${c.hp}/${c.maxHp}`;
+        pip.className   = 'roster-pip' + (c.hp <= 0 ? ' fainted-pip' : '');
+        pip.title       = c.hp <= 0 ? `${c.name} · FAINTED` : `${c.name} · HP ${c.hp}/${c.maxHp}`;
         pip.innerHTML   = `<img src="${c.img}" alt="${c.name}">`;
         tray.appendChild(pip);
       });
@@ -1822,6 +2291,7 @@
       const list = document.getElementById('rosterList');
       list.innerHTML = '';
       roster.forEach((c, i) => {
+        if (c.hp <= 0) return; // only show living bench members
         const btn = document.createElement('button');
         btn.className = 'roster-btn';
         btn.innerHTML = `
@@ -1838,13 +2308,69 @@
     }
 
     function sendInRecruit(index) {
-      const recruit = roster.splice(index, 1)[0];
-      state.player = { ...recruit };
+      const incoming = roster.splice(index, 1)[0];
+      // Put the fainted active creature on the bench (at 0 HP — revivable by Nina)
+      roster.push({ ...state.player });
+      state.player = { ...incoming };
       state.over   = false;
       document.getElementById('rosterSelect').style.display = 'none';
-      log(`Go, ${recruit.name}!`, 'win');
+      log(`Go, ${incoming.name}!`, 'win');
       renderRosterTray();
       render();
+    }
+
+    // ── Mid-battle swap ───────────────────────────────────────────
+    function openSwapMenu() {
+      if (state.over || state.player.hp <= 0) return;
+      const panel = document.getElementById('swapPanel');
+      const list  = document.getElementById('swapList');
+      list.innerHTML = '';
+      roster.forEach((c, i) => {
+        if (c.hp <= 0) return; // can't send in fainted creatures
+        const btn = document.createElement('button');
+        btn.className = 'roster-btn';
+        btn.innerHTML = `
+          <img src="${c.img}" alt="${c.name}">
+          <div class="rb-info">
+            <div class="rb-name">${c.name}</div>
+            <div class="rb-hp">HP ${c.hp} / ${c.maxHp}</div>
+          </div>
+        `;
+        btn.onclick = () => doSwap(i);
+        list.appendChild(btn);
+      });
+      panel.style.display = 'block';
+      // Disable move buttons while swap menu is open
+      document.querySelectorAll('#moves-player .move-btn').forEach(b => b.disabled = true);
+      document.getElementById('btn-swap').disabled = true;
+    }
+
+    function closeSwapMenu() {
+      document.getElementById('swapPanel').style.display = 'none';
+      // Re-enable moves
+      document.querySelectorAll('#moves-player .move-btn').forEach(b => b.disabled = false);
+      document.getElementById('btn-swap').disabled = false;
+    }
+
+    function doSwap(rosterIndex) {
+      const incoming = roster.splice(rosterIndex, 1)[0];
+      const outgoing = { ...state.player }; // save current creature to bench
+      roster.push(outgoing);
+
+      state.player = { ...incoming };
+      closeSwapMenu(); // re-enables move buttons and swap btn
+      log(`Come back, ${outgoing.name}! Go, ${incoming.name}!`);
+      renderRosterTray();
+      render();
+
+      // Opponent gets a free attack for the swap
+      setTimeout(() => {
+        if (!state.over) {
+          const oppMove = pickOpponentMove();
+          resolveAttack('opponent', 'player', oppMove);
+          render();
+        }
+      }, 500);
     }
 
     // ── Flick-to-run gesture on opponent card ─────────────────────
