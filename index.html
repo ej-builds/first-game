@@ -579,8 +579,9 @@
 
     .move-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-    .move-name { display: block; font-weight: 700; font-size: 12px; }
-    .move-meta { display: block; font-size: 10px; color: rgba(0,0,0,0.5); margin-top: 2px; font-weight: 600; letter-spacing: 0.04em; }
+    .move-name  { display: block; font-weight: 700; font-size: 12px; }
+    .move-meta  { display: block; font-size: 10px; color: rgba(0,0,0,0.5); margin-top: 2px; font-weight: 600; letter-spacing: 0.04em; }
+    .move-power { display: block; font-size: 10px; color: rgba(0,0,0,0.4); margin-top: 1px; font-weight: 600; letter-spacing: 0.04em; }
 
     .vs {
       font-size: 28px;
@@ -1013,7 +1014,8 @@
 
     // ── Return to world after battle ───────────────────────────
     function returnToWorld() {
-      isSurfing = false;
+      // Restore surfing if the battle was triggered on water
+      isSurfing = !!(triggerEncounter._fromSurf);
       // Close any open menus
       document.getElementById('swapPanel').style.display = 'none';
       // Save active creature's current HP (including if fainted — Nina can revive)
@@ -1022,6 +1024,14 @@
         restoreBaseStats(state.player);
         persistentPlayer = { ...state.player };
       }
+
+      // Reset player movement so they're never stuck mid-animation
+      player.moving      = false;
+      player.moveProgress = 0;
+      player.fromX       = player.tileX;
+      player.fromY       = player.tileY;
+      player.toX         = player.tileX;
+      player.toY         = player.tileY;
 
       const overlay = document.getElementById('transitionOverlay');
       overlay.style.transition = 'none';
@@ -1448,6 +1458,8 @@
     const HOUSE2_ENTRY = { tileX: 5, tileY: 8 };  // where player arrives from downstairs
     const HOUSE2_OFFSET_X = (640 - HOUSE2_COLS * 32) / 2;
     const HOUSE2_OFFSET_Y = (480 - HOUSE2_ROWS * 32) / 2;
+    const HOUSE_NPC  = { tileX: 7, tileY: 9 };  // NPC on floor 1
+    const HOUSE2_NPC = { tileX: 1, tileY: 7 };  // Rouxls Kaard — floor 2
 
     const HOUSE2_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
@@ -2179,6 +2191,20 @@
       ["Happy exploring!",     "",                      "Press A to close."],
     ];
 
+    const HOUSE_NPC_DIALOG = [
+      ["Oh, hey! You made",   "it inside. Nice",      "place, right?"],
+      ["This is actually the","home of the triplets", "and your first..."],
+      ["...Battleground!",    "Battlegrounds are",    "where you fight"],
+      ["other catchers.",     "Beat a capture",       "champion..."],
+      ["...and you earn",     "a medal!",             ""],
+      ["Now that that's",     "sorted - I'll be",     "your first battle!"],
+    ];
+
+    const HOUSE2_NPC_DIALOG = [
+      ["Hark! Dost thou",     "knoweth how I mightst", "become theest"],
+      ["Second-in-Command",   "of thisst place?",      "Press A to close."],
+    ];
+
     const CLINIC_NPC_DIALOG = [
       ["You aren't planning", "on fighting the",      "triplets are you?"],
       ["They completely",     "crushed my team.",     "Press A to close."],
@@ -2206,11 +2232,15 @@
     ];
 
     const SHOP_NPC_DIALOG = [
-      ["Oh, hey! Shopping",   "here too?",            "Great spot."],
-      ["Potions heal 40 HP",  "on any critter —",     "even mid-explore!"],
-      ["Revives bring back",  "a fainted critter",    "at half HP."],
-      ["Press (B) anywhere",  "outside battle to",    "open your bag!"],
-      ["Save up coins —",     "battles earn you",     "15 to 25 each win."],
+      ["Oh hey! Let me tell", "you all about",        "items!"],
+      ["POTIONS restore 40",  "HP to any critter.",   "Great for exploring!"],
+      ["REVIVES bring back",  "a fainted critter",    "at 50% HP."],
+      ["You can use items",   "outside battle with",  "the (B) button..."],
+      ["...or tap the BAG",   "button right inside",  "a battle too!"],
+      ["Using an item in",    "battle costs your",    "turn though!"],
+      ["The foe will attack", "for free while you",   "use your item."],
+      ["Buy items here with", "coins. Battles earn",  "you 15-25 coins!"],
+      ["Stock up before",     "tough fights —",       "you'll thank me!"],
       ["Good luck out there!","",                     "Press A to close."],
     ];
 
@@ -2230,6 +2260,7 @@
     let dialogPage   = 0;
     let dialogType   = 'prof'; // 'prof' | 'healer'
     let meadowMet    = false;
+    let houseNpcMet  = false;
 
     function drawNPC(ctx, sx, sy, playerAdjacent) {
       const s  = TILE_SIZE;
@@ -2315,6 +2346,131 @@
       ctx.fillRect(cx+1, cy-8, 2, 2);
       ctx.fillStyle = '#c04030';
       ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
+    function drawHouseNPC(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#7a4820';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (orange jacket)
+      ctx.fillStyle = '#d06010';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#b04800';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (brown, short)
+      ctx.fillStyle = '#5a3010';
+      ctx.fillRect(cx-5, cy-14, 10, 4);
+      ctx.fillRect(cx-7, cy-12, 3, 4);
+      ctx.fillRect(cx+4, cy-12, 3, 4);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+
+      // Smile
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
+      // Exclamation mark — only shown before first conversation
+      if (!houseNpcMet) {
+        const blink = Math.floor(Date.now() / 500) % 2 === 0;
+        ctx.fillStyle = blink ? '#ffcb05' : '#c89000';
+        ctx.fillRect(cx-2, cy-24, 4, 8); // ! bar
+        ctx.fillRect(cx-2, cy-13, 4, 3); // ! dot
+      }
+    }
+
+    function drawHouse2NPC(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (dark blue)
+      ctx.fillStyle = '#1a3a80';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+      // Clawed feet
+      ctx.fillStyle = '#0a1a50';
+      ctx.fillRect(cx-7, cy+11, 3, 3);
+      ctx.fillRect(cx-4, cy+11, 2, 3);
+      ctx.fillRect(cx+2, cy+11, 2, 3);
+      ctx.fillRect(cx+4, cy+11, 3, 3);
+
+      // Body (blue)
+      ctx.fillStyle = '#1e50c8';
+      ctx.fillRect(cx-7, cy-4, 14, 10);
+
+      // Rib marks (white lines on chest)
+      ctx.fillStyle = '#e0e8ff';
+      ctx.fillRect(cx-4, cy-2, 8, 1);
+      ctx.fillRect(cx-4, cy+1, 8, 1);
+      ctx.fillRect(cx-4, cy+4, 8, 1);
+
+      // Arms (blue)
+      ctx.fillStyle = '#1e50c8';
+      ctx.fillRect(cx-11, cy-3, 5, 7);
+      ctx.fillRect(cx+6,  cy-3, 5, 7);
+      // Clawed hands
+      ctx.fillStyle = '#0a1a50';
+      ctx.fillRect(cx-13, cy+3, 3, 2);
+      ctx.fillRect(cx-11, cy+4, 2, 3);
+      ctx.fillRect(cx+9,  cy+3, 3, 2);
+      ctx.fillRect(cx+9,  cy+4, 2, 3);
+
+      // Head (blue)
+      ctx.fillStyle = '#1e50c8';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Snout
+      ctx.fillStyle = '#1640a8';
+      ctx.fillRect(cx-3, cy-7, 6, 4);
+
+      // White spiky hair
+      ctx.fillStyle = '#e8eeff';
+      // Base of hair
+      ctx.fillRect(cx-5, cy-16, 10, 4);
+      // Spikes
+      ctx.fillRect(cx-7, cy-18, 3, 5);
+      ctx.fillRect(cx-3, cy-20, 3, 6);
+      ctx.fillRect(cx+1, cy-19, 3, 6);
+      ctx.fillRect(cx+4, cy-17, 3, 4);
+
+      // White eyes (glowing)
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx-4, cy-10, 3, 3);
+      ctx.fillRect(cx+1, cy-10, 3, 3);
+      // Pupil hint (very light blue)
+      ctx.fillStyle = '#a0c0ff';
+      ctx.fillRect(cx-3, cy-9, 2, 2);
+      ctx.fillRect(cx+2, cy-9, 2, 2);
+
+      // Tail (behind, dark blue)
+      ctx.fillStyle = '#1640a8';
+      ctx.fillRect(cx+7, cy+2, 5, 4);
+      ctx.fillRect(cx+10, cy+1, 3, 3);
+      ctx.fillStyle = '#e8eeff';
+      ctx.fillRect(cx+11, cy, 2, 2); // white tail tip
     }
 
     function drawHealer(ctx, sx, sy) {
@@ -2732,10 +2888,13 @@
                           : dialogType === 'clinicnpc'   ? CLINIC_NPC_DIALOG
                           : dialogType === 'clinicnpc2'  ? CLINIC_NPC2_DIALOG
                           : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG
+                          : dialogType === 'house2npc'   ? HOUSE2_NPC_DIALOG
+                          : dialogType === 'housenpc'    ? HOUSE_NPC_DIALOG
                           : NPC_DIALOG;
       if (dialogPage >= currentDialog.length) {
-        if (dialogType === 'healer') healAllCreatures();
-        if (dialogType === 'prof')   meadowMet = true;
+        if (dialogType === 'healer')   healAllCreatures();
+        if (dialogType === 'prof')     meadowMet = true;
+        if (dialogType === 'housenpc') houseNpcMet = true;
         dialogActive = false;
         dialogPage   = 0;
         dialogType   = 'prof';
@@ -3122,6 +3281,22 @@
           dialogType   = 'shopnpc';
           return;
         }
+        // Walking into floor-1 house NPC triggers dialog
+        if (currentArea === 'house' && nx === HOUSE_NPC.tileX && ny === HOUSE_NPC.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'housenpc';
+          return;
+        }
+        // Walking into floor-2 wolf NPC triggers dialog
+        if (currentArea === 'house2' && nx === HOUSE2_NPC.tileX && ny === HOUSE2_NPC.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'house2npc';
+          return;
+        }
         if (isWalkable(nx, ny)) {
           player.fromX = player.tileX;
           player.fromY = player.tileY;
@@ -3213,7 +3388,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3258,7 +3433,7 @@
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3335,7 +3510,7 @@
 
       // Dialog
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3412,12 +3587,17 @@
       ctx.fillText('House', 320, 16);
       ctx.textAlign = 'left';
 
+      // NPC
+      const hnpcSX = HOUSE_OFFSET_X + HOUSE_NPC.tileX * TILE_SIZE;
+      const hnpcSY = HOUSE_OFFSET_Y + HOUSE_NPC.tileY * TILE_SIZE;
+      drawHouseNPC(ctx, hnpcSX, hnpcSY);
+
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, HOUSE_OFFSET_X + player.pixelX, HOUSE_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = NPC_DIALOG;
+        const dlg = HOUSE_NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3476,12 +3656,17 @@
       ctx.fillText('House - Floor 2', 320, 16);
       ctx.textAlign = 'left';
 
+      // NPC (wolf)
+      const npcSX = HOUSE2_OFFSET_X + HOUSE2_NPC.tileX * TILE_SIZE;
+      const npcSY = HOUSE2_OFFSET_Y + HOUSE2_NPC.tileY * TILE_SIZE;
+      drawHouse2NPC(ctx, npcSX, npcSY);
+
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, HOUSE2_OFFSET_X + player.pixelX, HOUSE2_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = NPC_DIALOG;
+        const dlg = HOUSE2_NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3587,10 +3772,10 @@
         maxHp: 95,
         atk: 5, dfc: 5, mag: 15, mdf: 12, spd: 10, lck: 8,
         moves: [
-          { name: 'Vine Peck',   type: 'grass', cat: 'physical', power: 14 },
+          { name: 'Seed Spit',   type: 'grass', cat: 'physical', power: 5, hits: [2, 5] },
           { name: 'Leaf Storm',  type: 'grass', cat: 'magic',    power: 12 },
           { name: 'Leech Seed',  type: 'grass', cat: 'status',   effect: { type: 'apply_status', status: 'seeded',   target: 'opponent' } },
-          { name: 'Quick Kick',  type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Fast Pecks',  type: 'basic', cat: 'physical', power:  7, priority: true },
         ]
       },
       {
@@ -3619,6 +3804,72 @@
           { name: 'Muddy Spores', type: 'basic', cat: 'status',   effect: { stat: 'atk', target: 'opponent', amount: -3 } },
         ]
       },
+      {
+        name: 'Treer',
+        type: 'grass',
+        img: 'treer.png',
+        maxHp: 100,
+        atk: 8, dfc: 10, mag: 14, mdf: 11, spd: 12, lck: 9,
+        moves: [
+          { name: 'Antler Slam',   type: 'grass', cat: 'physical', power: 14 },
+          { name: 'Leaf Cascade',  type: 'grass', cat: 'magic',    power: 13 },
+          { name: 'Petal Dance',   type: 'grass', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 3 } },
+          { name: 'Hoof Strike',   type: 'basic', cat: 'physical', power:  8 },
+        ]
+      },
+      {
+        name: 'Magmoad',
+        type: 'fire',
+        img: 'magmoad.png',
+        maxHp: 115,
+        atk: 13, dfc: 14, mag: 10, mdf: 10, spd: 3, lck: 6,
+        moves: [
+          { name: 'Lava Slam',    type: 'fire',  cat: 'physical', power: 15 },
+          { name: 'Magma Burst',  type: 'fire',  cat: 'magic',    power: 13 },
+          { name: 'Smoke Veil',   type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
+          { name: 'Body Press',   type: 'basic', cat: 'physical', power:  9 },
+        ]
+      },
+      {
+        name: 'Thornlet',
+        type: 'grass',
+        img: 'thornlet.png',
+        maxHp: 110,
+        atk: 8, dfc: 15, mag: 10, mdf: 12, spd: 5, lck: 6,
+        moves: [
+          { name: 'Thorn Jab',    type: 'grass', cat: 'physical', power: 13 },
+          { name: 'Petal Burst',  type: 'grass', cat: 'magic',    power: 11 },
+          { name: 'Barb Guard',   type: 'grass', cat: 'status',   effect: { stat: 'dfc', target: 'self',     amount: 3  } },
+          { name: 'Tackle',       type: 'basic', cat: 'physical', power:  8 },
+        ]
+      },
+      {
+        name: 'Seakey',
+        type: 'water',
+        img: 'seakey.png',
+        landSpawn: true,
+        maxHp: 95,
+        atk: 10, dfc: 7, mag: 13, mdf: 9, spd: 15, lck: 7,
+        moves: [
+          { name: 'Aqua Swipe',   type: 'water', cat: 'physical', power: 13 },
+          { name: 'Tidal Spin',   type: 'water', cat: 'magic',    power: 12 },
+          { name: 'Smoky Mist',   type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
+          { name: 'Claw Scratch', type: 'basic', cat: 'physical', power:  8 },
+        ]
+      },
+      {
+        name: 'Grumblaze',
+        type: 'fire',
+        img: 'grumblaze.png',
+        maxHp: 100,
+        atk: 15, dfc: 7, mag: 9, mdf: 6, spd: 8, lck: 5,
+        moves: [
+          { name: 'Ember Claw',    type: 'fire',  cat: 'physical', power: 15 },
+          { name: 'Gut Blast',     type: 'fire',  cat: 'magic',    power: 12 },
+          { name: 'Sluggish Aura', type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
+          { name: 'Dead Weight',   type: 'basic', cat: 'physical', power:  9 },
+        ]
+      },
     ];
 
     let state = null;
@@ -3639,7 +3890,7 @@
     function initState(fromSurf = false) {
       const pool = fromSurf
         ? wildCreatures.filter(c => c.type === 'water')
-        : wildCreatures.filter(c => c.type !== 'water');
+        : wildCreatures.filter(c => c.type !== 'water' || c.landSpawn);
       const wild = pool[Math.floor(Math.random() * pool.length)];
       // Use saved player state if available, otherwise start fresh
       const playerBase = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
@@ -3708,7 +3959,8 @@
         btn.className = `move-btn cat-${move.cat}`;
         btn.innerHTML = `
           <span class="move-name">${move.name}</span>
-          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel} · ${fxDesc}</span>
+          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel}</span>
+          <span class="move-power">${fxDesc}</span>
         `;
         btn.disabled = state.over || state.player.hp <= 0;
         btn.onclick  = () => playerMove(i);
@@ -3735,7 +3987,8 @@
         btn.disabled  = true;
         btn.innerHTML = `
           <span class="move-name">${move.name}</span>
-          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel} · ${fxDesc}</span>
+          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel}</span>
+          <span class="move-power">${fxDesc}</span>
         `;
         oppContainer.appendChild(btn);
       });
@@ -3787,6 +4040,27 @@
           if (fx.amount > 0) log(`⬆️ ${tName}'s ${fx.stat.toUpperCase()} rose!`, 'effective');
           else               log(`⬇️ ${tName}'s ${fx.stat.toUpperCase()} fell!`, 'weak');
         }
+        return;
+      }
+
+      // ── Multi-hit moves ──────────────────────────────────────────────────
+      const hitCount = move.hits
+        ? Math.floor(Math.random() * (move.hits[1] - move.hits[0] + 1)) + move.hits[0]
+        : 1;
+
+      if (hitCount > 1) {
+        log(`${catTag} ${attacker.name} used ${move.name}!`);
+        let totalDamage = 0;
+        for (let h = 0; h < hitCount; h++) {
+          if (defender.hp <= 0) break;
+          let dmg = Math.round((attacker.atk + move.power) / 2);
+          const eff = move.type === 'basic' ? 1.0 : (typeChart[move.type]?.[defender.type] ?? 1.0);
+          dmg = Math.max(1, Math.round(dmg * eff * (30 / (30 + defender.dfc))));
+          defender.hp -= dmg;
+          totalDamage += dmg;
+        }
+        log(`💥 Hit ${hitCount} times! (${totalDamage} total dmg)`, 'effective');
+        if (defender.hp <= 0) { defender.hp = 0; state.over = true; }
         return;
       }
 
@@ -3925,7 +4199,9 @@
       const opponentMove   = pickOpponentMove();
       const pDrenched      = !!state.player.statusEffects?.drenched;
       const oDrenched      = !!state.opponent.statusEffects?.drenched;
-      const playerFirst    = pDrenched && !oDrenched ? false
+      const hasPriority    = !!state.player.moves[moveIdx].priority;
+      const playerFirst    = hasPriority ? true
+                           : pDrenched && !oDrenched ? false
                            : oDrenched && !pDrenched ? true
                            : state.player.spd >= state.opponent.spd;
 
