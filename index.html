@@ -157,6 +157,102 @@
       transform: scale(0.92);
     }
 
+    .btn-b {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: rgba(20,80,180,0.8);
+      border: 3px solid rgba(100,160,255,0.65);
+      color: #fff;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 13px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none; -webkit-user-select: none;
+      touch-action: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      transition: transform 60ms, background 60ms;
+      padding: 0;
+      margin-left: 8px; align-self: flex-end;
+    }
+    .btn-b:active { background: rgba(40,110,220,0.95); transform: scale(0.92); }
+
+    /* ── Bag overlay ── */
+    #bagOverlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #bagPanel {
+      background: #1a1e2e; border: 2px solid rgba(100,160,255,0.5);
+      border-radius: 18px; padding: 24px; width: min(340px, 90vw);
+      display: flex; flex-direction: column; gap: 14px;
+      font-family: 'Press Start 2P', monospace;
+    }
+    .bag-title { font-size: 13px; color: #f0c040; text-align: center; }
+    .bag-coins { font-size: 11px; color: #ffe066; text-align: center; }
+    .bag-items { display: flex; flex-direction: column; gap: 10px; }
+    .bag-item {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .bag-item-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .bag-item-name { font-size: 10px; color: #fff; }
+    .bag-item-desc { font-size: 7px; color: #aaa; }
+    .bag-item-count { font-size: 10px; color: #ffe066; white-space: nowrap; }
+    .bag-use-btn {
+      background: rgba(60,180,60,0.25); border: 1px solid rgba(60,180,60,0.6);
+      color: #80ff80; font-family: inherit; font-size: 9px;
+      border-radius: 8px; padding: 6px 10px; cursor: pointer;
+      transition: background 100ms;
+    }
+    .bag-use-btn:hover:not(:disabled) { background: rgba(60,180,60,0.4); }
+    .bag-use-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+    .bag-close-btn {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+      color: #ccc; font-family: inherit; font-size: 9px;
+      border-radius: 10px; padding: 8px; cursor: pointer;
+    }
+    .bag-close-btn:hover { background: rgba(255,255,255,0.2); }
+
+    /* ── Shop overlay ── */
+    #shopOverlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.7);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #shopPanel {
+      background: #1a1e2e; border: 2px solid rgba(255,200,50,0.5);
+      border-radius: 18px; padding: 24px; width: min(340px, 90vw);
+      display: flex; flex-direction: column; gap: 14px;
+      font-family: 'Press Start 2P', monospace;
+    }
+    .shop-title { font-size: 13px; color: #f0c040; text-align: center; }
+    .shop-coins { font-size: 11px; color: #ffe066; text-align: center; }
+    .shop-items { display: flex; flex-direction: column; gap: 10px; }
+    .shop-item {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.07); border-radius: 10px; padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .shop-item-info { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+    .shop-item-name { font-size: 10px; color: #fff; }
+    .shop-item-desc { font-size: 7px; color: #aaa; }
+    .shop-item-price { font-size: 9px; color: #ffe066; white-space: nowrap; }
+    .shop-buy-btn {
+      background: rgba(255,180,20,0.2); border: 1px solid rgba(255,180,20,0.6);
+      color: #ffd050; font-family: inherit; font-size: 9px;
+      border-radius: 8px; padding: 6px 10px; cursor: pointer;
+      transition: background 100ms;
+    }
+    .shop-buy-btn:hover { background: rgba(255,180,20,0.4); }
+    .shop-msg { font-size: 8px; color: #aaffaa; text-align: center; min-height: 14px; }
+    .shop-close-btn {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.25);
+      color: #ccc; font-family: inherit; font-size: 9px;
+      border-radius: 10px; padding: 8px; cursor: pointer;
+    }
+    .shop-close-btn:hover { background: rgba(255,255,255,0.2); }
+
     /* ============================================================
        TRANSITION OVERLAY
     ============================================================ */
@@ -662,6 +758,67 @@
       </div>
       <!-- A button -->
       <button class="btn-a" id="btn-a">A</button>
+      <!-- B button (bag) -->
+      <button class="btn-b" id="btn-b" onclick="openBag()">B</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       BAG OVERLAY
+  ============================================================ -->
+  <div id="bagOverlay" style="display:none">
+    <div id="bagPanel">
+      <div class="bag-title">🎒 Bag</div>
+      <div class="bag-coins">🪙 <span id="bagCoins">0</span> coins</div>
+      <div class="bag-items">
+        <div class="bag-item">
+          <div class="bag-item-info">
+            <span class="bag-item-name">🧪 Potion</span>
+            <span class="bag-item-desc">Restores 40 HP to one critter</span>
+          </div>
+          <span class="bag-item-count">×<span id="bagPotionCount">0</span></span>
+          <button class="bag-use-btn" id="bagUsePotion" onclick="useBagItem('potion')">Use</button>
+        </div>
+        <div class="bag-item">
+          <div class="bag-item-info">
+            <span class="bag-item-name">💊 Revive</span>
+            <span class="bag-item-desc">Revives a fainted critter at 50% HP</span>
+          </div>
+          <span class="bag-item-count">×<span id="bagReviveCount">0</span></span>
+          <button class="bag-use-btn" id="bagUseRevive" onclick="useBagItem('revive')">Use</button>
+        </div>
+      </div>
+      <button class="bag-close-btn" onclick="closeBag()">Close</button>
+    </div>
+  </div>
+
+  <!-- ============================================================
+       SHOP OVERLAY
+  ============================================================ -->
+  <div id="shopOverlay" style="display:none">
+    <div id="shopPanel">
+      <div class="shop-title">🛒 Item Shop</div>
+      <div class="shop-coins">🪙 <span id="shopCoins">0</span> coins</div>
+      <div class="shop-items">
+        <div class="shop-item">
+          <div class="shop-item-info">
+            <span class="shop-item-name">🧪 Potion</span>
+            <span class="shop-item-desc">Restores 40 HP to one critter</span>
+          </div>
+          <span class="shop-item-price">30 🪙</span>
+          <button class="shop-buy-btn" onclick="buyItem('potion')">Buy</button>
+        </div>
+        <div class="shop-item">
+          <div class="shop-item-info">
+            <span class="shop-item-name">💊 Revive</span>
+            <span class="shop-item-desc">Revives a fainted critter at 50% HP</span>
+          </div>
+          <span class="shop-item-price">50 🪙</span>
+          <button class="shop-buy-btn" onclick="buyItem('revive')">Buy</button>
+        </div>
+      </div>
+      <div id="shopMsg" class="shop-msg"></div>
+      <button class="shop-close-btn" onclick="closeShopMenu()">Leave Shop</button>
     </div>
   </div>
 
@@ -963,6 +1120,58 @@
       }, 300);
     }
 
+    function enterShop() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea        = 'shop';
+        player.tileX       = SHOP_ENTRY.tileX;
+        player.tileY       = SHOP_ENTRY.tileY;
+        player.pixelX      = SHOP_ENTRY.tileX * TILE_SIZE;
+        player.pixelY      = SHOP_ENTRY.tileY * TILE_SIZE;
+        player.fromX       = player.tileX;
+        player.fromY       = player.tileY;
+        player.toX         = player.tileX;
+        player.toY         = player.tileY;
+        player.moving      = false;
+        player.dir         = 'up';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function exitShop() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea        = 'outdoor';
+        player.tileX       = SHOP_EXIT.tileX;
+        player.tileY       = SHOP_EXIT.tileY;
+        player.pixelX      = SHOP_EXIT.tileX * TILE_SIZE;
+        player.pixelY      = SHOP_EXIT.tileY * TILE_SIZE;
+        player.fromX       = player.tileX;
+        player.fromY       = player.tileY;
+        player.toX         = player.tileX;
+        player.toY         = player.tileY;
+        player.moving      = false;
+        player.dir         = 'down';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
     // ============================================================
     // WORLD — Tile map & player
     // ============================================================
@@ -977,11 +1186,13 @@
     const BROOF = 5, BWALL = 6, BDOOR = 7;
     const FLOOR = 8, IWALL = 9, IBOOK = 10, ITABLE = 11, IEXIT = 12;
     const HROOF = 13, HWALL = 14, HDOOR = 15; // healer building: white walls, pink roof
+    const SDOOR = 16;                          // shop door
     const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, HROOF, HWALL, IWALL, IBOOK, ITABLE]);
 
     const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER, R=BROOF, B=BWALL, D=BDOOR;
     const IV=IWALL, IF=FLOOR, IB=IBOOK, IT=ITABLE, IE=IEXIT;
     const HR=HROOF, HW=HWALL, HD=HDOOR;
+    const SD=SDOOR;
 
     // 30 cols × 25 rows
     // Horizontal roads at rows 5 and 17; vertical road at col 14 between them
@@ -1000,9 +1211,9 @@
       [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,T,T,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,T,T,G,G,G,G,G,T],
       [T,G,T,T,G,H,H,H,H,G,G,G,G,G,P,G,G,G,G,G,H,H,H,H,G,G,T,T,G,T],
-      [T,G,G,G,G,H,H,H,H,G,T,T,G,G,P,G,G,T,T,G,H,H,H,H,G,G,T,T,G,T],
-      [T,G,G,G,G,G,G,G,G,G,T,T,G,G,P,G,G,T,T,G,G,G,G,G,G,G,G,G,G,T],
-      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
+      [T,G,G,G,G,H,H,H,H,G,T,T,G,G,P,G,G,T,T,G,R,R,R,R,R,G,T,T,G,T],
+      [T,G,G,G,G,G,G,G,G,G,T,T,G,G,P,G,G,T,T,G,B,B,B,B,B,G,G,G,G,T],
+      [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,B,B,SD,B,B,G,G,G,G,T],
       [T,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,T,T,G,G,H,H,H,G,G,G,G,G,G,G,G,G,G,G,H,H,H,G,T,T,G,G,G,T],
@@ -1026,6 +1237,25 @@
     const CLINIC_OFFSET_Y = (CANVAS_H - CLINIC_ROWS * TILE_SIZE) / 2; // 80
     const CLINIC_ENTRY = { tileX: 5, tileY: 8 };  // where player appears inside clinic
     const CLINIC_EXIT  = { tileX: 17, tileY: 6 }; // where player reappears after leaving clinic
+
+    const SHOP_COLS = 12, SHOP_ROWS = 10;
+    const SHOP_OFFSET_X = 128, SHOP_OFFSET_Y = 80;
+    const SHOP_ENTRY   = { tileX: 5, tileY: 7 };  // where player appears inside shop
+    const SHOP_EXIT    = { tileX: 22, tileY: 17 }; // where player reappears after leaving shop
+    const SHOPKEEPER   = { tileX: 5, tileY: 2 };   // behind the counter
+
+    const SHOP_MAP = [
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IT,IT,IT,IT,IT,IT,IT,IT,IT,IT,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
+      [IV,IF,IF,IF,IF,IE,IF,IF,IF,IF,IF,IV],
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+    ];
 
     const CLINIC_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
@@ -1313,6 +1543,29 @@
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(sx+20, sy+19, 2, 2);
           break;
+
+        case SDOOR:
+          // Brown wall with blue shop door
+          ctx.fillStyle = '#7a4f2e';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#5a3518';
+          ctx.fillRect(sx, sy+7,  s, 2);
+          ctx.fillRect(sx+15, sy, 2, 7);
+          ctx.fillRect(sx+7,  sy+25, 2, 7);
+          ctx.fillRect(sx+22, sy+25, 2, 7);
+          // Blue door frame
+          ctx.fillStyle = '#1a4a8a';
+          ctx.fillRect(sx+7, sy+8, 18, 24);
+          // Door panel
+          ctx.fillStyle = '#2a6abf';
+          ctx.fillRect(sx+9, sy+10, 14, 20);
+          // Door highlight
+          ctx.fillStyle = '#4a8ae0';
+          ctx.fillRect(sx+10, sy+11, 4, 8);
+          // Gold knob
+          ctx.fillStyle = '#d4a020';
+          ctx.fillRect(sx+21, sy+20, 2, 2);
+          break;
       }
     }
 
@@ -1531,6 +1784,59 @@
       ctx.textAlign = 'left';
     }
 
+    function drawShopkeeper(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#5a3a1a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (blue shopkeeper vest)
+      ctx.fillStyle = '#2a5a9a';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      // White shirt front
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(cx-3, cy-3, 6, 8);
+      // Arms
+      ctx.fillStyle = '#2a5a9a';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (brown)
+      ctx.fillStyle = '#5a3010';
+      ctx.fillRect(cx-5, cy-14, 10, 4);
+      ctx.fillRect(cx-7, cy-12, 3, 4);
+      ctx.fillRect(cx+4, cy-12, 3, 4);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+
+      // Smile
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
+      // Coin sparkle above shopkeeper
+      const blink = Math.floor(Date.now() / 500) % 2 === 0;
+      ctx.fillStyle = blink ? '#ffd700' : '#c8a800';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('🪙', cx, cy - 22);
+      ctx.textAlign = 'left';
+    }
+
     // Canvas-based Pokémon-style dialog box
     function drawDialog(ctx, lines) {
       const pad = 12;
@@ -1606,8 +1912,151 @@
       roster = roster.map(c => ({ ...c, hp: c.maxHp }));
     }
 
-    // ── Surfing ────────────────────────────────────────────────
+    // ── Bag ────────────────────────────────────────────────────
+    function openBag() {
+      if (gameState !== 'world') return; // bag only usable outside battle
+      document.getElementById('bagCoins').textContent      = coins;
+      document.getElementById('bagPotionCount').textContent = inventory.potions;
+      document.getElementById('bagReviveCount').textContent = inventory.revives;
+      document.getElementById('bagUsePotion').disabled = inventory.potions === 0;
+      document.getElementById('bagUseRevive').disabled = inventory.revives === 0;
+      document.getElementById('bagOverlay').style.display = 'flex';
+    }
+
+    function closeBag() {
+      document.getElementById('bagOverlay').style.display = 'none';
+    }
+
+    function useBagItem(type) {
+      if (type === 'potion') {
+        if (inventory.potions === 0) return;
+        // Pick a critter that isn't at full HP and isn't fainted
+        const targets = buildUsableTargets('potion');
+        if (targets.length === 0) { alert('All critters are already at full HP!'); return; }
+        if (targets.length === 1) {
+          applyPotion(targets[0].ref);
+          closeBag();
+          return;
+        }
+        showBagTargetPicker(targets, (ref) => { applyPotion(ref); closeBag(); });
+      } else if (type === 'revive') {
+        if (inventory.revives === 0) return;
+        const targets = buildUsableTargets('revive');
+        if (targets.length === 0) { alert('No fainted critters to revive!'); return; }
+        if (targets.length === 1) {
+          applyRevive(targets[0].ref);
+          closeBag();
+          return;
+        }
+        showBagTargetPicker(targets, (ref) => { applyRevive(ref); closeBag(); });
+      }
+    }
+
+    function buildUsableTargets(type) {
+      const active = persistentPlayer || (state && state.player);
+      const targets = [];
+      if (active) {
+        if (type === 'potion' && active.hp > 0 && active.hp < active.maxHp)
+          targets.push({ name: active.name, hp: active.hp, maxHp: active.maxHp, img: active.img, ref: active, isActive: true });
+        if (type === 'revive' && active.hp <= 0)
+          targets.push({ name: active.name, hp: active.hp, maxHp: active.maxHp, img: active.img, ref: active, isActive: true });
+      }
+      roster.forEach((c, i) => {
+        if (type === 'potion' && c.hp > 0 && c.hp < c.maxHp)
+          targets.push({ name: c.name, hp: c.hp, maxHp: c.maxHp, img: c.img, ref: c, isActive: false, idx: i });
+        if (type === 'revive' && c.hp <= 0)
+          targets.push({ name: c.name, hp: c.hp, maxHp: c.maxHp, img: c.img, ref: c, isActive: false, idx: i });
+      });
+      return targets;
+    }
+
+    function applyPotion(critter) {
+      critter.hp = Math.min(critter.maxHp, critter.hp + 40);
+      if (persistentPlayer && persistentPlayer === critter) {
+        persistentPlayer.hp = critter.hp;
+      }
+      inventory.potions--;
+    }
+
+    function applyRevive(critter) {
+      critter.hp = Math.floor(critter.maxHp * 0.5);
+      if (persistentPlayer && persistentPlayer === critter) {
+        persistentPlayer.hp = critter.hp;
+      }
+      inventory.revives--;
+    }
+
+    function showBagTargetPicker(targets, onPick) {
+      // Build a simple overlay picker
+      const existing = document.getElementById('bagPicker');
+      if (existing) existing.remove();
+
+      const picker = document.createElement('div');
+      picker.id = 'bagPicker';
+      picker.style.cssText = `position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.6);
+        display:flex;align-items:center;justify-content:center;`;
+      picker.innerHTML = `
+        <div style="background:#1a1e2e;border:2px solid rgba(255,255,255,0.3);border-radius:16px;
+          padding:20px;width:min(320px,88vw);font-family:'Press Start 2P',monospace;">
+          <div style="font-size:10px;color:#f0c040;text-align:center;margin-bottom:14px;">
+            Choose a critter:</div>
+          <div id="bagPickerList" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button onclick="document.getElementById('bagPicker').remove()"
+            style="margin-top:12px;width:100%;background:rgba(255,255,255,0.1);
+              border:1px solid rgba(255,255,255,0.25);color:#ccc;font-family:inherit;
+              font-size:8px;border-radius:8px;padding:8px;cursor:pointer;">Cancel</button>
+        </div>`;
+      document.body.appendChild(picker);
+
+      const list = document.getElementById('bagPickerList');
+      targets.forEach(t => {
+        const btn = document.createElement('button');
+        btn.style.cssText = `display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.07);
+          border:1px solid rgba(255,255,255,0.2);border-radius:10px;padding:8px 12px;cursor:pointer;
+          font-family:inherit;color:#fff;`;
+        btn.innerHTML = `<img src="${t.img}" style="width:32px;height:32px;object-fit:contain;">
+          <div style="text-align:left;flex:1;">
+            <div style="font-size:9px;">${t.name}</div>
+            <div style="font-size:7px;color:#aaa;">HP ${t.hp} / ${t.maxHp}</div>
+          </div>`;
+        btn.onclick = () => { picker.remove(); onPick(t.ref); };
+        list.appendChild(btn);
+      });
+    }
+
+    // ── Shop ───────────────────────────────────────────────────
+    function openShopMenu() {
+      document.getElementById('shopCoins').textContent = coins;
+      document.getElementById('shopMsg').textContent   = 'Welcome! What can I get you?';
+      document.getElementById('shopOverlay').style.display = 'flex';
+    }
+
+    function closeShopMenu() {
+      document.getElementById('shopOverlay').style.display = 'none';
+    }
+
+    function buyItem(type) {
+      const prices = { potion: 30, revive: 50 };
+      const price  = prices[type];
+      const msg    = document.getElementById('shopMsg');
+      if (coins < price) {
+        msg.style.color = '#ff8080';
+        msg.textContent = `Not enough coins! (need ${price} 🪙)`;
+        return;
+      }
+      coins -= price;
+      inventory[type === 'potion' ? 'potions' : 'revives']++;
+      document.getElementById('shopCoins').textContent = coins;
+      msg.style.color = '#aaffaa';
+      msg.textContent = type === 'potion'
+        ? `Bought a Potion! (×${inventory.potions})`
+        : `Bought a Revive! (×${inventory.revives})`;
+    }
+
+    // ── Surfing / Coins / Inventory ────────────────────────────
     let isSurfing = false;
+    let coins     = 0;
+    let inventory = { potions: 0, revives: 0 };
 
     function hasWaterType() {
       const active = persistentPlayer || creatures.player;
@@ -1645,6 +2094,12 @@
         handleAButton();
         return;
       }
+      if (e.key === 'b' || e.key === 'B') {
+        // Toggle bag if already open, otherwise open
+        const bag = document.getElementById('bagOverlay');
+        if (bag.style.display !== 'none') { closeBag(); } else { openBag(); }
+        return;
+      }
       keys[e.key] = true;
       if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
         e.preventDefault();
@@ -1661,6 +2116,10 @@
         if (col < 0 || col >= CLINIC_COLS || row < 0 || row >= CLINIC_ROWS) return false;
         return !SOLID_TILES.has(CLINIC_MAP[row][col]);
       }
+      if (currentArea === 'shop') {
+        if (col < 0 || col >= SHOP_COLS || row < 0 || row >= SHOP_ROWS) return false;
+        return !SOLID_TILES.has(SHOP_MAP[row][col]);
+      }
       if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return false;
       const tile = MAP[row][col];
       if (isSurfing && tile === WATER) return true;
@@ -1672,14 +2131,17 @@
     function onTileLand(col, row) {
       if (gameState !== 'world' || dialogActive) return;
       if (currentArea === 'outdoor') {
-        if (MAP[row][col] === BDOOR) { enterBuilding(); return; }
-        if (MAP[row][col] === HDOOR) { enterClinic();   return; }
+        if (MAP[row][col] === BDOOR)  { enterBuilding(); return; }
+        if (MAP[row][col] === HDOOR)  { enterClinic();   return; }
+        if (MAP[row][col] === SDOOR)  { enterShop();     return; }
         if (isSurfing && MAP[row][col] !== WATER) isSurfing = false; // stepped off water
         if (MAP[row][col] === TALL && Math.random() < 0.35) triggerEncounter();
       } else if (currentArea === 'indoor') {
         if (INDOOR_MAP[row][col] === IEXIT) exitBuilding();
       } else if (currentArea === 'healer') {
         if (CLINIC_MAP[row][col] === IEXIT) exitClinic();
+      } else if (currentArea === 'shop') {
+        if (SHOP_MAP[row][col] === IEXIT) exitShop();
       }
     }
 
@@ -1728,6 +2190,12 @@
           dialogType   = 'healer';
           return;
         }
+        // Walking into shopkeeper opens the shop buy menu
+        if (currentArea === 'shop' && nx === SHOPKEEPER.tileX && ny === SHOPKEEPER.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          openShopMenu();
+          return;
+        }
         if (isWalkable(nx, ny)) {
           player.fromX = player.tileX;
           player.fromY = player.tileY;
@@ -1753,6 +2221,7 @@
     function renderWorld(ctx) {
       if (currentArea === 'indoor') { renderIndoor(ctx); return; }
       if (currentArea === 'healer') { renderClinic(ctx); return; }
+      if (currentArea === 'shop')   { renderShop(ctx);   return; }
 
       const { x: camX, y: camY } = getCameraOffset();
       const startCol = Math.floor(camX / TILE_SIZE);
@@ -1779,6 +2248,16 @@
         ctx.lineWidth = 1;
         ctx.strokeRect(px - pw / 2, py - ph / 2, pw, ph);
         ctx.strokeRect(px - ph / 2, py - pw / 2, ph, pw);
+      }
+
+      // Shop sign on roof (centre tile col 22, row 14)
+      {
+        const px = 22 * TILE_SIZE + TILE_SIZE / 2 - camX;
+        const py = 14 * TILE_SIZE + TILE_SIZE / 2 - camY;
+        ctx.font = '16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('🪙', px, py + 5);
+        ctx.textAlign = 'left';
       }
 
       // (Both NPCs are inside their buildings — not drawn outdoors)
@@ -1885,6 +2364,42 @@
       // Dialog
       if (dialogActive) {
         const dlg = dialogType === 'healer' ? HEALER_DIALOG : NPC_DIALOG;
+        drawDialog(ctx, dlg[dialogPage]);
+      }
+    }
+
+    function renderShop(ctx) {
+      ctx.fillStyle = '#1a1a10';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      for (let row = 0; row < SHOP_ROWS; row++) {
+        for (let col = 0; col < SHOP_COLS; col++) {
+          const sx = SHOP_OFFSET_X + col * TILE_SIZE;
+          const sy = SHOP_OFFSET_Y + row * TILE_SIZE;
+          drawTile(ctx, SHOP_MAP[row][col], sx, sy);
+        }
+      }
+
+      // Banner
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, CANVAS_W, 24);
+      ctx.fillStyle = '#f0c040';
+      ctx.font = '10px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText("Item Shop", CANVAS_W / 2, 16);
+      ctx.textAlign = 'left';
+
+      // Shopkeeper NPC
+      const skSX = SHOP_OFFSET_X + SHOPKEEPER.tileX * TILE_SIZE;
+      const skSY = SHOP_OFFSET_Y + SHOPKEEPER.tileY * TILE_SIZE;
+      drawShopkeeper(ctx, skSX, skSY);
+
+      // Player
+      const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
+      drawPlayer(ctx, SHOP_OFFSET_X + player.pixelX, SHOP_OFFSET_Y + player.pixelY, player.dir, walkFrame);
+
+      if (dialogActive) {
+        const dlg = NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -2180,8 +2695,11 @@
         defender.hp = 0;
         state.over = true;
         if (defenderSide === 'opponent') {
-          // Player won — offer recruit
+          // Player won — award coins and offer recruit
+          const earned = 15 + Math.floor(Math.random() * 11); // 15–25
+          coins += earned;
           log(`${defender.name} fainted!`, 'win');
+          log(`💰 You earned ${earned} coins!`, 'win');
           showRecruitPrompt();
         } else {
           // Player's creature fainted
