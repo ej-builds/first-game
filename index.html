@@ -570,6 +570,7 @@
 
     .move-btn.cat-physical { border-left: 3px solid #e07030; }
     .move-btn.cat-magic    { border-left: 3px solid #9060e0; }
+    .move-btn.cat-status   { border-left: 3px solid #30b878; }
     .move-btn:hover:not(:disabled) {
       background: rgba(255,255,255,0.85);
       border-color: rgba(0,0,0,0.35);
@@ -627,6 +628,22 @@
 
     .play-again.visible { display: inline-block; }
     .play-again:hover { background: #ffd83a; transform: translateY(-1px); }
+
+    .battle-bag-btn {
+      margin-top: 12px;
+      background: rgba(60,120,60,0.85);
+      color: #fff;
+      border: 2px solid rgba(120,220,120,0.5);
+      padding: 8px 22px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: 0.04em;
+      box-shadow: 0 2px 10px rgba(0,160,0,0.3);
+    }
+    .battle-bag-btn:hover { background: rgba(80,160,80,0.95); transform: translateY(-1px); }
 
     /* ── Recruit prompt ── */
     .recruit-prompt {
@@ -858,7 +875,7 @@
           </div>
           <div class="card-moves-section">
             <div class="moves" id="moves-player"></div>
-            <button class="btn-swap" id="btn-swap" onclick="openSwapMenu()" style="display:none">⇄ Swap Creature</button>
+            <button class="btn-swap" id="btn-swap" onclick="openSwapMenu()" style="display:none">⇄ Swap Critter</button>
           </div>
         </div>
       </div>
@@ -904,6 +921,7 @@
       <div class="log-line">A wild Sharqua appeared! Pick your move.</div>
     </div>
 
+    <button class="battle-bag-btn" onclick="openBag()">🎒 Bag</button>
     <button class="play-again" id="playAgain" onclick="returnToWorld()">Return to World</button>
 
     <!-- Recruit prompt (shown after player wins) -->
@@ -999,7 +1017,9 @@
       // Close any open menus
       document.getElementById('swapPanel').style.display = 'none';
       // Save active creature's current HP (including if fainted — Nina can revive)
+      // Restore base stats first so status move buffs/debuffs don't persist
       if (state) {
+        restoreBaseStats(state.player);
         persistentPlayer = { ...state.player };
       }
 
@@ -1189,6 +1209,90 @@
       }, 300);
     }
 
+    function enterHouse2() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea   = 'house2';
+        player.tileX  = HOUSE2_ENTRY.tileX; player.tileY  = HOUSE2_ENTRY.tileY;
+        player.pixelX = HOUSE2_ENTRY.tileX * 32; player.pixelY = HOUSE2_ENTRY.tileY * 32;
+        player.fromX  = player.tileX; player.fromY = player.tileY;
+        player.toX    = player.tileX; player.toY   = player.tileY;
+        player.moving = false; player.dir = 'up';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function exitHouse2() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea   = 'outdoor';
+        player.tileX  = HOUSE_EXIT.tileX; player.tileY  = HOUSE_EXIT.tileY;
+        player.pixelX = HOUSE_EXIT.tileX * 32; player.pixelY = HOUSE_EXIT.tileY * 32;
+        player.fromX  = player.tileX; player.fromY = player.tileY;
+        player.toX    = player.tileX; player.toY   = player.tileY;
+        player.moving = false; player.dir = 'down';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function enterRoof() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea   = 'roof';
+        player.tileX  = ROOF_ENTRY.tileX; player.tileY  = ROOF_ENTRY.tileY;
+        player.pixelX = ROOF_ENTRY.tileX * 32; player.pixelY = ROOF_ENTRY.tileY * 32;
+        player.fromX  = player.tileX; player.fromY = player.tileY;
+        player.toX    = player.tileX; player.toY   = player.tileY;
+        player.moving = false; player.dir = 'up';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function exitRoof() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea   = 'house2';
+        player.tileX  = HOUSE2_ENTRY.tileX; player.tileY  = HOUSE2_ENTRY.tileY;
+        player.pixelX = HOUSE2_ENTRY.tileX * 32; player.pixelY = HOUSE2_ENTRY.tileY * 32;
+        player.fromX  = player.tileX; player.fromY = player.tileY;
+        player.toX    = player.tileX; player.toY   = player.tileY;
+        player.moving = false; player.dir = 'down';
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
     function exitShop() {
       if (gameState !== 'world') return;
       gameState = 'transitioning';
@@ -1239,9 +1343,14 @@
     const H2DOOR  = 23;                         // 2-story house front door (light blue)
     const H2FLOOR = 24;                         // 2-story house interior floor
     const H2WALL  = 25;                         // 2-story house first-floor wall (red, solid)
-    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, HROOF, HWALL, IWALL, IBOOK, ITABLE, CBED, SSHELF, H2ROOF, H2WIN, H2WALL]);
+    const LROOF   = 26;                         // lab/Dr. Meadow building roof (green, solid)
+    const RCARPET = 27;                         // red carpet (walkable)
+    const GCARPET = 28;                         // green carpet (walkable)
+    const BCARPET = 29;                         // blue carpet (walkable)
+    const HSTAIRS = 30;                         // ladder/stairs going up to floor 2
+    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, HROOF, HWALL, IWALL, IBOOK, ITABLE, CBED, SSHELF, H2ROOF, H2WIN, H2WALL, LROOF]);
 
-    const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER, R=BROOF, B=BWALL, D=BDOOR;
+    const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER, R=BROOF, B=BWALL, D=BDOOR, LR=LROOF, RC=RCARPET, GC=GCARPET, BC=BCARPET, HS=HSTAIRS;
     const IV=IWALL, IF=FLOOR, IB=IBOOK, IT=ITABLE, IE=IEXIT;
     const HR=HROOF, HW=HWALL, HD=HDOOR;
     const SD=SDOOR;
@@ -1254,12 +1363,12 @@
     const MAP = [
       [T,T,T,T,T,T,T,T,T,T,T,T,H2R,H2R,H2R,H2R,H2R,T,T,T,T,T,T,T,T,T,T,T,T,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,H2W,H2W,H2W,H2W,H2W,G,G,G,G,G,G,G,G,G,G,G,G,T],
-      [T,G,T,T,G,G,H,H,H,G,G,G,H2L,H2L,H2L,H2L,H2L,G,G,G,G,H,H,H,G,G,T,T,G,T],
-      [T,G,T,T,G,G,H,H,H,G,G,G,H2W,H2W,H2W,H2W,H2W,G,G,G,H,H,H,G,G,T,T,G,T],
+      [T,G,T,T,G,G,H,H,H,G,G,G,H2W,H2W,H2W,H2W,H2W,G,G,G,G,H,H,H,G,G,T,T,G,T],
+      [T,G,T,T,G,G,H,H,H,G,G,G,H2L,H2L,H2L,H2L,H2L,G,G,G,H,H,H,G,G,T,T,G,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,H2L,H2L,H2D,H2L,H2L,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,G,G,G,G,H,H,H,G,G,G,G,G,P,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
-      [T,G,T,T,G,G,H,H,R,R,R,R,R,G,P,HR,HR,HR,HR,HR,T,T,H,H,H,G,T,T,G,T],
+      [T,G,T,T,G,G,H,H,LR,LR,LR,LR,LR,G,P,HR,HR,HR,HR,HR,T,T,H,H,H,G,T,T,G,T],
       [T,G,T,T,G,G,G,G,B,B,B,B,B,G,P,HW,HW,HW,HW,HW,T,T,G,G,G,G,T,T,G,T],
       [T,G,G,G,G,G,G,G,B,B,D,B,B,G,P,HW,HW,HD,HW,HW,G,G,G,G,G,G,G,G,G,T],
       [T,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,P,T],
@@ -1314,23 +1423,64 @@
     const SHOP_NPC     = { tileX: 8, tileY: 5 };   // customer on the shop floor
 
     // ── 2-Story House ─────────────────────────────────────────────
-    const HOUSE_COLS = 12, HOUSE_ROWS = 10;
-    const HOUSE_ENTRY = { tileX: 5, tileY: 8 };
+    const HOUSE_COLS = 11, HOUSE_ROWS = 11;
+    const HOUSE_ENTRY = { tileX: 5, tileY: 9 };
     const HOUSE_EXIT  = { tileX: 14, tileY: 5 };
     const HOUSE_OFFSET_X = (640 - HOUSE_COLS * 32) / 2;
     const HOUSE_OFFSET_Y = (480 - HOUSE_ROWS * 32) / 2;
 
     const HOUSE_MAP = [
-      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
-      [IV,HF,HF,HF,HF,HF,HF,HF,HF,HF,HF,IV],
-      [IV,IT,HF,HF,HF,HF,HF,HF,HF,HF,IT,IV],  // sofa/chairs near walls
-      [IV,HF,HF,IT,IT,HF,HF,IT,IT,HF,HF,IV],  // tables
-      [IV,HF,HF,IT,HF,HF,HF,HF,IT,HF,HF,IV],
-      [IV,HF,HF,HF,HF,HF,HF,HF,HF,HF,HF,IV],
-      [IV,HF,HF,HF,HF,HF,HF,HF,HF,HF,HF,IV],
-      [IV,IT,IT,IT,HF,HF,HF,HF,IT,IT,IV,IV],  // staircase block right side (solid)
-      [IV,HF,HF,HF,HF,IE,HF,HF,HF,HF,HF,IV],
-      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,BC,BC,BC,BC,BC,BC,HS,BC,BC,IV],  // blue carpet + stairs up
+      [IV,BC,BC,BC,BC,BC,BC,BC,BC,BC,IV],  // blue carpet
+      [IV,BC,BC,BC,BC,IE,BC,BC,BC,BC,IV],  // blue carpet + exit door
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+    ];
+
+    // ── 2-Story House – Floor 2 ───────────────────────────────────
+    const HOUSE2_COLS = 11, HOUSE2_ROWS = 11;
+    const HOUSE2_ENTRY = { tileX: 5, tileY: 8 };  // where player arrives from downstairs
+    const HOUSE2_OFFSET_X = (640 - HOUSE2_COLS * 32) / 2;
+    const HOUSE2_OFFSET_Y = (480 - HOUSE2_ROWS * 32) / 2;
+
+    const HOUSE2_MAP = [
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,BC,BC,BC,BC,BC,BC,HS,BC,BC,IV],  // blue carpet + stairs up to roof
+      [IV,BC,BC,BC,BC,BC,BC,BC,BC,BC,IV],  // blue carpet
+      [IV,BC,BC,BC,BC,IE,BC,BC,BC,BC,IV],  // blue carpet + exit back to outdoor
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+    ];
+
+    // ── 2-Story House – Roof ──────────────────────────────────────
+    const ROOF_COLS = 11, ROOF_ROWS = 11;
+    const ROOF_ENTRY = { tileX: 5, tileY: 8 };
+    const ROOF_OFFSET_X = (640 - ROOF_COLS * 32) / 2;
+    const ROOF_OFFSET_Y = (480 - ROOF_ROWS * 32) / 2;
+
+    const ROOF_MAP = [
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
+      [IV,BC,BC,BC,BC,BC,BC,BC,BC,BC,IV],  // blue carpet (no stairs — top floor)
+      [IV,BC,BC,BC,BC,BC,BC,BC,BC,BC,IV],  // blue carpet
+      [IV,BC,BC,BC,BC,IE,BC,BC,BC,BC,IV],  // blue carpet + exit (back to floor 2)
+      [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
     ];
 
     const SHOP_MAP = [
@@ -1450,6 +1600,23 @@
           ctx.fillRect(sx+2, sy+17, s-4, 2);
           // Dark underside of eave at bottom
           ctx.fillStyle = '#102e5a';
+          ctx.fillRect(sx, sy+28, s, 4);
+          break;
+
+        case LROOF:
+          // Green roof tile (Dr. Meadow's lab)
+          ctx.fillStyle = '#2e7d32';
+          ctx.fillRect(sx, sy, s, s);
+          // Lighter green panels
+          ctx.fillStyle = '#43a047';
+          ctx.fillRect(sx+1, sy+2,  s-2, 10);
+          ctx.fillRect(sx+1, sy+16, s-2, 10);
+          // Highlight ridge
+          ctx.fillStyle = '#66bb6a';
+          ctx.fillRect(sx+2, sy+3,  s-4, 2);
+          ctx.fillRect(sx+2, sy+17, s-4, 2);
+          // Dark underside of eave
+          ctx.fillStyle = '#1b5e20';
           ctx.fillRect(sx, sy+28, s, 4);
           break;
 
@@ -1578,19 +1745,19 @@
           break;
 
         case HROOF:
-          // Green roof tile (healer's clinic)
-          ctx.fillStyle = '#2e7d32';
+          // Pink roof tile (healer's clinic)
+          ctx.fillStyle = '#d4507a';
           ctx.fillRect(sx, sy, s, s);
-          // Lighter green panels
-          ctx.fillStyle = '#43a047';
+          // Lighter pink panels
+          ctx.fillStyle = '#e06090';
           ctx.fillRect(sx+1, sy+2,  s-2, 10);
           ctx.fillRect(sx+1, sy+16, s-2, 10);
           // Highlight ridge
-          ctx.fillStyle = '#66bb6a';
+          ctx.fillStyle = '#f080a8';
           ctx.fillRect(sx+2, sy+3,  s-4, 2);
           ctx.fillRect(sx+2, sy+17, s-4, 2);
           // Dark underside of eave
-          ctx.fillStyle = '#1b5e20';
+          ctx.fillStyle = '#a03060';
           ctx.fillRect(sx, sy+28, s, 4);
           break;
 
@@ -1767,6 +1934,82 @@
           ctx.fillRect(sx+19, sy+11, 8,  1);
           break;
 
+        case RCARPET:
+          // Red carpet tile
+          ctx.fillStyle = '#a01828';
+          ctx.fillRect(sx, sy, s, s);
+          // Lighter centre panel
+          ctx.fillStyle = '#c02030';
+          ctx.fillRect(sx+3, sy+3, s-6, s-6);
+          // Diamond/cross pattern highlight
+          ctx.fillStyle = '#d84050';
+          ctx.fillRect(sx+12, sy+3,  2, s-6);
+          ctx.fillRect(sx+3,  sy+12, s-6, 2);
+          // Border fringe
+          ctx.fillStyle = '#801020';
+          ctx.fillRect(sx,    sy,    s, 2);
+          ctx.fillRect(sx,    sy+s-2,s, 2);
+          ctx.fillRect(sx,    sy,    2, s);
+          ctx.fillRect(sx+s-2,sy,    2, s);
+          break;
+
+        case GCARPET:
+          // Green carpet tile
+          ctx.fillStyle = '#1a5c28';
+          ctx.fillRect(sx, sy, s, s);
+          // Lighter centre panel
+          ctx.fillStyle = '#237a35';
+          ctx.fillRect(sx+3, sy+3, s-6, s-6);
+          // Diamond/cross pattern highlight
+          ctx.fillStyle = '#2ea044';
+          ctx.fillRect(sx+12, sy+3,  2, s-6);
+          ctx.fillRect(sx+3,  sy+12, s-6, 2);
+          // Border fringe
+          ctx.fillStyle = '#10401a';
+          ctx.fillRect(sx,    sy,    s, 2);
+          ctx.fillRect(sx,    sy+s-2,s, 2);
+          ctx.fillRect(sx,    sy,    2, s);
+          ctx.fillRect(sx+s-2,sy,    2, s);
+          break;
+
+        case HSTAIRS:
+          // Ladder/stairs going up
+          ctx.fillStyle = '#6b3a1f';
+          ctx.fillRect(sx, sy, s, s);
+          // Side rails
+          ctx.fillStyle = '#8b5a2b';
+          ctx.fillRect(sx+4,  sy+1, 4, s-2);
+          ctx.fillRect(sx+24, sy+1, 4, s-2);
+          // Rungs
+          ctx.fillStyle = '#a07040';
+          for (let r = 0; r < 5; r++) {
+            ctx.fillRect(sx+4, sy+3 + r*6, 28, 3);
+          }
+          // Arrow hint (up)
+          ctx.fillStyle = '#f0e080';
+          ctx.fillRect(sx+13, sy+2, 6, 2);
+          ctx.fillRect(sx+11, sy+4, 10, 2);
+          break;
+
+        case BCARPET:
+          // Blue carpet tile
+          ctx.fillStyle = '#1a3a6c';
+          ctx.fillRect(sx, sy, s, s);
+          // Lighter centre panel
+          ctx.fillStyle = '#234e90';
+          ctx.fillRect(sx+3, sy+3, s-6, s-6);
+          // Diamond/cross pattern highlight
+          ctx.fillStyle = '#2e66b8';
+          ctx.fillRect(sx+12, sy+3,  2, s-6);
+          ctx.fillRect(sx+3,  sy+12, s-6, 2);
+          // Border fringe
+          ctx.fillStyle = '#10264a';
+          ctx.fillRect(sx,    sy,    s, 2);
+          ctx.fillRect(sx,    sy+s-2,s, 2);
+          ctx.fillRect(sx,    sy,    2, s);
+          ctx.fillRect(sx+s-2,sy,    2, s);
+          break;
+
         case H2WALL:
           // Red first-floor wall
           ctx.fillStyle = '#b02020';
@@ -1916,6 +2159,12 @@
       ["DFC reduces damage",   "from physical moves.",  "A sturdy shield!"],
       ["MDF reduces damage",   "from magic attacks.",   "Guards the mind!"],
       ["LCK raises your odds", "to DODGE attacks and",  "land LUCKY HITS!"],
+      ["Now - STATUS moves!",  "They deal no damage",   "but change the fight."],
+      ["TOXIC deals 10 dmg",   "to the foe every",      "turn. Watch out!"],
+      ["SEEDED drains 5 HP",   "from the foe and",      "heals you each turn."],
+      ["CHARRED halves the",   "foe's ATK stat for",    "the whole battle!"],
+      ["DRENCHED forces the",  "foe to always move",    "last every turn."],
+      ["Status effects clear", "when a critter is",     "swapped or battle ends."],
       ["Feeling outmatched?",  "FLICK the foe's card",  "to run away!"],
       ["Good luck out there!", "",                      "Press A to close."],
     ];
@@ -2507,7 +2756,7 @@
 
     // ── Bag ────────────────────────────────────────────────────
     function openBag() {
-      if (gameState !== 'world') return; // bag only usable outside battle
+      if (gameState !== 'world' && gameState !== 'battle') return;
       document.getElementById('bagCoins').textContent      = coins;
       document.getElementById('bagPotionCount').textContent = inventory.potions;
       document.getElementById('bagReviveCount').textContent = inventory.revives;
@@ -2521,27 +2770,33 @@
     }
 
     function useBagItem(type) {
+      const inBattle = gameState === 'battle';
+
+      function afterUse() {
+        closeBag();
+        if (inBattle && state && !state.over) {
+          // Using an item costs the player's turn — enemy attacks
+          if (typeof render === 'function') render();
+          const opponentMove = pickOpponentMove();
+          setTimeout(() => {
+            resolveAttack('opponent', 'player', opponentMove);
+            render();
+          }, 500);
+        }
+      }
+
       if (type === 'potion') {
         if (inventory.potions === 0) return;
-        // Pick a critter that isn't at full HP and isn't fainted
         const targets = buildUsableTargets('potion');
         if (targets.length === 0) { alert('All critters are already at full HP!'); return; }
-        if (targets.length === 1) {
-          applyPotion(targets[0].ref);
-          closeBag();
-          return;
-        }
-        showBagTargetPicker(targets, (ref) => { applyPotion(ref); closeBag(); });
+        if (targets.length === 1) { applyPotion(targets[0].ref); afterUse(); return; }
+        showBagTargetPicker(targets, (ref) => { applyPotion(ref); afterUse(); });
       } else if (type === 'revive') {
         if (inventory.revives === 0) return;
         const targets = buildUsableTargets('revive');
         if (targets.length === 0) { alert('No fainted critters to revive!'); return; }
-        if (targets.length === 1) {
-          applyRevive(targets[0].ref);
-          closeBag();
-          return;
-        }
-        showBagTargetPicker(targets, (ref) => { applyRevive(ref); closeBag(); });
+        if (targets.length === 1) { applyRevive(targets[0].ref); afterUse(); return; }
+        showBagTargetPicker(targets, (ref) => { applyRevive(ref); afterUse(); });
       }
     }
 
@@ -2717,6 +2972,14 @@
         if (col < 0 || col >= HOUSE_COLS || row < 0 || row >= HOUSE_ROWS) return false;
         return !SOLID_TILES.has(HOUSE_MAP[row][col]);
       }
+      if (currentArea === 'house2') {
+        if (col < 0 || col >= HOUSE2_COLS || row < 0 || row >= HOUSE2_ROWS) return false;
+        return !SOLID_TILES.has(HOUSE2_MAP[row][col]);
+      }
+      if (currentArea === 'roof') {
+        if (col < 0 || col >= ROOF_COLS || row < 0 || row >= ROOF_ROWS) return false;
+        return !SOLID_TILES.has(ROOF_MAP[row][col]);
+      }
       if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return false;
       const tile = MAP[row][col];
       if (isSurfing && tile === WATER) return true;
@@ -2742,7 +3005,13 @@
       } else if (currentArea === 'shop') {
         if (SHOP_MAP[row][col] === IEXIT) exitShop();
       } else if (currentArea === 'house') {
-        if (HOUSE_MAP[row][col] === IEXIT) exitHouse();
+        if (HOUSE_MAP[row][col] === HSTAIRS) enterHouse2();
+        if (HOUSE_MAP[row][col] === IEXIT)   exitHouse();
+      } else if (currentArea === 'house2') {
+        if (HOUSE2_MAP[row][col] === HSTAIRS) enterRoof();
+        if (HOUSE2_MAP[row][col] === IEXIT)   exitHouse2();
+      } else if (currentArea === 'roof') {
+        if (ROOF_MAP[row][col] === IEXIT) exitRoof();
       }
     }
 
@@ -2880,6 +3149,8 @@
       if (currentArea === 'healer') { renderClinic(ctx); return; }
       if (currentArea === 'shop')   { renderShop(ctx);   return; }
       if (currentArea === 'house')  { renderHouse(ctx);  return; }
+      if (currentArea === 'house2') { renderHouse2(ctx); return; }
+      if (currentArea === 'roof')   { renderRoof(ctx);   return; }
 
       const { x: camX, y: camY } = getCameraOffset();
       const startCol = Math.floor(camX / TILE_SIZE);
@@ -3132,18 +3403,6 @@
         }
       }
 
-      // Staircase visual (drawn over tiles to suggest an upper floor)
-      const stairX = HOUSE_OFFSET_X + 7 * 32;
-      const stairY = HOUSE_OFFSET_Y + 7 * 32;
-      ctx.fillStyle = '#a87030';
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(stairX + i * 6, stairY + (3 - i) * 7, 8, 28 - (3 - i) * 7);
-      }
-      ctx.fillStyle = '#7a5020';
-      for (let i = 0; i < 4; i++) {
-        ctx.fillRect(stairX + i * 6, stairY + (3 - i) * 7, 8, 2);
-      }
-
       // Banner
       ctx.fillStyle = 'rgba(90,40,10,0.8)';
       ctx.fillRect(0, 0, 640, 24);
@@ -3156,6 +3415,70 @@
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, HOUSE_OFFSET_X + player.pixelX, HOUSE_OFFSET_Y + player.pixelY, player.dir, walkFrame);
+
+      if (dialogActive) {
+        const dlg = NPC_DIALOG;
+        drawDialog(ctx, dlg[dialogPage]);
+      }
+    }
+
+    function renderRoof(ctx) {
+      // Sky background
+      ctx.fillStyle = '#5090d0';
+      ctx.fillRect(0, 0, 640, 480);
+      // Clouds
+      ctx.fillStyle = 'rgba(255,255,255,0.7)';
+      ctx.fillRect(60,  40, 80, 20); ctx.fillRect(50,  50, 100, 20);
+      ctx.fillRect(420, 70, 70, 18); ctx.fillRect(410, 80, 90, 18);
+
+      for (let row = 0; row < ROOF_ROWS; row++) {
+        for (let col = 0; col < ROOF_COLS; col++) {
+          drawTile(ctx, ROOF_MAP[row][col], ROOF_OFFSET_X + col * 32, ROOF_OFFSET_Y + row * 32);
+        }
+      }
+
+      // Banner
+      ctx.fillStyle = 'rgba(20,60,100,0.85)';
+      ctx.fillRect(0, 0, 640, 24);
+      ctx.fillStyle = '#c0e0ff';
+      ctx.font = '10px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('Rooftop', 320, 16);
+      ctx.textAlign = 'left';
+
+      // Player
+      const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
+      drawPlayer(ctx, ROOF_OFFSET_X + player.pixelX, ROOF_OFFSET_Y + player.pixelY, player.dir, walkFrame);
+
+      if (dialogActive) {
+        const dlg = NPC_DIALOG;
+        drawDialog(ctx, dlg[dialogPage]);
+      }
+    }
+
+    function renderHouse2(ctx) {
+      // Slightly cooler background for floor 2
+      ctx.fillStyle = '#1a1a2a';
+      ctx.fillRect(0, 0, 640, 480);
+
+      for (let row = 0; row < HOUSE2_ROWS; row++) {
+        for (let col = 0; col < HOUSE2_COLS; col++) {
+          drawTile(ctx, HOUSE2_MAP[row][col], HOUSE2_OFFSET_X + col * 32, HOUSE2_OFFSET_Y + row * 32);
+        }
+      }
+
+      // Banner
+      ctx.fillStyle = 'rgba(20,20,50,0.85)';
+      ctx.fillRect(0, 0, 640, 24);
+      ctx.fillStyle = '#a0b8f0';
+      ctx.font = '10px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('House - Floor 2', 320, 16);
+      ctx.textAlign = 'left';
+
+      // Player
+      const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
+      drawPlayer(ctx, HOUSE2_OFFSET_X + player.pixelX, HOUSE2_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
         const dlg = NPC_DIALOG;
@@ -3222,10 +3545,10 @@
         maxHp: 100,
         atk: 12, dfc: 6, mag: 11, mdf: 5, spd: 9, lck: 8,
         moves: [
-          { name: 'Ember Snap', type: 'fire',  cat: 'physical', power: 14 },
-          { name: 'Heat Wave',  type: 'fire',  cat: 'magic',    power: 12 },
-          { name: 'Bite',       type: 'basic', cat: 'physical', power: 10 },
-          { name: 'Scratch',    type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Ember Snap',  type: 'fire',  cat: 'physical', power: 14 },
+          { name: 'Heat Wave',   type: 'fire',  cat: 'magic',    power: 12 },
+          { name: 'Intimidate',  type: 'basic', cat: 'status',   effect: { stat: 'atk', target: 'opponent', amount: -3 } },
+          { name: 'Scratch',     type: 'basic', cat: 'physical', power:  8 },
         ]
       },
     };
@@ -3239,9 +3562,9 @@
         atk: 14, dfc: 11, mag: 6, mdf: 7, spd: 7, lck: 5,
         moves: [
           { name: 'Splash Strike', type: 'water', cat: 'physical', power: 14 },
-          { name: 'Whirlpool',     type: 'water', cat: 'magic',    power: 12 },
-          { name: 'Tackle',        type: 'basic', cat: 'physical', power: 10 },
-          { name: 'Slam',          type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Whirlpool',    type: 'water', cat: 'magic',    power: 12 },
+          { name: 'Smokescreen',  type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
+          { name: 'Slam',         type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
@@ -3251,9 +3574,9 @@
         maxHp: 105,
         atk: 16, dfc: 8, mag: 3, mdf: 5, spd: 6, lck: 4,
         moves: [
-          { name: 'Flame Charge', type: 'fire',  cat: 'physical', power: 14 },
+          { name: 'Flame Charge',  type: 'fire',  cat: 'physical', power: 14 },
           { name: 'Lava Stomp',   type: 'fire',  cat: 'physical', power: 12 },
-          { name: 'Tusk Bash',    type: 'basic', cat: 'physical', power: 10 },
+          { name: 'Ember Scorch', type: 'fire',  cat: 'status',   effect: { type: 'apply_status', status: 'charred',  target: 'opponent' } },
           { name: 'Headbutt',     type: 'basic', cat: 'physical', power:  8 },
         ]
       },
@@ -3264,10 +3587,10 @@
         maxHp: 95,
         atk: 5, dfc: 5, mag: 15, mdf: 12, spd: 10, lck: 8,
         moves: [
-          { name: 'Vine Peck',  type: 'grass', cat: 'physical', power: 14 },
-          { name: 'Leaf Storm', type: 'grass', cat: 'magic',    power: 12 },
-          { name: 'Peck',       type: 'basic', cat: 'physical', power: 10 },
-          { name: 'Quick Kick', type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Vine Peck',   type: 'grass', cat: 'physical', power: 14 },
+          { name: 'Leaf Storm',  type: 'grass', cat: 'magic',    power: 12 },
+          { name: 'Leech Seed',  type: 'grass', cat: 'status',   effect: { type: 'apply_status', status: 'seeded',   target: 'opponent' } },
+          { name: 'Quick Kick',  type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
@@ -3277,10 +3600,10 @@
         maxHp: 115,
         atk: 9, dfc: 16, mag: 8, mdf: 14, spd: 4, lck: 5,
         moves: [
-          { name: 'Ice Fang',    type: 'water', cat: 'physical', power: 16 },
-          { name: 'Frost Wave',  type: 'water', cat: 'magic',    power: 13 },
-          { name: 'Tusk Slam',   type: 'basic', cat: 'physical', power: 12 },
-          { name: 'Body Crush',  type: 'basic', cat: 'physical', power:  9 },
+          { name: 'Ice Fang',     type: 'water', cat: 'physical', power: 16 },
+          { name: 'Frost Wave',   type: 'water', cat: 'magic',    power: 13 },
+          { name: 'Soaking Rain', type: 'water', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
+          { name: 'Body Crush',   type: 'basic', cat: 'physical', power:  9 },
         ]
       },
       {
@@ -3290,16 +3613,28 @@
         maxHp: 90,
         atk: 7, dfc: 6, mag: 12, mdf: 8, spd: 7, lck: 13,
         moves: [
-          { name: 'Spore Burst', type: 'grass', cat: 'magic',    power: 15 },
-          { name: 'Toxic Bloom', type: 'grass', cat: 'magic',    power: 13 },
-          { name: 'Headbonk',    type: 'basic', cat: 'physical', power: 11 },
-          { name: 'Tackle',      type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Spore Burst',  type: 'grass', cat: 'magic',  power: 15 },
+          { name: 'Toxic Bloom',  type: 'grass', cat: 'status', effect: { type: 'apply_status', status: 'toxic', target: 'opponent' } },
+          { name: 'Lucky Spores', type: 'grass', cat: 'status',   effect: { stat: 'lck', target: 'self',     amount: 4  } },
+          { name: 'Muddy Spores', type: 'basic', cat: 'status',   effect: { stat: 'atk', target: 'opponent', amount: -3 } },
         ]
       },
     ];
 
     let state = null;
     let persistentPlayer = null; // carries HP (and active creature) between battles
+
+    const STAT_KEYS = ['atk', 'dfc', 'mag', 'mdf', 'spd', 'lck'];
+
+    function snapBaseStats(critter) {
+      critter._baseStats = {};
+      STAT_KEYS.forEach(k => critter._baseStats[k] = critter[k]);
+    }
+
+    function restoreBaseStats(critter) {
+      if (!critter._baseStats) return;
+      STAT_KEYS.forEach(k => critter[k] = critter._baseStats[k]);
+    }
 
     function initState(fromSurf = false) {
       const pool = fromSurf
@@ -3308,11 +3643,13 @@
       const wild = pool[Math.floor(Math.random() * pool.length)];
       // Use saved player state if available, otherwise start fresh
       const playerBase = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
-      state = {
-        player:   { ...playerBase },
-        opponent: { ...wild, hp: wild.maxHp },
-        over: false
-      };
+      const playerCopy   = { ...playerBase };
+      const opponentCopy = { ...wild, hp: wild.maxHp };
+      snapBaseStats(playerCopy);
+      snapBaseStats(opponentCopy);
+      playerCopy.statusEffects   = {};
+      opponentCopy.statusEffects = {};
+      state = { player: playerCopy, opponent: opponentCopy, over: false };
     }
 
     const creatureEmoji = { fire: '🦊', water: '🐶', grass: '🌿' };
@@ -3330,7 +3667,14 @@
         document.getElementById(`lck-${side}`).textContent  = c.lck;
 
         const typeBadge = document.getElementById(`type-${side}`);
-        typeBadge.textContent = c.type.charAt(0).toUpperCase() + c.type.slice(1);
+        const se = c.statusEffects || {};
+        const statusTag = [
+          se.toxic    ? '☠️' : '',
+          se.charred  ? '🔥' : '',
+          se.drenched ? '💧' : '',
+          se.seeded   ? '🌱' : '',
+        ].filter(Boolean).join('');
+        typeBadge.textContent = c.type.charAt(0).toUpperCase() + c.type.slice(1) + (statusTag ? ' ' + statusTag : '');
         typeBadge.className   = `type-badge ${c.type}`;
 
         const card = document.getElementById(`card-${side}`);
@@ -3356,11 +3700,15 @@
       container.innerHTML = '';
       state.player.moves.forEach((move, i) => {
         const btn = document.createElement('button');
-        const catLabel = move.cat === 'magic' ? 'MAGIC' : 'PHYS';
+        const catLabel = move.cat === 'magic' ? 'MAGIC' : move.cat === 'status' ? 'STATUS' : 'PHYS';
+        const fxDesc   = move.cat !== 'status' ? `PWR ${move.power}`
+          : move.effect.type === 'apply_status'
+            ? `${move.effect.target === 'self' ? 'Self' : 'Foe'}: ${move.effect.status.toUpperCase()}`
+            : `${move.effect.target === 'self' ? 'Self' : 'Foe'} ${move.effect.stat.toUpperCase()} ${move.effect.amount > 0 ? '+' : ''}${move.effect.amount}`;
         btn.className = `move-btn cat-${move.cat}`;
         btn.innerHTML = `
           <span class="move-name">${move.name}</span>
-          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel} · PWR ${move.power}</span>
+          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel} · ${fxDesc}</span>
         `;
         btn.disabled = state.over || state.player.hp <= 0;
         btn.onclick  = () => playerMove(i);
@@ -3378,12 +3726,16 @@
       oppContainer.innerHTML = '';
       state.opponent.moves.forEach(move => {
         const btn = document.createElement('button');
-        const catLabel = move.cat === 'magic' ? 'MAGIC' : 'PHYS';
+        const catLabel = move.cat === 'magic' ? 'MAGIC' : move.cat === 'status' ? 'STATUS' : 'PHYS';
+        const fxDesc   = move.cat !== 'status' ? `PWR ${move.power}`
+          : move.effect.type === 'apply_status'
+            ? `${move.effect.target === 'self' ? 'Self' : 'Foe'}: ${move.effect.status.toUpperCase()}`
+            : `${move.effect.target === 'self' ? 'Self' : 'Foe'} ${move.effect.stat.toUpperCase()} ${move.effect.amount > 0 ? '+' : ''}${move.effect.amount}`;
         btn.className = `move-btn cat-${move.cat}`;
         btn.disabled  = true;
         btn.innerHTML = `
           <span class="move-name">${move.name}</span>
-          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel} · PWR ${move.power}</span>
+          <span class="move-meta">${move.type.toUpperCase()} · ${catLabel} · ${fxDesc}</span>
         `;
         oppContainer.appendChild(btn);
       });
@@ -3402,7 +3754,41 @@
       const attacker = state[attackerSide];
       const defender = state[defenderSide];
       const move     = attacker.moves[moveIdx];
-      const catTag   = move.cat === 'magic' ? '✨' : '⚔️';
+      const catTag   = move.cat === 'magic' ? '✨' : move.cat === 'status' ? '🌀' : '⚔️';
+
+      // ── Status moves: no damage, stat change or status effect ───────────
+      if (move.cat === 'status') {
+        const fx = move.effect;
+        log(`🌀 ${attacker.name} used ${move.name}!`);
+        if (fx.type === 'apply_status') {
+          const target = fx.target === 'self' ? attacker : defender;
+          const tName  = fx.target === 'self' ? attacker.name : defender.name;
+          if (!target.statusEffects) target.statusEffects = {};
+          const icons = { toxic: '☠️', charred: '🔥', drenched: '💧', seeded: '🌱' };
+          if (fx.status === 'charred') {
+            if (!target.statusEffects.charred) {
+              target.statusEffects.charred = true;
+              target.atk = Math.max(1, Math.floor(target.atk / 2));
+              log(`🔥 ${tName} is charred! ATK halved!`, 'weak');
+            } else { log(`🔥 ${tName} is already charred!`, 'weak'); }
+          } else if (fx.status === 'seeded') {
+            if (!target.statusEffects.seeded) {
+              target.statusEffects.seeded = attackerSide; // stores who drains HP
+              log(`🌱 ${tName} was seeded!`, 'weak');
+            } else { log(`🌱 ${tName} is already seeded!`, 'weak'); }
+          } else {
+            target.statusEffects[fx.status] = true;
+            log(`${icons[fx.status] || '🌀'} ${tName} is now ${fx.status}!`, 'weak');
+          }
+        } else {
+          const target = fx.target === 'self' ? attacker : defender;
+          const tName  = fx.target === 'self' ? attacker.name : defender.name;
+          target[fx.stat] = Math.max(1, target[fx.stat] + fx.amount);
+          if (fx.amount > 0) log(`⬆️ ${tName}'s ${fx.stat.toUpperCase()} rose!`, 'effective');
+          else               log(`⬇️ ${tName}'s ${fx.stat.toUpperCase()} fell!`, 'weak');
+        }
+        return;
+      }
 
       // ── LCK: Dodge check (defender's luck) ──────────────────────────────
       const dodgeChance = (defender.lck ?? 0) * 0.008;  // lck 9 → 7.2%
@@ -3481,18 +3867,82 @@
       }
     }
 
+    function handleStatusFaint(side) {
+      const c = state[side];
+      c.hp = 0;
+      state.over = true;
+      if (side === 'opponent') {
+        const earned = 15 + Math.floor(Math.random() * 11);
+        coins += earned;
+        log(`${c.name} fainted!`, 'win');
+        log(`💰 You earned ${earned} coins!`, 'win');
+        showRecruitPrompt();
+      } else {
+        log(`${c.name} fainted!`, 'win');
+        const livingBench = roster.filter(b => b.hp > 0);
+        if (livingBench.length > 0) showRosterSelect();
+        else {
+          log('All critters fainted!', 'win');
+          log('Visit Nurse Nina to heal.', '');
+          healAllCreatures();
+          state.player.hp = state.player.maxHp;
+          document.getElementById('playAgain').classList.add('visible');
+        }
+      }
+    }
+
+    function applyStatusEffects() {
+      if (state.over) return;
+      ['player', 'opponent'].forEach(side => {
+        if (state.over) return;
+        const c = state[side];
+        if (!c.statusEffects || c.hp <= 0) return;
+
+        // ── Toxic: 10 damage per turn ──────────────────────────────
+        if (c.statusEffects.toxic) {
+          c.hp = Math.max(0, c.hp - 10);
+          log(`☠️ ${c.name} took 10 damage from toxic!`, 'weak');
+          if (c.hp <= 0) { handleStatusFaint(side); return; }
+        }
+
+        // ── Seeded: lose 5 HP, attacker gains 5 HP ────────────────
+        if (c.statusEffects.seeded && !state.over) {
+          const beneficiarySide = c.statusEffects.seeded;
+          const beneficiary     = state[beneficiarySide];
+          c.hp = Math.max(0, c.hp - 5);
+          if (beneficiary.hp > 0)
+            beneficiary.hp = Math.min(beneficiary.maxHp, beneficiary.hp + 5);
+          log(`🌱 ${c.name} lost 5 HP! ${beneficiary.name} absorbed 5 HP!`, 'effective');
+          if (c.hp <= 0) { handleStatusFaint(side); return; }
+        }
+        // Charred & Drenched have no per-turn damage — handled elsewhere
+      });
+    }
+
     function playerMove(moveIdx) {
       if (state.over) return;
 
-      const playerFirst  = state.player.spd >= state.opponent.spd;
-      const opponentMove = pickOpponentMove();
+      const opponentMove   = pickOpponentMove();
+      const pDrenched      = !!state.player.statusEffects?.drenched;
+      const oDrenched      = !!state.opponent.statusEffects?.drenched;
+      const playerFirst    = pDrenched && !oDrenched ? false
+                           : oDrenched && !pDrenched ? true
+                           : state.player.spd >= state.opponent.spd;
 
       if (playerFirst) {
         resolveAttack('player', 'opponent', moveIdx);
-        if (!state.over) setTimeout(() => { resolveAttack('opponent', 'player', opponentMove); render(); }, 700);
+        if (!state.over) setTimeout(() => {
+          resolveAttack('opponent', 'player', opponentMove);
+          applyStatusEffects();
+          render();
+        }, 700);
       } else {
         resolveAttack('opponent', 'player', opponentMove);
-        if (!state.over) setTimeout(() => { resolveAttack('player', 'opponent', moveIdx); render(); }, 700);
+        if (!state.over) setTimeout(() => {
+          resolveAttack('player', 'opponent', moveIdx);
+          applyStatusEffects();
+          render();
+        }, 700);
       }
 
       render();
@@ -3655,7 +4105,9 @@
 
     function doSwap(rosterIndex) {
       const incoming = roster.splice(rosterIndex, 1)[0];
-      const outgoing = { ...state.player }; // save current creature to bench
+      restoreBaseStats(state.player);           // clear stat changes before benching
+      state.player.statusEffects = {};          // clear status effects before benching
+      const outgoing = { ...state.player };     // save current creature to bench
       roster.push(outgoing);
 
       state.player = { ...incoming };
