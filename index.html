@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Battle Bash</title>
+  <title>Card Catchers</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
@@ -758,7 +758,7 @@
        WORLD SECTION
   ============================================================ -->
   <div id="worldSection">
-    <h1>Battle Bash</h1>
+    <h1>Card Catchers</h1>
     <p class="subtitle">Arrow keys · WASD · D-pad to move</p>
     <canvas id="worldCanvas" width="640" height="480"></canvas>
     <div id="worldControls">
@@ -841,10 +841,23 @@
   </div>
 
   <!-- ============================================================
+       ROUXLS KAARD CHALLENGE OVERLAY
+  ============================================================ -->
+  <div id="rouxlsChoice" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:999; align-items:center; justify-content:center; flex-direction:column; gap:18px;">
+    <div style="background:#1a1a2e; border:2px solid #ffcb05; border-radius:16px; padding:28px 36px; text-align:center; max-width:340px; color:#fff; font-family:'Press Start 2P',monospace; font-size:11px; line-height:1.8;">
+      <div style="font-size:13px; margin-bottom:18px;">⚔️ <strong style="color:#ffcb05;">Rouxls Kaard</strong> awaits...<br><br>What will you do?</div>
+      <div style="display:flex; gap:14px; justify-content:center;">
+        <button class="btn-recruit" onclick="rouxlsChallenge()">Challenge him!</button>
+        <button class="btn-leave"   onclick="rouxlsLeave()">Leave him be</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================================
        BATTLE SECTION
   ============================================================ -->
   <div id="battleSection">
-    <h1>Battle Bash</h1>
+    <h1>Card Catchers</h1>
     <p class="subtitle">Skeleton build · v0.1</p>
     <div class="roster-tray" id="rosterTray"></div>
 
@@ -2171,7 +2184,7 @@
     const NPC_DIALOG = [
       ["Hello, catcher!",      "I'm Dr. Meadow.",      "I study wild critters."],
       ["The TALL GRASS hides", "wild creatures -",      "walk in to battle!"],
-      ["FIRE beats GRASS,",    "GRASS beats WATER,",    "WATER beats FIRE."],
+      ["LAVA beats GARDEN,",   "GARDEN beats OCEAN,",   "OCEAN beats LAVA."],
       ["BASIC moves deal",     "flat damage. No",       "type bonus applies."],
       ["Win a battle and",     "you can RECRUIT them",  "to your party!"],
       ["Your party holds",     "up to 6 critters.",     "Choose wisely!"],
@@ -2194,7 +2207,7 @@
     const NPC2_DIALOG = [
       ["Hi! I'm Dr. Fern,",    "I study water routes", "and wild habitats."],
       ["Did you know you",     "can SURF on water?",   ""],
-      ["If you have a WATER",  "type in your party,",  "head to the shore..."],
+      ["If you have an OCEAN", "type in your party,",  "head to the shore..."],
       ["...stand next to",     "the water and press",  "the (A) button!"],
       ["You'll hop on and",    "glide across. Some",   "critters hide there!"],
       ["Step off the water",   "and you'll stop",      "surfing automatically."],
@@ -2267,7 +2280,14 @@
 
     const HOUSE2_NPC_DIALOG = [
       ["Hark! Dost thou",     "knoweth how I mightst", "become theest"],
-      ["Second-in-Command",   "of thisst place?",      "Press A to close."],
+      ["Second-in-Command",   "of thisst place?",      ""],
+    ];
+
+    const ROUXLS_WIN_DIALOG = [
+      ["How darest thou",     "assaulteth me for",      "merely existingeth...!"],
+      ["...Ah, I seeeth!",    "Thou suggestest that",   "to becomest the"],
+      ["Second-in-Command,",  "I musteth fighteth",     "the local inhabitants!"],
+      ["Thine assistance",    "is most appreciated,",   "fellow in red!"],
     ];
 
     const CLINIC_NPC_DIALOG = [
@@ -2326,6 +2346,7 @@
     let dialogType   = 'prof'; // 'prof' | 'healer'
     let meadowMet    = false;
     let houseNpcMet  = false;
+    let rouxlsDefeated  = false;
     let alvinDefeated   = false;
     let deweyDefeated   = false;
     let bubblesDefeated = false;
@@ -3262,6 +3283,7 @@
                           : dialogType === 'clinicnpc'   ? CLINIC_NPC_DIALOG
                           : dialogType === 'clinicnpc2'  ? CLINIC_NPC2_DIALOG
                           : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG
+                          : dialogType === 'rouxlswin'   ? ROUXLS_WIN_DIALOG
                           : dialogType === 'house2npc'   ? HOUSE2_NPC_DIALOG
                           : dialogType === 'housenpc'    ? HOUSE_NPC_DIALOG
                           : dialogType === 'alvinwin'    ? ALVIN_REMATCH_DIALOG
@@ -3295,6 +3317,12 @@
         // Trigger catcher battle at end of Bubbles' intro dialog
         if (closingType === 'bubblesnpc' && !bubblesDefeated) {
           setTimeout(() => triggerCatcherBattle(BUBBLES_CATCHER), 200);
+        }
+        // Show challenge choice after Rouxls Kaard's dialog (if not yet defeated)
+        if (closingType === 'house2npc' && !rouxlsDefeated) {
+          setTimeout(() => {
+            document.getElementById('rouxlsChoice').style.display = 'flex';
+          }, 100);
         }
         // Trigger catcher battle at end of Ivy's intro dialog
         if (closingType === 'ivynpc' && !ivyDefeated) {
@@ -3715,12 +3743,12 @@
           dialogType   = bubblesDefeated ? 'bubbleswin' : 'bubblesnpc';
           return;
         }
-        // Walking into floor-2 wolf NPC triggers dialog
+        // Walking into floor-2 wolf NPC (Rouxls Kaard) triggers dialog
         if (currentArea === 'house2' && nx === HOUSE2_NPC.tileX && ny === HOUSE2_NPC.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
-          dialogType   = 'house2npc';
+          dialogType   = rouxlsDefeated ? 'rouxlswin' : 'house2npc';
           return;
         }
         // Walking into Ivy (rooftop triplet boss 1)
@@ -4150,8 +4178,9 @@
       drawPlayer(ctx, HOUSE2_OFFSET_X + player.pixelX, HOUSE2_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = dialogType === 'bubblesnpc' ? BUBBLES_DIALOG
-                  : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG
+        const dlg = dialogType === 'bubblesnpc'  ? BUBBLES_DIALOG
+                  : dialogType === 'bubbleswin'  ? BUBBLES_WIN_DIALOG
+                  : dialogType === 'rouxlswin'   ? ROUXLS_WIN_DIALOG
                   : HOUSE2_NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
@@ -4325,7 +4354,7 @@
         moves: [
           { name: 'Lava Slam',    type: 'lava',  cat: 'physical', power: 15 },
           { name: 'Magma Burst',  type: 'lava',  cat: 'magic',    power: 13 },
-          { name: 'Smoke Veil',   type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
+          { name: 'Smoke Veil',   type: 'basic', cat: 'status',   effect: { stat: 'lck', target: 'opponent', amount: -3 } },
           { name: 'Body Press',   type: 'basic', cat: 'physical', power:  9 },
         ]
       },
@@ -4372,6 +4401,24 @@
     ];
 
     // ── Catcher data ──────────────────────────────────────────────
+    const ROUXLS_CATCHER = {
+      name: 'Rouxls Kaard',
+      critter: {
+        name: 'Rouxls Kaard',
+        type: 'basic',
+        img: 'rouxlskaard.png',
+        noRecruit: true,
+        maxHp: 100,
+        atk: 15, dfc: 15, mag: 15, mdf: 15, spd: 15, lck: 15,
+        moves: [
+          { name: 'A Change Of Rules', type: 'basic', cat: 'status', effect: { type: 'apply_all_status', target: 'opponent' } },
+          { name: 'Commandeth',        type: 'basic', cat: 'status', effect: { type: 'lower_all_stats',  target: 'opponent', amount: -1 } },
+          { name: 'Puzzle Trap',       type: 'basic', cat: 'magic',  power: 15 },
+          { name: 'Kaard Slash',       type: 'basic', cat: 'physical', power: 15 },
+        ]
+      }
+    };
+
     const ALVIN_CATCHER = {
       name: 'Alvin',
       critter: {
@@ -4593,6 +4640,8 @@
         const btn = document.createElement('button');
         const catLabel = move.cat === 'magic' ? 'MAGIC' : move.cat === 'status' ? 'STATUS' : 'PHYS';
         const fxDesc   = move.cat !== 'status' ? `PWR ${move.power}`
+          : move.effect.type === 'apply_all_status' ? 'Foe: ALL STATUS'
+          : move.effect.type === 'lower_all_stats'  ? `Foe: ALL STATS ${move.effect.amount}`
           : move.effect.type === 'apply_status'
             ? `${move.effect.target === 'self' ? 'Self' : 'Foe'}: ${move.effect.status.toUpperCase()}`
             : `${move.effect.target === 'self' ? 'Self' : 'Foe'} ${move.effect.stat.toUpperCase()} ${move.effect.amount > 0 ? '+' : ''}${move.effect.amount}`;
@@ -4620,6 +4669,8 @@
         const btn = document.createElement('button');
         const catLabel = move.cat === 'magic' ? 'MAGIC' : move.cat === 'status' ? 'STATUS' : 'PHYS';
         const fxDesc   = move.cat !== 'status' ? `PWR ${move.power}`
+          : move.effect.type === 'apply_all_status' ? 'Foe: ALL STATUS'
+          : move.effect.type === 'lower_all_stats'  ? `Foe: ALL STATS ${move.effect.amount}`
           : move.effect.type === 'apply_status'
             ? `${move.effect.target === 'self' ? 'Self' : 'Foe'}: ${move.effect.status.toUpperCase()}`
             : `${move.effect.target === 'self' ? 'Self' : 'Foe'} ${move.effect.stat.toUpperCase()} ${move.effect.amount > 0 ? '+' : ''}${move.effect.amount}`;
@@ -4653,7 +4704,28 @@
       if (move.cat === 'status') {
         const fx = move.effect;
         log(`🌀 ${attacker.name} used ${move.name}!`);
-        if (fx.type === 'apply_status') {
+        if (fx.type === 'apply_all_status') {
+          // A Change Of Rules — inflicts all four status conditions at once
+          const target = fx.target === 'self' ? attacker : defender;
+          const tName  = fx.target === 'self' ? attacker.name : defender.name;
+          if (!target.statusEffects) target.statusEffects = {};
+          target.statusEffects.toxic   = true;
+          target.statusEffects.drenched = true;
+          target.statusEffects.seeded  = attackerSide;
+          if (!target.statusEffects.charred) {
+            target.statusEffects.charred = true;
+            target.atk = Math.max(1, Math.floor(target.atk / 2));
+          }
+          log(`☠️🔥💧🌱 ${tName} is afflicted with every status!`, 'weak');
+        } else if (fx.type === 'lower_all_stats') {
+          // Commandeth — lowers all opponent stats by 1
+          const target = fx.target === 'self' ? attacker : defender;
+          const tName  = fx.target === 'self' ? attacker.name : defender.name;
+          ['atk','dfc','mag','mdf','spd','lck'].forEach(stat => {
+            target[stat] = Math.max(1, target[stat] + fx.amount);
+          });
+          log(`⬇️ ${tName}'s stats all fell!`, 'weak');
+        } else if (fx.type === 'apply_status') {
           const target = fx.target === 'self' ? attacker : defender;
           const tName  = fx.target === 'self' ? attacker.name : defender.name;
           if (!target.statusEffects) target.statusEffects = {};
@@ -4700,7 +4772,42 @@
           totalDamage += dmg;
         }
         log(`💥 Hit ${hitCount} times! (${totalDamage} total dmg)`, 'effective');
-        if (defender.hp <= 0) { defender.hp = 0; state.over = true; }
+        if (defender.hp <= 0) {
+          defender.hp = 0;
+          state.over  = true;
+          if (defenderSide === 'opponent') {
+            const earned = 15 + Math.floor(Math.random() * 11);
+            coins += earned;
+            log(`${defender.name} fainted!`, 'win');
+            log(`💰 You earned ${earned} coins!`, 'win');
+            if (isCatcherBattle) {
+              if (activeCatcher === ROUXLS_CATCHER)      rouxlsDefeated = true;
+              if (activeCatcher === ALVIN_CATCHER)       alvinDefeated = true;
+              if (activeCatcher === DEWEY_CATCHER)        { deweyDefeated = true; HOUSE_NPC2.tileX += 1; }
+              if (activeCatcher === BUBBLES_CATCHER)      { bubblesDefeated = true; HOUSE2_NPC2.tileX += 1; }
+              if (activeCatcher === HEDGEOSAUR_CATCHER)   ivyDefeated = true;
+              if (activeCatcher === CERAFLAME_CATCHER)    emberDefeated = true;
+              if (activeCatcher === PTERRENT_CATCHER)     skyeDefeated = true;
+              log(`You beat ${activeCatcher.name}!`, 'win');
+              isCatcherBattle = false;
+              activeCatcher   = null;
+              document.getElementById('playAgain').classList.add('visible');
+            } else {
+              showRecruitPrompt();
+            }
+          } else {
+            log(`${defender.name} fainted!`, 'win');
+            const livingBench = roster.filter(c => c.hp > 0);
+            if (livingBench.length > 0) showRosterSelect();
+            else {
+              log('All critters fainted!', 'win');
+              log('Visit Nurse Nina to heal.', '');
+              healAllCreatures();
+              state.player.hp = state.player.maxHp;
+              document.getElementById('playAgain').classList.add('visible');
+            }
+          }
+        }
         return;
       }
 
@@ -4763,6 +4870,7 @@
           log(`💰 You earned ${earned} coins!`, 'win');
           if (isCatcherBattle) {
             // Catcher battle win — no recruit, set defeated flag
+            if (activeCatcher === ROUXLS_CATCHER)      rouxlsDefeated = true;
             if (activeCatcher === ALVIN_CATCHER)       alvinDefeated = true;
             if (activeCatcher === DEWEY_CATCHER)        { deweyDefeated = true; HOUSE_NPC2.tileX += 1; }
             if (activeCatcher === BUBBLES_CATCHER)      { bubblesDefeated = true; HOUSE2_NPC2.tileX += 1; }
@@ -4804,6 +4912,7 @@
         log(`${c.name} fainted!`, 'win');
         log(`💰 You earned ${earned} coins!`, 'win');
         if (isCatcherBattle) {
+          if (activeCatcher === ROUXLS_CATCHER)    rouxlsDefeated = true;
           if (activeCatcher === ALVIN_CATCHER)     alvinDefeated = true;
           if (activeCatcher === DEWEY_CATCHER)     { deweyDefeated = true; HOUSE_NPC2.tileX += 1; }
           if (activeCatcher === BUBBLES_CATCHER)   { bubblesDefeated = true; HOUSE2_NPC2.tileX += 1; }
@@ -4902,6 +5011,7 @@
       document.getElementById('log').innerHTML = `<div class="log-line">${introMsg}</div>`;
       document.getElementById('playAgain').classList.remove('visible');
       document.getElementById('recruitPrompt').style.display = 'none';
+      document.getElementById('rouxlsChoice').style.display  = 'none';
       document.getElementById('rosterSelect').style.display  = 'none';
       document.getElementById('swapPanel').style.display     = 'none';
       document.querySelector('.flick-hint').style.visibility = isCatcherBattle ? 'hidden' : 'visible';
@@ -4932,7 +5042,8 @@
     const MAX_PARTY = 6; // 1 active + up to 5 in roster
 
     function showRecruitPrompt() {
-      if (isCatcherBattle) return; // never recruit catcher critters
+      if (isCatcherBattle || activeCatcher) return; // never recruit catcher critters
+      if (state.opponent.noRecruit) return; // critter flagged as unrecruitable
       document.getElementById('recruitName').textContent = state.opponent.name;
       document.getElementById('recruitPrompt').style.display = 'block';
       document.getElementById('playAgain').classList.remove('visible');
@@ -4971,6 +5082,15 @@
       document.getElementById('recruitPrompt').style.display = 'none';
       renderRosterTray();
       returnToWorld();
+    }
+
+    function rouxlsChallenge() {
+      document.getElementById('rouxlsChoice').style.display = 'none';
+      setTimeout(() => triggerCatcherBattle(ROUXLS_CATCHER), 100);
+    }
+
+    function rouxlsLeave() {
+      document.getElementById('rouxlsChoice').style.display = 'none';
     }
 
     function doRecruit() {
