@@ -592,8 +592,8 @@
     }
 
     .log {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.1);
+      background: #1a0a2e;
+      border: 1px solid rgba(120,80,200,0.5);
       border-radius: 10px;
       padding: 16px 20px;
       max-width: 900px;
@@ -602,7 +602,6 @@
       font-size: 14px;
       line-height: 1.6;
       color: var(--text-muted);
-      backdrop-filter: blur(4px);
     }
 
     .log-line { margin-bottom: 4px; }
@@ -750,9 +749,244 @@
     }
     .roster-pip img { width: 100%; height: 100%; object-fit: contain; }
     .roster-pip.fainted-pip { opacity: 0.35; filter: grayscale(1); border-color: rgba(255,255,255,0.1); }
+    /* ── Intro screen ─────────────────────────────────────────── */
+    #introScreen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+      font-family: 'Press Start 2P', monospace;
+    }
+
+    /* Phase 1 — boot text */
+    #bootText {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column;
+      justify-content: center; align-items: flex-start;
+      padding: 60px;
+      font-size: 13px; color: #00ff88; line-height: 2.2;
+      opacity: 1; transition: opacity 0.6s;
+    }
+    #bootText .boot-line { opacity: 0; animation: bootFadeIn 0.1s forwards; }
+
+    @keyframes bootFadeIn { to { opacity: 1; } }
+
+    /* Phase 2 — title card */
+    #titleCard {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 40px;
+      opacity: 0; transition: opacity 1s;
+      text-align: center;
+    }
+    #titleCard.visible { opacity: 1; }
+
+    #titleLogo {
+      display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+
+    #titleSub {
+      font-size: 11px; color: #a090c8; letter-spacing: 0.12em;
+      opacity: 0; transform: translateY(-12px);
+      transition: opacity 0.8s 0.3s, transform 0.8s 0.3s;
+    }
+    #titleCard.visible #titleSub { opacity: 1; transform: translateY(0); }
+
+    #titleMain {
+      font-size: clamp(40px, 8vw, 72px);
+      font-weight: 900; line-height: 1.1;
+      color: #ffcb05;
+      text-shadow: 0 0 40px rgba(255,203,5,0.7), 0 0 80px rgba(255,203,5,0.3);
+      opacity: 0; transform: scale(0.85) translateY(20px);
+      transition: opacity 0.9s 0.5s, transform 0.9s 0.5s;
+      letter-spacing: 0.04em;
+    }
+    #titleCard.visible #titleMain { opacity: 1; transform: scale(1) translateY(0); }
+
+    /* Phase 3 — press any key */
+    #pressKey {
+      font-size: 11px; color: #c0a8f0; letter-spacing: 0.1em;
+      opacity: 0;
+      animation: none;
+    }
+    #pressKey.visible { animation: blink 1.1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    /* Fade-out transition */
+    #introScreen.fade-out {
+      opacity: 0; transition: opacity 0.7s;
+      pointer-events: none;
+    }
+
+    /* ── Item get notification ── */
+    #itemNotification {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1a1a2e;
+      border: 2px solid #ffcb05;
+      border-radius: 12px;
+      padding: 10px 22px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: #ffcb05;
+      z-index: 9000;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.35s;
+      white-space: nowrap;
+    }
+    #itemNotification.item-notif-show { opacity: 1; }
+    #itemNotification.item-notif-hide { opacity: 0; }
+
+    /* ── Credits screen ── */
+    #creditsScreen {
+      position: fixed; inset: 0; z-index: 9998;
+      background: #000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      font-family: 'Press Start 2P', monospace;
+    }
+    #creditsScreen.active { display: flex; }
+    #creditsScreen.fade-out { animation: creditsFadeOut 1s forwards; }
+    @keyframes creditsFadeOut { to { opacity: 0; } }
+
+    #creditsScroll {
+      position: absolute;
+      width: 100%;
+      text-align: center;
+      padding: 0 40px;
+      box-sizing: border-box;
+      top: 100%;
+      animation: creditsRoll 28s linear forwards;
+    }
+    #creditsScroll.paused { animation-play-state: paused; }
+    @keyframes creditsRoll {
+      from { transform: translateY(0); }
+      to   { transform: translateY(-220%); }
+    }
+
+    .credits-game-title {
+      font-size: clamp(28px, 5vw, 48px);
+      color: #ffcb05;
+      text-shadow: 0 0 30px rgba(255,203,5,0.6);
+      margin-bottom: 10px;
+      letter-spacing: 0.06em;
+    }
+    .credits-game-sub {
+      font-size: 10px;
+      color: #a090c8;
+      margin-bottom: 60px;
+      letter-spacing: 0.12em;
+    }
+    .credits-section-label {
+      font-size: 8px;
+      color: #7a6aaa;
+      letter-spacing: 0.15em;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .credits-name {
+      font-size: 12px;
+      color: #fff;
+      margin-bottom: 40px;
+      line-height: 1.8;
+    }
+    .credits-divider {
+      width: 60px;
+      height: 2px;
+      background: linear-gradient(to right, transparent, #ffcb05, transparent);
+      margin: 20px auto 50px;
+    }
+    .credits-thanks {
+      font-size: 13px;
+      color: #ffcb05;
+      margin-bottom: 50px;
+      text-shadow: 0 0 20px rgba(255,203,5,0.5);
+    }
+    #creditsSkipHint {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px;
+      color: #6a5a8a;
+      z-index: 9999;
+      pointer-events: none;
+      animation: blink 1.4s step-end infinite;
+    }
+
   </style>
 </head>
 <body>
+
+  <!-- Item get notification toast -->
+  <div id="itemNotification"></div>
+
+  <!-- ============================================================
+       CREDITS SCREEN
+  ============================================================ -->
+  <div id="creditsScreen">
+    <div id="creditsScroll">
+      <div class="credits-game-title">Card<br>Catchers</div>
+      <div class="credits-game-sub">A creature-catching adventure</div>
+
+      <div class="credits-section-label">Lead Developer</div>
+      <div class="credits-name">Emmett. H</div>
+
+      <div class="credits-divider"></div>
+
+      <div class="credits-section-label">Art</div>
+      <div class="credits-name">Emmett. H<br>&amp; ChatGPT</div>
+
+      <div class="credits-divider"></div>
+
+      <div class="credits-section-label">Creative Input</div>
+      <div class="credits-name">Ashlee. H</div>
+
+      <div class="credits-divider"></div>
+
+      <div class="credits-section-label">Coding</div>
+      <div class="credits-name">Claude</div>
+
+      <div class="credits-divider"></div>
+
+      <div class="credits-section-label">Beta Testing</div>
+      <div class="credits-name">Fletcher. H</div>
+
+      <div class="credits-divider"></div>
+
+      <div class="credits-section-label">Special Thanks</div>
+      <div class="credits-name">Stefan. B<br><span style="font-size:9px;color:#a090c8;">Technical Advisor</span></div>
+
+      <div style="height:60px;"></div>
+      <div class="credits-thanks">Thanks for playing! ✨</div>
+      <div style="height:120px;"></div>
+    </div>
+    <div id="creditsSkipHint">— press any key to skip —</div>
+  </div>
+
+  <!-- ============================================================
+       INTRO SCREEN
+  ============================================================ -->
+  <div id="introScreen">
+
+    <!-- Phase 1: retro boot text -->
+    <div id="bootText"></div>
+
+    <!-- Phase 2 & 3: cinematic title card -->
+    <div id="titleCard">
+      <div id="titleLogo">
+        <div id="titleSub">A creature-catching adventure</div>
+        <div id="titleMain">Card<br>Catchers</div>
+      </div>
+      <div id="pressKey">— Press any key to start —</div>
+    </div>
+
+  </div>
 
   <!-- ============================================================
        WORLD SECTION
@@ -791,7 +1025,7 @@
       <div class="bag-items">
         <div class="bag-item">
           <div class="bag-item-info">
-            <span class="bag-item-name">🧪 Potion</span>
+            <span class="bag-item-name">🧪 Healing Juice</span>
             <span class="bag-item-desc">Restores 40 HP to one critter</span>
           </div>
           <span class="bag-item-count">×<span id="bagPotionCount">0</span></span>
@@ -799,11 +1033,22 @@
         </div>
         <div class="bag-item">
           <div class="bag-item-info">
-            <span class="bag-item-name">💊 Revive</span>
+            <span class="bag-item-name">💊 Reviving Dust</span>
             <span class="bag-item-desc">Revives a fainted critter at 50% HP</span>
           </div>
           <span class="bag-item-count">×<span id="bagReviveCount">0</span></span>
           <button class="bag-use-btn" id="bagUseRevive" onclick="useBagItem('revive')">Use</button>
+        </div>
+      </div>
+      <div id="bagKeyItems" style="display:none; margin-top:10px;">
+        <div style="font-size:8px; color:#c0a8f0; text-align:center; margin-bottom:6px; letter-spacing:0.08em;">— KEY ITEMS —</div>
+        <div class="bag-item" id="bagTrioMedalEntry" style="display:none;">
+          <div class="bag-item-info">
+            <span class="bag-item-name">
+              <span style="display:inline-block;width:10px;height:10px;background:#5bc8f5;border-radius:2px;vertical-align:middle;"></span><span style="display:inline-block;width:10px;height:10px;background:#5ec45e;border-radius:2px;vertical-align:middle;"></span><span style="display:inline-block;width:10px;height:10px;background:#e05050;border-radius:2px;vertical-align:middle;margin-right:5px;"></span>Trio Medal
+            </span>
+            <span class="bag-item-desc">That's the Trio Medal, you got it from defeating the triplets.</span>
+          </div>
         </div>
       </div>
       <button class="bag-close-btn" onclick="closeBag()">Close</button>
@@ -820,7 +1065,7 @@
       <div class="shop-items">
         <div class="shop-item">
           <div class="shop-item-info">
-            <span class="shop-item-name">🧪 Potion</span>
+            <span class="shop-item-name">🧪 Healing Juice</span>
             <span class="shop-item-desc">Restores 40 HP to one critter</span>
           </div>
           <span class="shop-item-price">30 🪙</span>
@@ -828,7 +1073,7 @@
         </div>
         <div class="shop-item">
           <div class="shop-item-info">
-            <span class="shop-item-name">💊 Revive</span>
+            <span class="shop-item-name">💊 Reviving Dust</span>
             <span class="shop-item-desc">Revives a fainted critter at 50% HP</span>
           </div>
           <span class="shop-item-price">50 🪙</span>
@@ -987,6 +1232,14 @@
       gameState = 'battle';
       document.getElementById('worldSection').style.display = 'none';
       document.getElementById('battleSection').style.display = 'flex';
+      // Set background based on battle type
+      if (isCatcherBattle) {
+        document.body.style.background = 'radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%)';
+      } else if (triggerEncounter._fromSurf) {
+        document.body.style.background = 'radial-gradient(ellipse at top, #60c8f0 0%, #2a80c0 60%)';
+      } else {
+        document.body.style.background = 'radial-gradient(ellipse at top, #90e060 0%, #4a9a30 60%)';
+      }
     }
 
     // ── Encounter transition (Pokémon-style flash) ─────────────
@@ -1029,6 +1282,8 @@
 
     // ── Return to world after battle ───────────────────────────
     function returnToWorld() {
+      // Restore default background
+      document.body.style.background = 'radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%)';
       // Restore surfing if the battle was triggered on water
       isSurfing = !!(triggerEncounter._fromSurf);
       // Clean up catcher battle state
@@ -1233,7 +1488,15 @@
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
-        setTimeout(() => { overlay.style.transition = ''; }, 400);
+        setTimeout(() => {
+          overlay.style.transition = '';
+          if (inventory.trioMedal && !demoEndSeen) {
+            demoEndSeen  = true;
+            dialogActive = true;
+            dialogPage   = 0;
+            dialogType   = 'demoend';
+          }
+        }, 400);
       }, 300);
     }
 
@@ -1275,7 +1538,15 @@
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
-        setTimeout(() => { overlay.style.transition = ''; }, 400);
+        setTimeout(() => {
+          overlay.style.transition = '';
+          if (inventory.trioMedal && !demoEndSeen) {
+            demoEndSeen  = true;
+            dialogActive = true;
+            dialogPage   = 0;
+            dialogType   = 'demoend';
+          }
+        }, 400);
       }, 300);
     }
 
@@ -2183,7 +2454,7 @@
 
     const NPC_DIALOG = [
       ["Hello, catcher!",      "I'm Dr. Meadow.",      "I study wild critters."],
-      ["The TALL GRASS hides", "wild creatures -",      "walk in to battle!"],
+      ["The TALL GRASS hides", "wild critters -",       "walk in to battle!"],
       ["LAVA beats GARDEN,",   "GARDEN beats OCEAN,",   "OCEAN beats LAVA."],
       ["BASIC moves deal",     "flat damage. No",       "type bonus applies."],
       ["Win a battle and",     "you can RECRUIT them",  "to your party!"],
@@ -2269,8 +2540,14 @@
     ];
 
     const SKYE_WIN_DIALOG = [
-      ["...",               "You won.",            "All three of us."],
-      ["This rooftop",      "belongs to you.",     "Well earned."],
+      ["...", "You won.", "I believe this is yours."],
+    ];
+
+    const DEMO_END_DIALOG = [
+      ["This is the end",    "of the demo.",         ""],
+      ["I hope you enjoyed", "playing my silly",     "little game."],
+      ["Be sure to check in","from time to time,",   ""],
+      ["as more updates are","coming some time."],
     ];
 
     const ALVIN_REMATCH_DIALOG = [
@@ -2318,8 +2595,8 @@
 
     const SHOP_NPC_DIALOG = [
       ["Oh hey! Let me tell", "you all about",        "items!"],
-      ["POTIONS restore 40",  "HP to any critter.",   "Great for exploring!"],
-      ["REVIVES bring back",  "a fainted critter",    "at 50% HP."],
+      ["HEALING JUICE",       "restores 40 HP to",    "any critter!"],
+      ["REVIVING DUST",       "brings back a fainted","critter at 50% HP."],
       ["You can use items",   "outside battle with",  "the (B) button..."],
       ["...or tap the BAG",   "button right inside",  "a battle too!"],
       ["Using an item in",    "battle costs your",    "turn though!"],
@@ -2353,6 +2630,8 @@
     let ivyDefeated     = false;
     let emberDefeated   = false;
     let skyeDefeated    = false;
+    let skyeWinSeen     = false;  // clears Skye's post-defeat "!" once player talks to her
+    let demoEndSeen     = false;  // end-of-demo message shown once after leaving with Trio Medal
 
     function drawNPC(ctx, sx, sy, playerAdjacent) {
       const s  = TILE_SIZE;
@@ -3297,6 +3576,7 @@
                           : dialogType === 'emberwin'    ? EMBER_WIN_DIALOG
                           : dialogType === 'skyenpc'     ? SKYE_DIALOG
                           : dialogType === 'skyewin'     ? SKYE_WIN_DIALOG
+                          : dialogType === 'demoend'     ? DEMO_END_DIALOG
                           : NPC_DIALOG;
       if (dialogPage >= currentDialog.length) {
         const closingType = dialogType;
@@ -3336,6 +3616,18 @@
         if (closingType === 'skyenpc' && !skyeDefeated) {
           setTimeout(() => triggerCatcherBattle(PTERRENT_CATCHER), 200);
         }
+        // Show credits after end-of-demo dialog
+        if (closingType === 'demoend') {
+          setTimeout(showCredits, 400);
+        }
+        // Dismiss Skye's "!" and award Trio Medal once player reads her post-defeat dialog
+        if (closingType === 'skyewin') {
+          skyeWinSeen = true;
+          if (!inventory.trioMedal) {
+            inventory.trioMedal = true;
+            showItemNotification('Trio Medal');
+          }
+        }
       }
     }
 
@@ -3359,11 +3651,50 @@
       document.getElementById('bagReviveCount').textContent = inventory.revives;
       document.getElementById('bagUsePotion').disabled = inventory.potions === 0;
       document.getElementById('bagUseRevive').disabled = inventory.revives === 0;
+      // Key items
+      const hasAnyKeyItem = inventory.trioMedal;
+      document.getElementById('bagKeyItems').style.display       = hasAnyKeyItem ? 'block' : 'none';
+      document.getElementById('bagTrioMedalEntry').style.display = inventory.trioMedal ? 'flex' : 'none';
       document.getElementById('bagOverlay').style.display = 'flex';
     }
 
     function closeBag() {
       document.getElementById('bagOverlay').style.display = 'none';
+    }
+
+    function showCredits() {
+      const screen = document.getElementById('creditsScreen');
+      const scroll = document.getElementById('creditsScroll');
+      // Reset animation so it plays fresh each time
+      scroll.style.animation = 'none';
+      scroll.offsetHeight; // reflow
+      scroll.style.animation = '';
+      screen.classList.add('active');
+
+      function dismiss() {
+        screen.removeEventListener('keydown', onKey);
+        document.removeEventListener('keydown', onKey);
+        screen.classList.add('fade-out');
+        setTimeout(() => location.reload(), 1000);
+      }
+      function onKey() { dismiss(); }
+
+      document.addEventListener('keydown', onKey);
+      screen.addEventListener('click', dismiss);
+
+      // Auto-dismiss after scroll finishes (28s animation + 1s buffer)
+      setTimeout(dismiss, 29000);
+    }
+
+    function showItemNotification(itemName) {
+      const el = document.getElementById('itemNotification');
+      el.textContent = '✨ Got ' + itemName + '!';
+      el.classList.remove('item-notif-hide');
+      el.classList.add('item-notif-show');
+      setTimeout(() => {
+        el.classList.remove('item-notif-show');
+        el.classList.add('item-notif-hide');
+      }, 2800);
     }
 
     function useBagItem(type) {
@@ -3494,14 +3825,14 @@
       document.getElementById('shopCoins').textContent = coins;
       msg.style.color = '#aaffaa';
       msg.textContent = type === 'potion'
-        ? `Bought a Potion! (×${inventory.potions})`
-        : `Bought a Revive! (×${inventory.revives})`;
+        ? `Bought a Healing Juice! (×${inventory.potions})`
+        : `Bought a Reviving Dust! (×${inventory.revives})`;
     }
 
     // ── Surfing / Coins / Inventory ────────────────────────────
     let isSurfing = false;
     let coins     = 0;
-    let inventory = { potions: 0, revives: 0 };
+    let inventory = { potions: 0, revives: 0, trioMedal: false };
 
     function hasWaterType() {
       const active = persistentPlayer || creatures.player;
@@ -3759,16 +4090,16 @@
           dialogType   = ivyDefeated ? 'ivywin' : 'ivynpc';
           return;
         }
-        // Walking into Ember (rooftop triplet boss 2)
-        if (currentArea === 'roof' && nx === ROOF_NPC2.tileX && ny === ROOF_NPC2.tileY) {
+        // Walking into Ember (rooftop triplet boss 2) — only after Ivy is defeated
+        if (currentArea === 'roof' && ivyDefeated && nx === ROOF_NPC2.tileX && ny === ROOF_NPC2.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = emberDefeated ? 'emberwin' : 'embernpc';
           return;
         }
-        // Walking into Skye (rooftop triplet boss 3)
-        if (currentArea === 'roof' && nx === ROOF_NPC3.tileX && ny === ROOF_NPC3.tileY) {
+        // Walking into Skye (rooftop triplet boss 3) — only after Ember is defeated
+        if (currentArea === 'roof' && emberDefeated && nx === ROOF_NPC3.tileX && ny === ROOF_NPC3.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
@@ -3866,7 +4197,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3911,7 +4242,7 @@
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3988,7 +4319,7 @@
 
       // Dialog
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -4117,15 +4448,31 @@
       const ivySY = ROOF_OFFSET_Y + ROOF_NPC.tileY * TILE_SIZE;
       drawRoofNPC(ctx, ivySX, ivySY);
 
-      // Ember (rooftop triplet boss 2)
-      const emberSX = ROOF_OFFSET_X + ROOF_NPC2.tileX * TILE_SIZE;
-      const emberSY = ROOF_OFFSET_Y + ROOF_NPC2.tileY * TILE_SIZE;
-      drawRoofNPC2(ctx, emberSX, emberSY);
+      // Ember (rooftop triplet boss 2) — only visible after Ivy is defeated
+      if (ivyDefeated) {
+        const emberSX = ROOF_OFFSET_X + ROOF_NPC2.tileX * TILE_SIZE;
+        const emberSY = ROOF_OFFSET_Y + ROOF_NPC2.tileY * TILE_SIZE;
+        drawRoofNPC2(ctx, emberSX, emberSY);
+      }
 
-      // Skye (rooftop triplet boss 3)
-      const skyeSX = ROOF_OFFSET_X + ROOF_NPC3.tileX * TILE_SIZE;
-      const skyeSY = ROOF_OFFSET_Y + ROOF_NPC3.tileY * TILE_SIZE;
-      drawRoofNPC3(ctx, skyeSX, skyeSY);
+      // Skye (rooftop triplet boss 3) — only visible after Ember is defeated
+      if (emberDefeated) {
+        const skyeSX = ROOF_OFFSET_X + ROOF_NPC3.tileX * TILE_SIZE;
+        const skyeSY = ROOF_OFFSET_Y + ROOF_NPC3.tileY * TILE_SIZE;
+        drawRoofNPC3(ctx, skyeSX, skyeSY);
+        // Flashing "!" above Skye after she's defeated, until player talks to her
+        if (skyeDefeated && !skyeWinSeen && !dialogActive && Math.floor(Date.now() / 400) % 2 === 0) {
+          ctx.save();
+          ctx.font = 'bold 18px "Press Start 2P", monospace';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#ffcb05';
+          ctx.strokeStyle = '#000';
+          ctx.lineWidth = 3;
+          ctx.strokeText('!', skyeSX + TILE_SIZE / 2, skyeSY - 4);
+          ctx.fillText('!', skyeSX + TILE_SIZE / 2, skyeSY - 4);
+          ctx.restore();
+        }
+      }
 
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
@@ -4138,6 +4485,7 @@
                   : dialogType === 'emberwin'  ? EMBER_WIN_DIALOG
                   : dialogType === 'skyenpc'   ? SKYE_DIALOG
                   : dialogType === 'skyewin'   ? SKYE_WIN_DIALOG
+                  : dialogType === 'demoend'   ? DEMO_END_DIALOG
                   : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
@@ -5294,6 +5642,64 @@
     initState();
     render();
     initFlickGesture();
+
+    // ── Intro sequence ────────────────────────────────────────────
+    (function runIntro() {
+      const screen   = document.getElementById('introScreen');
+      const bootDiv  = document.getElementById('bootText');
+      const titleCard = document.getElementById('titleCard');
+      const pressKey  = document.getElementById('pressKey');
+
+      const bootLines = [
+        'CARD CATCHERS SYSTEM v1.0',
+        '&nbsp;',
+        'Initializing world map............  OK',
+        'Loading critter data..............  OK',
+        'Spawning wild encounters..........  OK',
+        'Connecting to battleground........  OK',
+        '&nbsp;',
+        '&gt;&gt; All systems ready.',
+      ];
+
+      let ready = false;
+
+      function dismiss() {
+        if (!ready) return;
+        screen.classList.add('fade-out');
+        setTimeout(() => screen.remove(), 750);
+      }
+
+      // Phase 1: type out each boot line with a delay
+      let delay = 300;
+      bootLines.forEach((text, i) => {
+        setTimeout(() => {
+          const line = document.createElement('div');
+          line.className = 'boot-line';
+          line.innerHTML = text;
+          line.style.animationDelay = '0s';
+          bootDiv.appendChild(line);
+        }, delay);
+        delay += i === 0 ? 500 : 220;
+      });
+
+      // Phase 2: fade out boot text, reveal title card
+      setTimeout(() => {
+        bootDiv.style.opacity = '0';
+        setTimeout(() => {
+          bootDiv.style.display = 'none';
+          titleCard.classList.add('visible');
+          // Phase 3: start flashing prompt after title finishes animating in
+          setTimeout(() => {
+            pressKey.classList.add('visible');
+            ready = true;
+          }, 1200);
+        }, 650);
+      }, delay + 600);
+
+      // Dismiss on any key or tap
+      document.addEventListener('keydown', dismiss);
+      screen.addEventListener('click', dismiss);
+    })();
   </script>
 </body>
 </html>
