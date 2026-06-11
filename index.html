@@ -15,9 +15,9 @@
       --text: #f5efd6;
       --text-muted: #8e93b2;
 
-      --fire:  #f08030;
-      --water: #6890f0;
-      --grass: #78c850;
+      --lava:  #f08030;
+      --ocean: #6890f0;
+      --garden: #78c850;
 
       --hp-good: #7ac74c;
       --hp-warn: #ffcb05;
@@ -361,9 +361,9 @@
       border-radius: 13px;
     }
 
-    .creature-card.type-fire .card-inner  { background: linear-gradient(160deg, #fde4c8 0%, #f5c09a 35%, #f08030 100%); }
-    .creature-card.type-water .card-inner { background: linear-gradient(160deg, #d0dcff 0%, #a8bef8 35%, #6890f0 100%); }
-    .creature-card.type-grass .card-inner { background: linear-gradient(160deg, #d4f0c0 0%, #b0dfa0 35%, #78c850 100%); }
+    .creature-card.type-lava .card-inner  { background: linear-gradient(160deg, #fde4c8 0%, #f5c09a 35%, #f08030 100%); }
+    .creature-card.type-ocean .card-inner { background: linear-gradient(160deg, #d0dcff 0%, #a8bef8 35%, #6890f0 100%); }
+    .creature-card.type-garden .card-inner { background: linear-gradient(160deg, #d4f0c0 0%, #b0dfa0 35%, #78c850 100%); }
 
     #card-opponent { cursor: grab; }
     #card-opponent.dragging { cursor: grabbing; }
@@ -474,9 +474,9 @@
       flex-shrink: 0;
     }
 
-    .type-badge.fire  { background: #c03010; }
-    .type-badge.water { background: #3050c0; }
-    .type-badge.grass { background: #3a8a20; }
+    .type-badge.lava  { background: #c03010; }
+    .type-badge.ocean { background: #3050c0; }
+    .type-badge.garden { background: #3a8a20; }
     .type-badge.basic { background: #7a7a8a; }
 
     .card-stat-grid {
@@ -850,7 +850,7 @@
 
     <div class="arena">
       <!-- Player creature -->
-      <div class="creature-card type-fire" id="card-player">
+      <div class="creature-card type-lava" id="card-player">
         <div class="card-inner">
           <div class="card-header">
             <div class="creature-name" id="name-player">Scorchspine</div>
@@ -860,7 +860,7 @@
           </div>
           <div class="card-art" id="art-player"><img src="scorchspine.png" alt="Scorchspine"></div>
           <div class="card-stats-row">
-            <span class="type-badge fire" id="type-player">Fire</span>
+            <span class="type-badge lava" id="type-player">Lava</span>
             <div class="card-stat-grid">
               <div class="stat-cell"><span class="stat-label">ATK</span><span class="stat-val" id="atk-player">12</span></div>
               <div class="stat-cell"><span class="stat-label">DFC</span><span class="stat-val" id="dfc-player">7</span></div>
@@ -886,7 +886,7 @@
       <!-- Opponent creature -->
       <div class="opponent-wrapper">
         <div class="flick-hint">👆 flick to run</div>
-        <div class="creature-card type-water" id="card-opponent">
+        <div class="creature-card type-ocean" id="card-opponent">
         <div class="card-inner">
           <div class="card-header">
             <div class="creature-name" id="name-opponent">Sharqua</div>
@@ -896,7 +896,7 @@
           </div>
           <div class="card-art" id="art-opponent"><img src="sharqua.png" alt="Sharqua"></div>
           <div class="card-stats-row">
-            <span class="type-badge water" id="type-opponent">Water</span>
+            <span class="type-badge ocean" id="type-opponent">Ocean</span>
             <div class="card-stat-grid">
               <div class="stat-cell"><span class="stat-label">ATK</span><span class="stat-val" id="atk-opponent">10</span></div>
               <div class="stat-cell"><span class="stat-label">DFC</span><span class="stat-val" id="dfc-opponent">9</span></div>
@@ -3477,8 +3477,8 @@
 
     function hasWaterType() {
       const active = persistentPlayer || creatures.player;
-      if (active.type === 'water') return true;
-      return roster.some(c => c.type === 'water');
+      if (active.type === 'ocean') return true;
+      return roster.some(c => c.type === 'ocean');
     }
 
     function handleAButton() {
@@ -4202,22 +4202,22 @@
     // ============================================================
 
     const typeChart = {
-      fire:  { fire: 1.0, grass: 2.0, water: 0.5, basic: 1.0 },
-      grass: { fire: 0.5, grass: 1.0, water: 2.0, basic: 1.0 },
-      water: { fire: 2.0, grass: 0.5, water: 1.0, basic: 1.0 },
-      basic: { fire: 1.0, grass: 1.0, water: 1.0, basic: 1.0 }
+      lava:  { lava: 1.0, garden: 2.0, ocean: 0.5, basic: 1.0 },
+      garden: { lava: 0.5, garden: 1.0, ocean: 2.0, basic: 1.0 },
+      ocean: { lava: 2.0, garden: 0.5, ocean: 1.0, basic: 1.0 },
+      basic: { lava: 1.0, garden: 1.0, ocean: 1.0, basic: 1.0 }
     };
 
     const creatures = {
       player: {
         name: 'Scorchspine',
-        type: 'fire',
+        type: 'lava',
         img: 'scorchspine.png',
         maxHp: 100,
         atk: 12, dfc: 6, mag: 11, mdf: 5, spd: 9, lck: 8,
         moves: [
-          { name: 'Ember Snap',  type: 'fire',  cat: 'physical', power: 14 },
-          { name: 'Heat Wave',   type: 'fire',  cat: 'magic',    power: 12 },
+          { name: 'Ember Snap',  type: 'lava',  cat: 'physical', power: 14 },
+          { name: 'Heat Wave',   type: 'lava',  cat: 'magic',    power: 12 },
           { name: 'Intimidate',  type: 'basic', cat: 'status',   effect: { stat: 'atk', target: 'opponent', amount: -3 } },
           { name: 'Scratch',     type: 'basic', cat: 'physical', power:  8 },
         ]
@@ -4227,144 +4227,144 @@
     const wildCreatures = [
       {
         name: 'Sharqua',
-        type: 'water',
+        type: 'ocean',
         img: 'sharqua.png',
         maxHp: 100,
         atk: 14, dfc: 11, mag: 6, mdf: 7, spd: 7, lck: 5,
         moves: [
-          { name: 'Splash Strike', type: 'water', cat: 'physical', power: 14 },
-          { name: 'Whirlpool',    type: 'water', cat: 'magic',    power: 12 },
+          { name: 'Splash Strike', type: 'ocean', cat: 'physical', power: 14 },
+          { name: 'Whirlpool',    type: 'ocean', cat: 'magic',    power: 12 },
           { name: 'Smokescreen',  type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
           { name: 'Slam',         type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
         name: 'Embrawl',
-        type: 'fire',
+        type: 'lava',
         img: 'embrawl.png',
         maxHp: 105,
         atk: 16, dfc: 8, mag: 3, mdf: 5, spd: 6, lck: 4,
         moves: [
-          { name: 'Flame Charge',  type: 'fire',  cat: 'physical', power: 14 },
-          { name: 'Lava Stomp',   type: 'fire',  cat: 'physical', power: 12 },
-          { name: 'Ember Scorch', type: 'fire',  cat: 'status',   effect: { type: 'apply_status', status: 'charred',  target: 'opponent' } },
+          { name: 'Flame Charge',  type: 'lava',  cat: 'physical', power: 14 },
+          { name: 'Lava Stomp',   type: 'lava',  cat: 'physical', power: 12 },
+          { name: 'Ember Scorch', type: 'lava',  cat: 'status',   effect: { type: 'apply_status', status: 'charred',  target: 'opponent' } },
           { name: 'Headbutt',     type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
         name: 'Kiwivy',
-        type: 'grass',
+        type: 'garden',
         img: 'kiwivy.png',
         maxHp: 95,
         atk: 5, dfc: 5, mag: 15, mdf: 12, spd: 10, lck: 8,
         moves: [
-          { name: 'Seed Spit',   type: 'grass', cat: 'physical', power: 5, hits: [2, 5] },
-          { name: 'Leaf Storm',  type: 'grass', cat: 'magic',    power: 12 },
-          { name: 'Leech Seed',  type: 'grass', cat: 'status',   effect: { type: 'apply_status', status: 'seeded',   target: 'opponent' } },
+          { name: 'Seed Spit',   type: 'garden', cat: 'physical', power: 5, hits: [2, 5] },
+          { name: 'Leaf Storm',  type: 'garden', cat: 'magic',    power: 12 },
+          { name: 'Leech Seed',  type: 'garden', cat: 'status',   effect: { type: 'apply_status', status: 'seeded',   target: 'opponent' } },
           { name: 'Fast Pecks',  type: 'basic', cat: 'physical', power:  7, priority: true },
         ]
       },
       {
         name: 'Frostusk',
-        type: 'water',
+        type: 'ocean',
         img: 'frostusk.png',
         maxHp: 115,
         atk: 9, dfc: 16, mag: 8, mdf: 14, spd: 4, lck: 5,
         moves: [
-          { name: 'Ice Fang',     type: 'water', cat: 'physical', power: 16 },
-          { name: 'Frost Wave',   type: 'water', cat: 'magic',    power: 13 },
-          { name: 'Soaking Rain', type: 'water', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
+          { name: 'Ice Fang',     type: 'ocean', cat: 'physical', power: 16 },
+          { name: 'Frost Wave',   type: 'ocean', cat: 'magic',    power: 13 },
+          { name: 'Soaking Rain', type: 'ocean', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
           { name: 'Body Crush',   type: 'basic', cat: 'physical', power:  9 },
         ]
       },
       {
         name: 'Shroomkin',
-        type: 'grass',
+        type: 'garden',
         img: 'shroomkin.png',
         maxHp: 90,
         atk: 7, dfc: 6, mag: 12, mdf: 8, spd: 7, lck: 13,
         moves: [
-          { name: 'Spore Burst',  type: 'grass', cat: 'magic',  power: 15 },
-          { name: 'Toxic Bloom',  type: 'grass', cat: 'status', effect: { type: 'apply_status', status: 'toxic', target: 'opponent' } },
-          { name: 'Lucky Spores', type: 'grass', cat: 'status',   effect: { stat: 'lck', target: 'self',     amount: 4  } },
+          { name: 'Spore Burst',  type: 'garden', cat: 'magic',  power: 15 },
+          { name: 'Toxic Bloom',  type: 'garden', cat: 'status', effect: { type: 'apply_status', status: 'toxic', target: 'opponent' } },
+          { name: 'Lucky Spores', type: 'garden', cat: 'status',   effect: { stat: 'lck', target: 'self',     amount: 4  } },
           { name: 'Muddy Spores', type: 'basic', cat: 'status',   effect: { stat: 'atk', target: 'opponent', amount: -3 } },
         ]
       },
       {
         name: 'Lumijell',
-        type: 'water',
+        type: 'ocean',
         img: 'lumijell.png',
         maxHp: 90,
         atk: 6, dfc: 8, mag: 16, mdf: 10, spd: 11, lck: 7,
         moves: [
-          { name: 'Tentacle Zap',  type: 'water', cat: 'magic',    power: 14 },
-          { name: 'Bubble Burst',  type: 'water', cat: 'magic',    power: 11 },
-          { name: 'Venom Sting',   type: 'water', cat: 'status',   effect: { type: 'apply_status', status: 'toxic', target: 'opponent' } },
+          { name: 'Tentacle Zap',  type: 'ocean', cat: 'magic',    power: 14 },
+          { name: 'Bubble Burst',  type: 'ocean', cat: 'magic',    power: 11 },
+          { name: 'Venom Sting',   type: 'ocean', cat: 'status',   effect: { type: 'apply_status', status: 'toxic', target: 'opponent' } },
           { name: 'Drift',         type: 'basic', cat: 'physical', power:  6 },
         ]
       },
       {
         name: 'Treer',
-        type: 'grass',
+        type: 'garden',
         img: 'treer.png',
         maxHp: 100,
         atk: 8, dfc: 10, mag: 14, mdf: 11, spd: 12, lck: 9,
         moves: [
-          { name: 'Antler Slam',   type: 'grass', cat: 'physical', power: 14 },
-          { name: 'Leaf Cascade',  type: 'grass', cat: 'magic',    power: 13 },
-          { name: 'Petal Dance',   type: 'grass', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 3 } },
+          { name: 'Antler Slam',   type: 'garden', cat: 'physical', power: 14 },
+          { name: 'Leaf Cascade',  type: 'garden', cat: 'magic',    power: 13 },
+          { name: 'Petal Dance',   type: 'garden', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 3 } },
           { name: 'Hoof Strike',   type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
         name: 'Magmoad',
-        type: 'fire',
+        type: 'lava',
         img: 'magmoad.png',
         maxHp: 115,
         atk: 13, dfc: 14, mag: 10, mdf: 10, spd: 3, lck: 6,
         moves: [
-          { name: 'Lava Slam',    type: 'fire',  cat: 'physical', power: 15 },
-          { name: 'Magma Burst',  type: 'fire',  cat: 'magic',    power: 13 },
+          { name: 'Lava Slam',    type: 'lava',  cat: 'physical', power: 15 },
+          { name: 'Magma Burst',  type: 'lava',  cat: 'magic',    power: 13 },
           { name: 'Smoke Veil',   type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
           { name: 'Body Press',   type: 'basic', cat: 'physical', power:  9 },
         ]
       },
       {
         name: 'Thornlet',
-        type: 'grass',
+        type: 'garden',
         img: 'thornlet.png',
         maxHp: 110,
         atk: 8, dfc: 15, mag: 10, mdf: 12, spd: 5, lck: 6,
         moves: [
-          { name: 'Thorn Jab',    type: 'grass', cat: 'physical', power: 13 },
-          { name: 'Petal Burst',  type: 'grass', cat: 'magic',    power: 11 },
-          { name: 'Barb Guard',   type: 'grass', cat: 'status',   effect: { stat: 'dfc', target: 'self',     amount: 3  } },
+          { name: 'Thorn Jab',    type: 'garden', cat: 'physical', power: 13 },
+          { name: 'Petal Burst',  type: 'garden', cat: 'magic',    power: 11 },
+          { name: 'Barb Guard',   type: 'garden', cat: 'status',   effect: { stat: 'dfc', target: 'self',     amount: 3  } },
           { name: 'Tackle',       type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
         name: 'Seakey',
-        type: 'water',
+        type: 'ocean',
         img: 'seakey.png',
         landSpawn: true,
         maxHp: 95,
         atk: 10, dfc: 7, mag: 13, mdf: 9, spd: 15, lck: 7,
         moves: [
-          { name: 'Aqua Swipe',   type: 'water', cat: 'physical', power: 13 },
-          { name: 'Tidal Spin',   type: 'water', cat: 'magic',    power: 12 },
+          { name: 'Aqua Swipe',   type: 'ocean', cat: 'physical', power: 13 },
+          { name: 'Tidal Spin',   type: 'ocean', cat: 'magic',    power: 12 },
           { name: 'Smoky Mist',   type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
           { name: 'Claw Scratch', type: 'basic', cat: 'physical', power:  8 },
         ]
       },
       {
         name: 'Grumblaze',
-        type: 'fire',
+        type: 'lava',
         img: 'grumblaze.png',
         maxHp: 100,
         atk: 15, dfc: 7, mag: 9, mdf: 6, spd: 8, lck: 5,
         moves: [
-          { name: 'Ember Claw',    type: 'fire',  cat: 'physical', power: 15 },
-          { name: 'Gut Blast',     type: 'fire',  cat: 'magic',    power: 12 },
+          { name: 'Ember Claw',    type: 'lava',  cat: 'physical', power: 15 },
+          { name: 'Gut Blast',     type: 'lava',  cat: 'magic',    power: 12 },
           { name: 'Sluggish Aura', type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
           { name: 'Dead Weight',   type: 'basic', cat: 'physical', power:  9 },
         ]
@@ -4376,14 +4376,14 @@
       name: 'Alvin',
       critter: {
         name: 'Treer',
-        type: 'grass',
+        type: 'garden',
         img: 'treer.png',
         maxHp: 100,
         atk: 8, dfc: 10, mag: 14, mdf: 11, spd: 12, lck: 9,
         moves: [
-          { name: 'Antler Slam',  type: 'grass', cat: 'physical', power: 14 },
-          { name: 'Leaf Cascade', type: 'grass', cat: 'magic',    power: 13 },
-          { name: 'Petal Dance',  type: 'grass', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 3 } },
+          { name: 'Antler Slam',  type: 'garden', cat: 'physical', power: 14 },
+          { name: 'Leaf Cascade', type: 'garden', cat: 'magic',    power: 13 },
+          { name: 'Petal Dance',  type: 'garden', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 3 } },
           { name: 'Hoof Strike',  type: 'basic', cat: 'physical', power:  8 },
         ]
       }
@@ -4393,13 +4393,13 @@
       name: 'Dewey',
       critter: {
         name: 'Sharqua',
-        type: 'water',
+        type: 'ocean',
         img: 'sharqua.png',
         maxHp: 100,
         atk: 14, dfc: 11, mag: 6, mdf: 7, spd: 7, lck: 5,
         moves: [
-          { name: 'Splash Strike', type: 'water', cat: 'physical', power: 14 },
-          { name: 'Whirlpool',     type: 'water', cat: 'magic',    power: 12 },
+          { name: 'Splash Strike', type: 'ocean', cat: 'physical', power: 14 },
+          { name: 'Whirlpool',     type: 'ocean', cat: 'magic',    power: 12 },
           { name: 'Smokescreen',   type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
           { name: 'Slam',          type: 'basic', cat: 'physical', power:  8 },
         ]
@@ -4410,13 +4410,13 @@
       name: 'Bubbles',
       critter: {
         name: 'Grumblaze',
-        type: 'fire',
+        type: 'lava',
         img: 'grumblaze.png',
         maxHp: 100,
         atk: 15, dfc: 7, mag: 9, mdf: 6, spd: 8, lck: 5,
         moves: [
-          { name: 'Ember Claw',    type: 'fire',  cat: 'physical', power: 15 },
-          { name: 'Gut Blast',     type: 'fire',  cat: 'magic',    power: 12 },
+          { name: 'Ember Claw',    type: 'lava',  cat: 'physical', power: 15 },
+          { name: 'Gut Blast',     type: 'lava',  cat: 'magic',    power: 12 },
           { name: 'Sluggish Aura', type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
           { name: 'Dead Weight',   type: 'basic', cat: 'physical', power:  9 },
         ]
@@ -4428,14 +4428,14 @@
       name: 'Boss',
       critter: {
         name: 'Hedgeosaur',
-        type: 'grass',
+        type: 'garden',
         img: 'hedgeosaur.png',
         maxHp: 160,
         atk: 20, dfc: 18, mag: 16, mdf: 15, spd: 13, lck: 11,
         moves: [
-          { name: 'Branch Bite',    type: 'grass', cat: 'physical', power: 20 },
-          { name: 'Petal Barrage',  type: 'grass', cat: 'magic',    power: 17 },
-          { name: 'Rose Thorn',     type: 'grass', cat: 'status',   effect: { type: 'apply_status', status: 'seeded', target: 'opponent' } },
+          { name: 'Branch Bite',    type: 'garden', cat: 'physical', power: 20 },
+          { name: 'Petal Barrage',  type: 'garden', cat: 'magic',    power: 17 },
+          { name: 'Rose Thorn',     type: 'garden', cat: 'status',   effect: { type: 'apply_status', status: 'seeded', target: 'opponent' } },
           { name: 'Vine Whip',      type: 'basic', cat: 'physical', power: 13 },
         ]
       }
@@ -4445,14 +4445,14 @@
       name: 'Boss',
       critter: {
         name: 'Ceraflame',
-        type: 'fire',
+        type: 'lava',
         img: 'ceraflame.png',
         maxHp: 150,
         atk: 24, dfc: 13, mag: 20, mdf: 11, spd: 20, lck: 13,
         moves: [
-          { name: 'Blue Blaze',   type: 'fire',  cat: 'physical', power: 22 },
-          { name: 'Soul Flame',   type: 'fire',  cat: 'magic',    power: 19 },
-          { name: 'Char Crash',   type: 'fire',  cat: 'status',   effect: { type: 'apply_status', status: 'charred', target: 'opponent' } },
+          { name: 'Blue Blaze',   type: 'lava',  cat: 'physical', power: 22 },
+          { name: 'Soul Flame',   type: 'lava',  cat: 'magic',    power: 19 },
+          { name: 'Char Crash',   type: 'lava',  cat: 'status',   effect: { type: 'apply_status', status: 'charred', target: 'opponent' } },
           { name: 'Horn Drive',   type: 'basic', cat: 'physical', power: 14 },
         ]
       }
@@ -4462,13 +4462,13 @@
       name: 'Boss',
       critter: {
         name: 'Pterrent',
-        type: 'water',
+        type: 'ocean',
         img: 'pterrent.png',
         maxHp: 145,
         atk: 17, dfc: 14, mag: 22, mdf: 16, spd: 24, lck: 15,
         moves: [
-          { name: 'Sky Dive',    type: 'water', cat: 'physical', power: 20 },
-          { name: 'Cloud Burst', type: 'water', cat: 'magic',    power: 22 },
+          { name: 'Sky Dive',    type: 'ocean', cat: 'physical', power: 20 },
+          { name: 'Cloud Burst', type: 'ocean', cat: 'magic',    power: 22 },
           { name: 'Gale Force',  type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 4 } },
           { name: 'Fang Swipe',  type: 'basic', cat: 'physical', power: 13 },
         ]
@@ -4498,8 +4498,8 @@
         opponent = catcherCritter;
       } else {
         const pool = fromSurf
-          ? wildCreatures.filter(c => c.type === 'water')
-          : wildCreatures.filter(c => c.type !== 'water' || c.landSpawn);
+          ? wildCreatures.filter(c => c.type === 'ocean')
+          : wildCreatures.filter(c => c.type !== 'ocean' || c.landSpawn);
         opponent = pool[Math.floor(Math.random() * pool.length)];
       }
       // Use saved player state if available, otherwise start fresh
@@ -4543,7 +4543,7 @@
       }, 680);
     }
 
-    const creatureEmoji = { fire: '🦊', water: '🐶', grass: '🌿' };
+    const creatureEmoji = { lava: '🦊', ocean: '🐶', garden: '🌿' };
 
     function render() {
       ['player', 'opponent'].forEach(side => {
