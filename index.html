@@ -1463,8 +1463,13 @@
     const HOUSE2_ENTRY = { tileX: 5, tileY: 8 };  // where player arrives from downstairs
     const HOUSE2_OFFSET_X = (640 - HOUSE2_COLS * 32) / 2;
     const HOUSE2_OFFSET_Y = (480 - HOUSE2_ROWS * 32) / 2;
-    const HOUSE_NPC  = { tileX: 7, tileY: 9 };  // NPC on floor 1
-    const HOUSE2_NPC = { tileX: 1, tileY: 7 };  // Rouxls Kaard — floor 2
+    const HOUSE_NPC  = { tileX: 7, tileY: 9 };  // Alvin — floor 1
+    const HOUSE_NPC2 = { tileX: 7, tileY: 7 };  // Dewey — floor 1
+    const HOUSE2_NPC  = { tileX: 1, tileY: 7 };  // Rouxls Kaard — floor 2
+    const HOUSE2_NPC2 = { tileX: 7, tileY: 7 };  // Bubbles — floor 2
+    const ROOF_NPC    = { tileX: 5, tileY: 1 };  // Ivy (triplet 1) — rooftop
+    const ROOF_NPC2   = { tileX: 4, tileY: 1 };  // Ember (triplet 2) — rooftop
+    const ROOF_NPC3   = { tileX: 6, tileY: 1 };  // Skye (triplet 3) — rooftop
 
     const HOUSE2_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
@@ -1488,7 +1493,7 @@
 
     const ROOF_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
-      [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
+      [IV,RC,RC,RC,RC,GC,BC,RC,RC,RC,IV],  // red carpet (col 5 = GC, col 6 = BC)
       [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
       [IV,RC,RC,RC,RC,RC,RC,RC,RC,RC,IV],  // red carpet
       [IV,GC,GC,GC,GC,GC,GC,GC,GC,GC,IV],  // green carpet
@@ -2205,6 +2210,56 @@
       ["Now that that's",     "sorted - I'll be",     "your first battle!"],
     ];
 
+    const DEWEY_DIALOG = [
+      ["Hey! The name's",     "Dewey.",               ""],
+      ["Get ready for",       "a fight!",             ""],
+    ];
+
+    const DEWEY_WIN_DIALOG = [
+      ["Wow... you're",       "actually pretty",      "good."],
+      ["I'll be training",    "hard for our",         "next rematch!"],
+    ];
+
+    const BUBBLES_DIALOG = [
+      ["Hi! I'm Bubbles!",   "Don't let the name",   "fool you though..."],
+      ["My Grumblaze hits",  "hard. Ready?",         "Let's go!"],
+    ];
+
+    const BUBBLES_WIN_DIALOG = [
+      ["Okay okay, you're",  "good! Grumblaze",      "and I will be back!"],
+    ];
+
+    const IVY_DIALOG = [
+      ["You made it to the", "rooftop? Impressive.", "I'm Ivy."],
+      ["My sisters and I",   "guard this place.",    "Face my Hedgeosaur!"],
+    ];
+
+    const IVY_WIN_DIALOG = [
+      ["Incredible...",      "You actually won.",    ""],
+      ["You're strong.",     "My sisters won't",     "go easy on you."],
+    ];
+
+    const EMBER_DIALOG = [
+      ["Ooh, a challenger?", "I'm Ember. My fire", "burns ice cold."],
+      ["Ceraflame doesn't",  "lose. Prepare",      "yourself!"],
+    ];
+
+    const EMBER_WIN_DIALOG = [
+      ["How...? Ceraflame", "never falls like",    "that..."],
+      ["You're the real",   "deal. Watch out",     "for our last sister."],
+    ];
+
+    const SKYE_DIALOG = [
+      ["...",               "You've beaten both",  "my sisters?"],
+      ["Then I, Skye, will","be your final",       "challenge here."],
+      ["Pterrent and I",    "will ground you.",    "Let's finish this!"],
+    ];
+
+    const SKYE_WIN_DIALOG = [
+      ["...",               "You won.",            "All three of us."],
+      ["This rooftop",      "belongs to you.",     "Well earned."],
+    ];
+
     const ALVIN_REMATCH_DIALOG = [
       ["Dang, you're strong!","If that's how you",    "usually fight..."],
       ["...I believe you can","defeat those",         "triplets!"],
@@ -2271,7 +2326,12 @@
     let dialogType   = 'prof'; // 'prof' | 'healer'
     let meadowMet    = false;
     let houseNpcMet  = false;
-    let alvinDefeated = false;
+    let alvinDefeated   = false;
+    let deweyDefeated   = false;
+    let bubblesDefeated = false;
+    let ivyDefeated     = false;
+    let emberDefeated   = false;
+    let skyeDefeated    = false;
 
     function drawNPC(ctx, sx, sy, playerAdjacent) {
       const s  = TILE_SIZE;
@@ -2373,10 +2433,10 @@
       ctx.fillRect(cx-5, cy+4, 4, 8);
       ctx.fillRect(cx+1, cy+4, 4, 8);
 
-      // Body (orange jacket)
-      ctx.fillStyle = '#d06010';
+      // Body (red shirt)
+      ctx.fillStyle = '#c02020';
       ctx.fillRect(cx-6, cy-4, 12, 10);
-      ctx.fillStyle = '#b04800';
+      ctx.fillStyle = '#901010';
       ctx.fillRect(cx-8, cy-3, 3, 7);
       ctx.fillRect(cx+5, cy-3, 3, 7);
 
@@ -2406,6 +2466,98 @@
         ctx.fillRect(cx-2, cy-24, 4, 8); // ! bar
         ctx.fillRect(cx-2, cy-13, 4, 3); // ! dot
       }
+    }
+
+    function drawDeweyNPC(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (yellow pants)
+      ctx.fillStyle = '#e8c020';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (green shirt)
+      ctx.fillStyle = '#30a850';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#208040';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // White hair (short, spiky top)
+      ctx.fillStyle = '#e8e8e8';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-7, cy-13, 3, 4);
+      ctx.fillRect(cx+4, cy-13, 3, 4);
+      // Spikes
+      ctx.fillRect(cx-3, cy-17, 2, 3);
+      ctx.fillRect(cx,   cy-18, 2, 4);
+      ctx.fillRect(cx+3, cy-17, 2, 3);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+
+      // Smile
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
+    }
+
+    function drawBubblesNPC(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (white pants)
+      ctx.fillStyle = '#e8e8e8';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (light blue shirt)
+      ctx.fillStyle = '#70c8e8';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#50a8c8';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Yellow hair (longer sides, feminine)
+      ctx.fillStyle = '#f0d020';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-7, cy-13, 3, 9);
+      ctx.fillRect(cx+4, cy-13, 3, 9);
+      ctx.fillRect(cx-5, cy-11, 2, 3); // bangs
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      // Eyelashes
+      ctx.fillRect(cx-4, cy-9, 1, 1);
+      ctx.fillRect(cx+3, cy-9, 1, 1);
+
+      // Smile
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
     }
 
     function drawHouse2NPC(ctx, sx, sy) {
@@ -2482,6 +2634,217 @@
       ctx.fillRect(cx+10, cy+1, 3, 3);
       ctx.fillStyle = '#e8eeff';
       ctx.fillRect(cx+11, cy, 2, 2); // white tail tip
+    }
+
+    function drawRoofNPC(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (dark green pants)
+      ctx.fillStyle = '#2a6b2a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+      // Boots (darker green)
+      ctx.fillStyle = '#1a4a1a';
+      ctx.fillRect(cx-5, cy+9, 4, 3);
+      ctx.fillRect(cx+1, cy+9, 4, 3);
+
+      // Body (medium green shirt)
+      ctx.fillStyle = '#4aaa4a';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      // Sleeves (slightly darker)
+      ctx.fillStyle = '#3a8a3a';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+      // Leaf trim on collar
+      ctx.fillStyle = '#2a6b2a';
+      ctx.fillRect(cx-3, cy-4, 6, 2);
+
+      // Head (tan skin)
+      ctx.fillStyle = '#e8b870';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Dark green hair (long, feminine)
+      ctx.fillStyle = '#1a5e1a';
+      ctx.fillRect(cx-5, cy-16, 10, 5);  // top
+      ctx.fillRect(cx-7, cy-14, 3, 12);  // left side (long)
+      ctx.fillRect(cx+4, cy-14, 3, 12);  // right side (long)
+      ctx.fillRect(cx-4, cy-13, 2, 3);   // bangs
+      ctx.fillRect(cx+2, cy-13, 2, 3);   // bangs
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      // Eyelashes
+      ctx.fillRect(cx-4, cy-9, 1, 1);
+      ctx.fillRect(cx+3, cy-9, 1, 1);
+      // Green eye tint
+      ctx.fillStyle = '#3aaa3a';
+      ctx.fillRect(cx-3, cy-8, 1, 1);
+      ctx.fillRect(cx+1, cy-8, 1, 1);
+
+      // Smile
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
+      // Leaf accessory on hair
+      ctx.fillStyle = '#4aaa4a';
+      ctx.fillRect(cx+4, cy-16, 4, 3);
+      ctx.fillStyle = '#2a6b2a';
+      ctx.fillRect(cx+5, cy-17, 3, 2);
+    }
+
+    function drawRoofNPC2(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (black pants)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+      // Boots (dark red trim)
+      ctx.fillStyle = '#8a1010';
+      ctx.fillRect(cx-5, cy+9, 4, 3);
+      ctx.fillRect(cx+1, cy+9, 4, 3);
+
+      // Body (deep red shirt)
+      ctx.fillStyle = '#c01818';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      // Black jacket/vest over shirt
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-8, cy-3, 3, 7);  // left sleeve
+      ctx.fillRect(cx+5, cy-3, 3, 7);  // right sleeve
+      ctx.fillRect(cx-6, cy-4, 3, 10); // left lapel
+      ctx.fillRect(cx+3, cy-4, 3, 10); // right lapel
+      // Red flame trim on collar
+      ctx.fillStyle = '#ff4422';
+      ctx.fillRect(cx-2, cy-4, 4, 2);
+
+      // Head (tan skin)
+      ctx.fillStyle = '#e8b870';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Black hair with red highlights (sharp, spiky feminine style)
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(cx-5, cy-17, 10, 6);  // top
+      ctx.fillRect(cx-7, cy-14, 3, 10);  // left side
+      ctx.fillRect(cx+4, cy-14, 3, 10);  // right side
+      ctx.fillRect(cx-4, cy-13, 2, 3);   // bangs
+      // Red streak highlights
+      ctx.fillStyle = '#dd2200';
+      ctx.fillRect(cx-2, cy-17, 2, 5);   // red streak left
+      ctx.fillRect(cx+1, cy-16, 2, 4);   // red streak right
+      // Spiky tips
+      ctx.fillStyle = '#111111';
+      ctx.fillRect(cx-6, cy-18, 2, 3);
+      ctx.fillRect(cx-2, cy-19, 3, 3);
+      ctx.fillRect(cx+2, cy-18, 3, 3);
+      ctx.fillRect(cx+5, cy-17, 2, 2);
+
+      // Eyes (red-tinted)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      // Eyelashes
+      ctx.fillRect(cx-4, cy-9, 1, 1);
+      ctx.fillRect(cx+3, cy-9, 1, 1);
+      // Red eye tint
+      ctx.fillStyle = '#cc2200';
+      ctx.fillRect(cx-3, cy-8, 1, 1);
+      ctx.fillRect(cx+1, cy-8, 1, 1);
+
+      // Smirk (asymmetric)
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-1, cy-5, 4, 1);
+    }
+
+    function drawRoofNPC3(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (white pants)
+      ctx.fillStyle = '#f0f0f8';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+      // Boots (sky blue)
+      ctx.fillStyle = '#4488cc';
+      ctx.fillRect(cx-5, cy+9, 4, 3);
+      ctx.fillRect(cx+1, cy+9, 4, 3);
+
+      // Body (royal blue top)
+      ctx.fillStyle = '#2255bb';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      // White trim / ruffled front
+      ctx.fillStyle = '#f0f0f8';
+      ctx.fillRect(cx-2, cy-4, 4, 10);
+      ctx.fillRect(cx-2, cy-2, 4, 1);
+      ctx.fillRect(cx-2, cy+1, 4, 1);
+      ctx.fillRect(cx-2, cy+4, 4, 1);
+      // Sleeves (blue)
+      ctx.fillStyle = '#2255bb';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+      // White cuff accents
+      ctx.fillStyle = '#f0f0f8';
+      ctx.fillRect(cx-8, cy+2, 3, 2);
+      ctx.fillRect(cx+5, cy+2, 3, 2);
+
+      // Head (light skin)
+      ctx.fillStyle = '#f5d090';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // White hair (long, soft, flowing)
+      ctx.fillStyle = '#e8eeff';
+      ctx.fillRect(cx-5, cy-17, 10, 6);  // top
+      ctx.fillRect(cx-7, cy-14, 3, 14);  // left long
+      ctx.fillRect(cx+4, cy-14, 3, 14);  // right long
+      ctx.fillRect(cx-4, cy-13, 3, 3);   // bangs left
+      ctx.fillRect(cx+1, cy-13, 3, 3);   // bangs right
+      // Light blue tint highlights
+      ctx.fillStyle = '#aaccff';
+      ctx.fillRect(cx-3, cy-17, 2, 4);
+      ctx.fillRect(cx+1, cy-16, 2, 3);
+      ctx.fillRect(cx-7, cy-10, 2, 6);
+      ctx.fillRect(cx+5, cy-10, 2, 6);
+
+      // Eyes (bright blue)
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      // Eyelashes
+      ctx.fillRect(cx-4, cy-9, 1, 1);
+      ctx.fillRect(cx+3, cy-9, 1, 1);
+      // Blue iris
+      ctx.fillStyle = '#2288ee';
+      ctx.fillRect(cx-3, cy-8, 1, 1);
+      ctx.fillRect(cx+1, cy-8, 1, 1);
+
+      // Calm expression
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
+      // Cloud/feather hair ornament
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx+4, cy-18, 5, 3);
+      ctx.fillRect(cx+3, cy-17, 7, 2);
+      ctx.fillStyle = '#aaccff';
+      ctx.fillRect(cx+5, cy-19, 3, 2);
     }
 
     function drawHealer(ctx, sx, sy) {
@@ -2902,6 +3265,16 @@
                           : dialogType === 'house2npc'   ? HOUSE2_NPC_DIALOG
                           : dialogType === 'housenpc'    ? HOUSE_NPC_DIALOG
                           : dialogType === 'alvinwin'    ? ALVIN_REMATCH_DIALOG
+                          : dialogType === 'deweynpc'    ? DEWEY_DIALOG
+                          : dialogType === 'deweywin'    ? DEWEY_WIN_DIALOG
+                          : dialogType === 'bubblesnpc'  ? BUBBLES_DIALOG
+                          : dialogType === 'bubbleswin'  ? BUBBLES_WIN_DIALOG
+                          : dialogType === 'ivynpc'      ? IVY_DIALOG
+                          : dialogType === 'ivywin'      ? IVY_WIN_DIALOG
+                          : dialogType === 'embernpc'    ? EMBER_DIALOG
+                          : dialogType === 'emberwin'    ? EMBER_WIN_DIALOG
+                          : dialogType === 'skyenpc'     ? SKYE_DIALOG
+                          : dialogType === 'skyewin'     ? SKYE_WIN_DIALOG
                           : NPC_DIALOG;
       if (dialogPage >= currentDialog.length) {
         const closingType = dialogType;
@@ -2914,6 +3287,26 @@
         // Trigger catcher battle at end of Alvin's intro dialog
         if (closingType === 'housenpc' && !alvinDefeated) {
           setTimeout(() => triggerCatcherBattle(ALVIN_CATCHER), 200);
+        }
+        // Trigger catcher battle at end of Dewey's intro dialog
+        if (closingType === 'deweynpc' && !deweyDefeated) {
+          setTimeout(() => triggerCatcherBattle(DEWEY_CATCHER), 200);
+        }
+        // Trigger catcher battle at end of Bubbles' intro dialog
+        if (closingType === 'bubblesnpc' && !bubblesDefeated) {
+          setTimeout(() => triggerCatcherBattle(BUBBLES_CATCHER), 200);
+        }
+        // Trigger catcher battle at end of Ivy's intro dialog
+        if (closingType === 'ivynpc' && !ivyDefeated) {
+          setTimeout(() => triggerCatcherBattle(HEDGEOSAUR_CATCHER), 200);
+        }
+        // Trigger catcher battle at end of Ember's intro dialog
+        if (closingType === 'embernpc' && !emberDefeated) {
+          setTimeout(() => triggerCatcherBattle(CERAFLAME_CATCHER), 200);
+        }
+        // Trigger catcher battle at end of Skye's intro dialog
+        if (closingType === 'skyenpc' && !skyeDefeated) {
+          setTimeout(() => triggerCatcherBattle(PTERRENT_CATCHER), 200);
         }
       }
     }
@@ -3298,6 +3691,14 @@
           dialogType   = 'shopnpc';
           return;
         }
+        // Walking into Dewey (floor 1)
+        if (currentArea === 'house' && nx === HOUSE_NPC2.tileX && ny === HOUSE_NPC2.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = deweyDefeated ? 'deweywin' : 'deweynpc';
+          return;
+        }
         // Walking into floor-1 house NPC (Alvin) triggers dialog or rematch
         if (currentArea === 'house' && nx === HOUSE_NPC.tileX && ny === HOUSE_NPC.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
@@ -3306,12 +3707,44 @@
           dialogType   = alvinDefeated ? 'alvinwin' : 'housenpc';
           return;
         }
+        // Walking into Bubbles (floor 2)
+        if (currentArea === 'house2' && nx === HOUSE2_NPC2.tileX && ny === HOUSE2_NPC2.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = bubblesDefeated ? 'bubbleswin' : 'bubblesnpc';
+          return;
+        }
         // Walking into floor-2 wolf NPC triggers dialog
         if (currentArea === 'house2' && nx === HOUSE2_NPC.tileX && ny === HOUSE2_NPC.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'house2npc';
+          return;
+        }
+        // Walking into Ivy (rooftop triplet boss 1)
+        if (currentArea === 'roof' && nx === ROOF_NPC.tileX && ny === ROOF_NPC.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = ivyDefeated ? 'ivywin' : 'ivynpc';
+          return;
+        }
+        // Walking into Ember (rooftop triplet boss 2)
+        if (currentArea === 'roof' && nx === ROOF_NPC2.tileX && ny === ROOF_NPC2.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = emberDefeated ? 'emberwin' : 'embernpc';
+          return;
+        }
+        // Walking into Skye (rooftop triplet boss 3)
+        if (currentArea === 'roof' && nx === ROOF_NPC3.tileX && ny === ROOF_NPC3.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = skyeDefeated ? 'skyewin' : 'skyenpc';
           return;
         }
         if (isWalkable(nx, ny)) {
@@ -3405,7 +3838,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3450,7 +3883,7 @@
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3527,7 +3960,7 @@
 
       // Dialog
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3604,17 +4037,25 @@
       ctx.fillText('House', 320, 16);
       ctx.textAlign = 'left';
 
-      // NPC
+      // Alvin
       const hnpcSX = HOUSE_OFFSET_X + HOUSE_NPC.tileX * TILE_SIZE;
       const hnpcSY = HOUSE_OFFSET_Y + HOUSE_NPC.tileY * TILE_SIZE;
       drawHouseNPC(ctx, hnpcSX, hnpcSY);
+
+      // Dewey
+      const dnpcSX = HOUSE_OFFSET_X + HOUSE_NPC2.tileX * TILE_SIZE;
+      const dnpcSY = HOUSE_OFFSET_Y + HOUSE_NPC2.tileY * TILE_SIZE;
+      drawDeweyNPC(ctx, dnpcSX, dnpcSY);
 
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, HOUSE_OFFSET_X + player.pixelX, HOUSE_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : HOUSE_NPC_DIALOG;
+        const dlg = dialogType === 'alvinwin'  ? ALVIN_REMATCH_DIALOG
+                  : dialogType === 'deweynpc'  ? DEWEY_DIALOG
+                  : dialogType === 'deweywin'  ? DEWEY_WIN_DIALOG
+                  : HOUSE_NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3643,12 +4084,33 @@
       ctx.fillText('Rooftop', 320, 16);
       ctx.textAlign = 'left';
 
+      // Ivy (rooftop triplet boss 1)
+      const ivySX = ROOF_OFFSET_X + ROOF_NPC.tileX * TILE_SIZE;
+      const ivySY = ROOF_OFFSET_Y + ROOF_NPC.tileY * TILE_SIZE;
+      drawRoofNPC(ctx, ivySX, ivySY);
+
+      // Ember (rooftop triplet boss 2)
+      const emberSX = ROOF_OFFSET_X + ROOF_NPC2.tileX * TILE_SIZE;
+      const emberSY = ROOF_OFFSET_Y + ROOF_NPC2.tileY * TILE_SIZE;
+      drawRoofNPC2(ctx, emberSX, emberSY);
+
+      // Skye (rooftop triplet boss 3)
+      const skyeSX = ROOF_OFFSET_X + ROOF_NPC3.tileX * TILE_SIZE;
+      const skyeSY = ROOF_OFFSET_Y + ROOF_NPC3.tileY * TILE_SIZE;
+      drawRoofNPC3(ctx, skyeSX, skyeSY);
+
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, ROOF_OFFSET_X + player.pixelX, ROOF_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = NPC_DIALOG;
+        const dlg = dialogType === 'ivynpc'    ? IVY_DIALOG
+                  : dialogType === 'ivywin'    ? IVY_WIN_DIALOG
+                  : dialogType === 'embernpc'  ? EMBER_DIALOG
+                  : dialogType === 'emberwin'  ? EMBER_WIN_DIALOG
+                  : dialogType === 'skyenpc'   ? SKYE_DIALOG
+                  : dialogType === 'skyewin'   ? SKYE_WIN_DIALOG
+                  : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3673,17 +4135,24 @@
       ctx.fillText('House - Floor 2', 320, 16);
       ctx.textAlign = 'left';
 
-      // NPC (wolf)
+      // Rouxls Kaard
       const npcSX = HOUSE2_OFFSET_X + HOUSE2_NPC.tileX * TILE_SIZE;
       const npcSY = HOUSE2_OFFSET_Y + HOUSE2_NPC.tileY * TILE_SIZE;
       drawHouse2NPC(ctx, npcSX, npcSY);
+
+      // Bubbles
+      const bnpcSX = HOUSE2_OFFSET_X + HOUSE2_NPC2.tileX * TILE_SIZE;
+      const bnpcSY = HOUSE2_OFFSET_Y + HOUSE2_NPC2.tileY * TILE_SIZE;
+      drawBubblesNPC(ctx, bnpcSX, bnpcSY);
 
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, HOUSE2_OFFSET_X + player.pixelX, HOUSE2_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = HOUSE2_NPC_DIALOG;
+        const dlg = dialogType === 'bubblesnpc' ? BUBBLES_DIALOG
+                  : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG
+                  : HOUSE2_NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -3916,6 +4385,92 @@
           { name: 'Leaf Cascade', type: 'grass', cat: 'magic',    power: 13 },
           { name: 'Petal Dance',  type: 'grass', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 3 } },
           { name: 'Hoof Strike',  type: 'basic', cat: 'physical', power:  8 },
+        ]
+      }
+    };
+
+    const DEWEY_CATCHER = {
+      name: 'Dewey',
+      critter: {
+        name: 'Sharqua',
+        type: 'water',
+        img: 'sharqua.png',
+        maxHp: 100,
+        atk: 14, dfc: 11, mag: 6, mdf: 7, spd: 7, lck: 5,
+        moves: [
+          { name: 'Splash Strike', type: 'water', cat: 'physical', power: 14 },
+          { name: 'Whirlpool',     type: 'water', cat: 'magic',    power: 12 },
+          { name: 'Smokescreen',   type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
+          { name: 'Slam',          type: 'basic', cat: 'physical', power:  8 },
+        ]
+      }
+    };
+
+    const BUBBLES_CATCHER = {
+      name: 'Bubbles',
+      critter: {
+        name: 'Grumblaze',
+        type: 'fire',
+        img: 'grumblaze.png',
+        maxHp: 100,
+        atk: 15, dfc: 7, mag: 9, mdf: 6, spd: 8, lck: 5,
+        moves: [
+          { name: 'Ember Claw',    type: 'fire',  cat: 'physical', power: 15 },
+          { name: 'Gut Blast',     type: 'fire',  cat: 'magic',    power: 12 },
+          { name: 'Sluggish Aura', type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
+          { name: 'Dead Weight',   type: 'basic', cat: 'physical', power:  9 },
+        ]
+      }
+    };
+
+    // ── Boss Critters (triplets) ──────────────────────────────────────────────
+    const HEDGEOSAUR_CATCHER = {
+      name: 'Boss',
+      critter: {
+        name: 'Hedgeosaur',
+        type: 'grass',
+        img: 'hedgeosaur.png',
+        maxHp: 160,
+        atk: 20, dfc: 18, mag: 16, mdf: 15, spd: 13, lck: 11,
+        moves: [
+          { name: 'Branch Bite',    type: 'grass', cat: 'physical', power: 20 },
+          { name: 'Petal Barrage',  type: 'grass', cat: 'magic',    power: 17 },
+          { name: 'Rose Thorn',     type: 'grass', cat: 'status',   effect: { type: 'apply_status', status: 'seeded', target: 'opponent' } },
+          { name: 'Vine Whip',      type: 'basic', cat: 'physical', power: 13 },
+        ]
+      }
+    };
+
+    const CERAFLAME_CATCHER = {
+      name: 'Boss',
+      critter: {
+        name: 'Ceraflame',
+        type: 'fire',
+        img: 'ceraflame.png',
+        maxHp: 150,
+        atk: 24, dfc: 13, mag: 20, mdf: 11, spd: 20, lck: 13,
+        moves: [
+          { name: 'Blue Blaze',   type: 'fire',  cat: 'physical', power: 22 },
+          { name: 'Soul Flame',   type: 'fire',  cat: 'magic',    power: 19 },
+          { name: 'Char Crash',   type: 'fire',  cat: 'status',   effect: { type: 'apply_status', status: 'charred', target: 'opponent' } },
+          { name: 'Horn Drive',   type: 'basic', cat: 'physical', power: 14 },
+        ]
+      }
+    };
+
+    const PTERRENT_CATCHER = {
+      name: 'Boss',
+      critter: {
+        name: 'Pterrent',
+        type: 'water',
+        img: 'pterrent.png',
+        maxHp: 145,
+        atk: 17, dfc: 14, mag: 22, mdf: 16, spd: 24, lck: 15,
+        moves: [
+          { name: 'Sky Dive',    type: 'water', cat: 'physical', power: 20 },
+          { name: 'Cloud Burst', type: 'water', cat: 'magic',    power: 22 },
+          { name: 'Gale Force',  type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 4 } },
+          { name: 'Fang Swipe',  type: 'basic', cat: 'physical', power: 13 },
         ]
       }
     };
@@ -4208,7 +4763,12 @@
           log(`💰 You earned ${earned} coins!`, 'win');
           if (isCatcherBattle) {
             // Catcher battle win — no recruit, set defeated flag
-            if (activeCatcher === ALVIN_CATCHER) alvinDefeated = true;
+            if (activeCatcher === ALVIN_CATCHER)       alvinDefeated = true;
+            if (activeCatcher === DEWEY_CATCHER)        { deweyDefeated = true; HOUSE_NPC2.tileX += 1; }
+            if (activeCatcher === BUBBLES_CATCHER)      { bubblesDefeated = true; HOUSE2_NPC2.tileX += 1; }
+            if (activeCatcher === HEDGEOSAUR_CATCHER)   ivyDefeated = true;
+            if (activeCatcher === CERAFLAME_CATCHER)    emberDefeated = true;
+            if (activeCatcher === PTERRENT_CATCHER)     skyeDefeated = true;
             log(`You beat ${activeCatcher.name}!`, 'win');
             isCatcherBattle = false;
             activeCatcher   = null;
@@ -4244,7 +4804,12 @@
         log(`${c.name} fainted!`, 'win');
         log(`💰 You earned ${earned} coins!`, 'win');
         if (isCatcherBattle) {
-          if (activeCatcher === ALVIN_CATCHER) alvinDefeated = true;
+          if (activeCatcher === ALVIN_CATCHER)     alvinDefeated = true;
+          if (activeCatcher === DEWEY_CATCHER)     { deweyDefeated = true; HOUSE_NPC2.tileX += 1; }
+          if (activeCatcher === BUBBLES_CATCHER)   { bubblesDefeated = true; HOUSE2_NPC2.tileX += 1; }
+          if (activeCatcher === HEDGEOSAUR_CATCHER) ivyDefeated = true;
+          if (activeCatcher === CERAFLAME_CATCHER)  emberDefeated = true;
+          if (activeCatcher === PTERRENT_CATCHER)   skyeDefeated = true;
           log(`You beat ${activeCatcher.name}!`, 'win');
           isCatcherBattle = false;
           activeCatcher   = null;
