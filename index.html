@@ -926,6 +926,9 @@
   <!-- Item get notification toast -->
   <div id="itemNotification"></div>
 
+  <!-- Rouxls Kaard custom battle music -->
+  <audio id="rouxlsMusic" src="rules.mp3" loop></audio>
+
   <!-- ============================================================
        CREDITS SCREEN
   ============================================================ -->
@@ -1230,15 +1233,30 @@
 
     function showBattle() {
       gameState = 'battle';
+      SFX.play('battleStart');
       document.getElementById('worldSection').style.display = 'none';
       document.getElementById('battleSection').style.display = 'flex';
       // Set background based on battle type
-      if (isCatcherBattle) {
+      if (isCatcherBattle && activeCatcher === ROUXLS_CATCHER) {
         document.body.style.background = 'radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%)';
+        MUSIC.stop();
+        const rm = document.getElementById('rouxlsMusic');
+        rm.currentTime = 0;
+        rm.volume = 0.30;
+        rm.muted = MUSIC.isMuted();
+        rm.play().catch(() => {});
+      } else if (isCatcherBattle && (activeCatcher === HEDGEOSAUR_CATCHER || activeCatcher === CERAFLAME_CATCHER || activeCatcher === PTERRENT_CATCHER)) {
+        document.body.style.background = 'radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%)';
+        MUSIC.play('triplets');
+      } else if (isCatcherBattle) {
+        document.body.style.background = 'radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%)';
+        MUSIC.play('boss');
       } else if (triggerEncounter._fromSurf) {
         document.body.style.background = 'radial-gradient(ellipse at top, #60c8f0 0%, #2a80c0 60%)';
+        MUSIC.play('surfBattle');
       } else {
         document.body.style.background = 'radial-gradient(ellipse at top, #90e060 0%, #4a9a30 60%)';
+        MUSIC.play('battle');
       }
     }
 
@@ -1247,6 +1265,7 @@
       if (gameState !== 'world') return;
       gameState = 'transitioning';
       triggerEncounter._fromSurf = fromSurf;
+      SFX.play('encounter');
 
       const overlay = document.getElementById('transitionOverlay');
       overlay.style.transition = 'none';
@@ -1284,6 +1303,9 @@
     function returnToWorld() {
       // Restore default background
       document.body.style.background = 'radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%)';
+      const rm = document.getElementById('rouxlsMusic');
+      if (rm) { rm.pause(); rm.currentTime = 0; }
+      updateAreaMusic();
       // Restore surfing if the battle was triggered on water
       isSurfing = !!(triggerEncounter._fromSurf);
       // Clean up catcher battle state
@@ -1339,6 +1361,7 @@
         player.toY         = player.tileY;
         player.moving      = false;
         player.dir         = 'up';
+        MUSIC.play('lab');
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
@@ -1365,6 +1388,7 @@
         player.toY         = player.tileY;
         player.moving      = false;
         player.dir         = 'down';
+        MUSIC.play('overworld');
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
@@ -1391,6 +1415,7 @@
         player.toY         = player.tileY;
         player.moving      = false;
         player.dir         = 'up';
+        MUSIC.play('clinic');
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
@@ -1417,6 +1442,7 @@
         player.toY         = player.tileY;
         player.moving      = false;
         player.dir         = 'down';
+        MUSIC.play('overworld');
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
@@ -1443,6 +1469,7 @@
         player.toY         = player.tileY;
         player.moving      = false;
         player.dir         = 'up';
+        MUSIC.play('shop');
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
@@ -1611,6 +1638,7 @@
         player.toY         = player.tileY;
         player.moving      = false;
         player.dir         = 'down';
+        MUSIC.play('overworld');
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
@@ -1720,6 +1748,7 @@
     const SHOP_MOTHER  = { tileX: 3, tileY: 4 };   // mother shopping with her child
     const SHOP_CHILD   = { tileX: 3, tileY: 5 };   // child browsing the shop floor
     const SHOP_NPC     = { tileX: 8, tileY: 5 };   // customer on the shop floor
+    const SHOP_NPC2    = { tileX: 7, tileY: 6 };   // road work guy
 
     // ── 2-Story House ─────────────────────────────────────────────
     const HOUSE_COLS = 11, HOUSE_ROWS = 11;
@@ -2572,6 +2601,11 @@
       ["They completely",     "crushed my team.",     "Press A to close."],
     ];
 
+    const CLINIC_NPC3_DIALOG = [
+      ["If you're going to",  "fight the triplets,",  ""],
+      ["bring a critter",     "with status effects.", "Press A to close."],
+    ];
+
     const CLINIC_NPC2_DIALOG = [
       ["If you're planning", "on fighting one of",   "the triplets..."],
       ["Don't be like me.",  "Bring lots of",       "healing items!"],
@@ -2582,6 +2616,10 @@
       ["We get lots of",     "catchers come in",    "here with defeated"],
       ["critters. Those",    "triplets are real",   "strong!"],
       ["",                   "",                    "Press A to close."],
+    ];
+
+    const SHOP_NPC2_DIALOG = [
+      ["Road work ahead...", "Yeah, I sure hope",  "it does!"],
     ];
 
     const SHOP_MOTHER_DIALOG = [
@@ -2610,6 +2648,7 @@
     const HEALER      = { tileX: 5, tileY: 2 }; // inside the clinic, near the counter
     const CLINIC_NPC  = { tileX: 2, tileY: 7 }; // visitor in the clinic waiting area
     const CLINIC_NPC2  = { tileX: 8, tileY: 7 }; // second staff member behind the counter
+    const CLINIC_NPC3  = { tileX: 6, tileY: 7 }; // tip-giver near the triplets hint spot
     const CLINIC_NURSE = { tileX: 8, tileY: 5 }; // nurse doing rounds on the floor
 
     const HEALER_DIALOG = [
@@ -3291,6 +3330,51 @@
       ctx.fillRect(cx-2, cy-5, 4, 1);
     }
 
+    function drawClinicNPC3(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (dark grey trousers)
+      ctx.fillStyle = '#3a3a4a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (purple hoodie)
+      ctx.fillStyle = '#7a4aaa';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#5a2a88';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Hoodie pocket
+      ctx.fillStyle = '#5a2a88';
+      ctx.fillRect(cx-3, cy+2, 6, 3);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (blonde, slightly longer)
+      ctx.fillStyle = '#e8c040';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-6, cy-13, 2, 6);
+      ctx.fillRect(cx+4, cy-13, 2, 6);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+
+      // Neutral mouth
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
     function drawClinicNurse(ctx, sx, sy) {
       const s  = TILE_SIZE;
       const cx = sx + s / 2;
@@ -3332,6 +3416,52 @@
       // Smile
       ctx.fillStyle = '#884020';
       ctx.fillRect(cx+1, cy-5, 3, 1);
+    }
+
+    function drawShopNPC2(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (blue jeans)
+      ctx.fillStyle = '#3a5a9a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (green t-shirt)
+      ctx.fillStyle = '#4a9a50';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#3a7a40';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Collar
+      ctx.fillStyle = '#5ab060';
+      ctx.fillRect(cx-2, cy-4, 4, 2);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (brown, messy)
+      ctx.fillStyle = '#6a3a10';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-6, cy-13, 2, 3);
+      ctx.fillRect(cx+4, cy-13, 2, 3);
+      ctx.fillRect(cx+3, cy-15, 3, 2);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+
+      // Smile
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx-2, cy-5, 5, 1);
     }
 
     function drawShopNPC(ctx, sx, sy) {
@@ -3553,14 +3683,17 @@
 
     function advanceDialog() {
       if (!dialogActive) return;
+      SFX.play('text');
       dialogPage++;
       const currentDialog = dialogType === 'healer'      ? HEALER_DIALOG
                           : dialogType === 'prof2'       ? NPC2_DIALOG
                           : dialogType === 'shopnpc'     ? SHOP_NPC_DIALOG
+                          : dialogType === 'shopnpc2'    ? SHOP_NPC2_DIALOG
                           : dialogType === 'shopchild'   ? SHOP_CHILD_DIALOG
                           : dialogType === 'shopmother'  ? SHOP_MOTHER_DIALOG
                           : dialogType === 'clinicnpc'   ? CLINIC_NPC_DIALOG
                           : dialogType === 'clinicnpc2'  ? CLINIC_NPC2_DIALOG
+                          : dialogType === 'clinicnpc3'  ? CLINIC_NPC3_DIALOG
                           : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG
                           : dialogType === 'rouxlswin'   ? ROUXLS_WIN_DIALOG
                           : dialogType === 'house2npc'   ? HOUSE2_NPC_DIALOG
@@ -3625,6 +3758,7 @@
           skyeWinSeen = true;
           if (!inventory.trioMedal) {
             inventory.trioMedal = true;
+            SFX.play('keyItem');
             showItemNotification('Trio Medal');
           }
         }
@@ -3632,6 +3766,7 @@
     }
 
     function healAllCreatures() {
+      SFX.play('heal');
       // Heal active creature
       if (persistentPlayer) {
         persistentPlayer = { ...persistentPlayer, hp: persistentPlayer.maxHp };
@@ -3671,9 +3806,15 @@
       scroll.style.animation = '';
       screen.classList.add('active');
 
+      // Stop any area music and play the credits theme
+      const rm = document.getElementById('rouxlsMusic');
+      if (rm) { rm.pause(); rm.currentTime = 0; }
+      if (typeof MUSIC !== 'undefined') MUSIC.play('credits');
+
       function dismiss() {
         screen.removeEventListener('keydown', onKey);
         document.removeEventListener('keydown', onKey);
+        if (typeof MUSIC !== 'undefined') MUSIC.stop();
         screen.classList.add('fade-out');
         setTimeout(() => location.reload(), 1000);
       }
@@ -3747,6 +3888,7 @@
     }
 
     function applyPotion(critter) {
+      SFX.play('heal');
       critter.hp = Math.min(critter.maxHp, critter.hp + 40);
       if (persistentPlayer && persistentPlayer === critter) {
         persistentPlayer.hp = critter.hp;
@@ -3821,6 +3963,7 @@
         return;
       }
       coins -= price;
+      SFX.play('buy');
       inventory[type === 'potion' ? 'potions' : 'revives']++;
       document.getElementById('shopCoins').textContent = coins;
       msg.style.color = '#aaffaa';
@@ -3876,6 +4019,12 @@
         if (bag.style.display !== 'none') { closeBag(); } else { openBag(); }
         return;
       }
+      if (e.key === 'm' || e.key === 'M') {
+        const nowMuted = MUSIC.toggleMute();
+        document.getElementById('rouxlsMusic').muted = nowMuted;
+        showItemNotification(nowMuted ? '🔇 Music off' : '🔊 Music on');
+        return;
+      }
       keys[e.key] = true;
       if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
         e.preventDefault();
@@ -3916,8 +4065,22 @@
 
     function lerp(a, b, t) { return a + (b - a) * t; }
 
+    function updateAreaMusic() {
+      if (typeof MUSIC === 'undefined') return;
+      switch (currentArea) {
+        case 'indoor':  MUSIC.play('lab');       break;
+        case 'healer':  MUSIC.play('clinic');    break;
+        case 'shop':    MUSIC.play('shop');      break;
+        case 'house':
+        case 'house2':  MUSIC.play('dungeon');   break;
+        case 'roof':    MUSIC.play('rooftop');   break;
+        default:        MUSIC.play('overworld'); break;
+      }
+    }
+
     function onTileLand(col, row) {
       if (gameState !== 'world' || dialogActive) return;
+      updateAreaMusic();
       if (currentArea === 'outdoor') {
         if (MAP[row][col] === BDOOR)  { enterBuilding(); return; }
         if (MAP[row][col] === HDOOR)  { enterClinic();   return; }
@@ -4026,6 +4189,14 @@
           dialogType   = 'clinicnpc';
           return;
         }
+        // Walking into clinic tip NPC (triplets hint)
+        if (currentArea === 'healer' && nx === CLINIC_NPC3.tileX && ny === CLINIC_NPC3.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'clinicnpc3';
+          return;
+        }
         // Walking into clinic second staff NPC triggers dialog
         if (currentArea === 'healer' && nx === CLINIC_NPC2.tileX && ny === CLINIC_NPC2.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
@@ -4040,6 +4211,14 @@
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'clinicnurse';
+          return;
+        }
+        // Walking into shop road work NPC triggers dialog
+        if (currentArea === 'shop' && nx === SHOP_NPC2.tileX && ny === SHOP_NPC2.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'shopnpc2';
           return;
         }
         // Walking into shop customer NPC triggers dialog
@@ -4197,7 +4376,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -4242,7 +4421,7 @@
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -4308,6 +4487,11 @@
       const cn2SY = CLINIC_OFFSET_Y + CLINIC_NPC2.tileY * TILE_SIZE;
       drawClinicNPC2(ctx, cn2SX, cn2SY);
 
+      // Draw clinic tip NPC (triplets hint)
+      const cn3SX = CLINIC_OFFSET_X + CLINIC_NPC3.tileX * TILE_SIZE;
+      const cn3SY = CLINIC_OFFSET_Y + CLINIC_NPC3.tileY * TILE_SIZE;
+      drawClinicNPC3(ctx, cn3SX, cn3SY);
+
       // Draw clinic nurse NPC
       const cnurSX = CLINIC_OFFSET_X + CLINIC_NURSE.tileX * TILE_SIZE;
       const cnurSY = CLINIC_OFFSET_Y + CLINIC_NURSE.tileY * TILE_SIZE;
@@ -4319,7 +4503,7 @@
 
       // Dialog
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -4366,12 +4550,17 @@
       const snSY = SHOP_OFFSET_Y + SHOP_NPC.tileY * TILE_SIZE;
       drawShopNPC(ctx, snSX, snSY);
 
+      // Road work NPC
+      const sn2SX = SHOP_OFFSET_X + SHOP_NPC2.tileX * TILE_SIZE;
+      const sn2SY = SHOP_OFFSET_Y + SHOP_NPC2.tileY * TILE_SIZE;
+      drawShopNPC2(ctx, sn2SX, sn2SY);
+
       // Player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, SHOP_OFFSET_X + player.pixelX, SHOP_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -4913,6 +5102,7 @@
       gameState = 'transitioning';
       activeCatcher    = catcher;
       isCatcherBattle  = true;
+      SFX.play('encounter');
 
       const overlay = document.getElementById('transitionOverlay');
       overlay.style.transition = 'none';
@@ -5199,6 +5389,14 @@
 
       defender.hp -= damage;
 
+      // Sound: damage hit or defeat
+      if (defender.hp <= 0) {
+        if (defenderSide === 'opponent') SFX.play('defeated');
+        else                             SFX.play('damage');
+      } else {
+        SFX.play('damage');
+      }
+
       const card = document.getElementById(`card-${defenderSide}`);
       card.classList.add(isCrit ? 'critical' : 'hit');
       setTimeout(() => card.classList.remove(isCrit ? 'critical' : 'hit'), 300);
@@ -5423,6 +5621,7 @@
     }
 
     function replacePartyMember(index) {
+      SFX.play('recruit');
       const released = roster.splice(index, 1)[0];
       const recruit  = { ...state.opponent, hp: state.opponent.maxHp };
       roster.push(recruit);
@@ -5442,6 +5641,7 @@
     }
 
     function doRecruit() {
+      SFX.play('recruit');
       // Add defeated opponent to roster at full HP
       const recruit = { ...state.opponent, hp: state.opponent.maxHp };
       roster.push(recruit);
@@ -5643,6 +5843,578 @@
     render();
     initFlickGesture();
 
+    // ── 8-bit Music Engine ────────────────────────────────────────
+    const MUSIC = (() => {
+      let ctx = null, master = null, sessionGain = null;
+      let curTrack = null, loopTimer = null, muted = false;
+
+      const N = {
+        _:0,
+        B1:61.74,
+        C2:65.41,D2:73.42,E2:82.41,F2:87.31,G2:98.00,A2:110.00,As2:116.54,Bb2:116.54,B2:123.47,
+        C3:130.81,Cs3:138.59,D3:146.83,Ds3:155.56,E3:164.81,F3:174.61,Fs3:185.00,G3:196.00,Gs3:207.65,A3:220.00,As3:233.08,B3:246.94,
+        C4:261.63,Cs4:277.18,D4:293.66,Ds4:311.13,E4:329.63,F4:349.23,Fs4:369.99,G4:392.00,Gs4:415.30,A4:440.00,As4:466.16,B4:493.88,
+        C5:523.25,Cs5:554.37,D5:587.33,Ds5:622.25,E5:659.25,F5:698.46,Fs5:739.99,G5:783.99,Gs5:830.61,A5:880.00,As5:932.33,Bb5:932.33,B5:987.77,
+        C6:1046.50,D6:1174.66,E6:1318.51,Fs6:1479.98,G6:1567.98,A6:1760.00,B6:1975.53,
+      };
+
+      const TRACKS = {
+
+        // ── Overworld: G major, bright & adventurous, 152 BPM (32 beats) ──
+        overworld: { bpm: 152, voices: [
+          { wave:'square', vol:0.12, notes:[
+            {n:'G5',b:1},{n:'Fs5',b:0.5},{n:'E5',b:0.5},{n:'D5',b:1},{n:'E5',b:1},
+            {n:'G5',b:2},{n:'A5',b:1},{n:'G5',b:1},
+            {n:'E5',b:1},{n:'D5',b:0.5},{n:'C5',b:0.5},{n:'B4',b:1},{n:'C5',b:1},
+            {n:'D5',b:2},{n:'_',b:2},
+            {n:'B5',b:1},{n:'A5',b:0.5},{n:'G5',b:0.5},{n:'Fs5',b:1},{n:'G5',b:1},
+            {n:'A5',b:2},{n:'B5',b:1},{n:'A5',b:1},
+            {n:'G5',b:1},{n:'Fs5',b:0.5},{n:'E5',b:0.5},{n:'D5',b:1},{n:'B4',b:1},
+            {n:'G4',b:2},{n:'_',b:2},
+          ]},
+          { wave:'triangle', vol:0.18, notes:[
+            {n:'G3',b:2},{n:'D3',b:2},
+            {n:'C3',b:2},{n:'G3',b:2},
+            {n:'G3',b:2},{n:'D3',b:2},
+            {n:'D3',b:2},{n:'G3',b:2},
+            {n:'G3',b:2},{n:'D3',b:2},
+            {n:'A3',b:2},{n:'E3',b:2},
+            {n:'D3',b:2},{n:'G3',b:2},
+            {n:'G3',b:4},
+          ]},
+        ]},
+
+        // ── Battle: A minor, urgent & driving, 170 BPM (16 beats) ──
+        battle: { bpm: 170, voices: [
+          { wave:'square', vol:0.13, notes:[
+            {n:'A4',b:.25},{n:'_',b:.25},{n:'A4',b:.25},{n:'C5',b:.25},{n:'E5',b:.5},{n:'_',b:.25},{n:'D5',b:.25},{n:'C5',b:.5},{n:'_',b:.25},{n:'A4',b:.25},{n:'G4',b:.5},{n:'_',b:.5},
+            {n:'G4',b:.25},{n:'_',b:.25},{n:'G4',b:.25},{n:'B4',b:.25},{n:'D5',b:.5},{n:'_',b:.25},{n:'C5',b:.25},{n:'B4',b:.5},{n:'_',b:.25},{n:'G4',b:.25},{n:'A4',b:.5},{n:'_',b:.5},
+            {n:'F4',b:.25},{n:'_',b:.25},{n:'A4',b:.25},{n:'C5',b:.25},{n:'E5',b:.5},{n:'_',b:.25},{n:'F5',b:.25},{n:'E5',b:.5},{n:'_',b:.25},{n:'C5',b:.25},{n:'D5',b:.5},{n:'_',b:.5},
+            {n:'E4',b:.25},{n:'_',b:.25},{n:'E4',b:.25},{n:'Gs4',b:.25},{n:'B4',b:.5},{n:'_',b:.25},{n:'A4',b:.25},{n:'E5',b:1},{n:'_',b:1},
+          ]},
+          { wave:'sawtooth', vol:0.08, notes:[
+            {n:'A2',b:.5},{n:'A2',b:.25},{n:'E3',b:.25},{n:'A2',b:.5},{n:'A2',b:.25},{n:'E3',b:.25},
+            {n:'G2',b:.5},{n:'G2',b:.25},{n:'D3',b:.25},{n:'G2',b:.5},{n:'G2',b:.25},{n:'D3',b:.25},
+            {n:'F2',b:.5},{n:'F2',b:.25},{n:'C3',b:.25},{n:'F2',b:.5},{n:'F2',b:.25},{n:'C3',b:.25},
+            {n:'E2',b:.5},{n:'E2',b:.25},{n:'B2',b:.25},{n:'E2',b:1},
+            {n:'A2',b:.5},{n:'A2',b:.25},{n:'E3',b:.25},{n:'A2',b:.5},{n:'A2',b:.25},{n:'E3',b:.25},
+            {n:'G2',b:.5},{n:'G2',b:.25},{n:'D3',b:.25},{n:'G2',b:.5},{n:'G2',b:.25},{n:'D3',b:.25},
+            {n:'F2',b:.5},{n:'F2',b:.25},{n:'C3',b:.25},{n:'F2',b:.5},{n:'F2',b:.25},{n:'C3',b:.25},
+            {n:'E2',b:.5},{n:'E2',b:.25},{n:'B2',b:.25},{n:'E2',b:1},
+          ]},
+        ]},
+
+        // ── Boss: D minor, dark & dramatic, 155 BPM (16 beats) ──
+        boss: { bpm: 155, voices: [
+          { wave:'square', vol:0.13, notes:[
+            {n:'D5',b:.5},{n:'_',b:.25},{n:'F5',b:.25},{n:'A5',b:.5},{n:'_',b:.5},{n:'Gs5',b:.5},{n:'_',b:.25},{n:'F5',b:.25},{n:'D5',b:.75},{n:'_',b:.25},
+            {n:'C5',b:.5},{n:'_',b:.25},{n:'E5',b:.25},{n:'G5',b:.5},{n:'_',b:.5},{n:'Fs5',b:.5},{n:'_',b:.25},{n:'E5',b:.25},{n:'C5',b:.75},{n:'_',b:.25},
+            {n:'As4',b:.5},{n:'_',b:.25},{n:'D5',b:.25},{n:'F5',b:.5},{n:'_',b:.5},{n:'E5',b:.5},{n:'_',b:.25},{n:'D5',b:.25},{n:'B4',b:.5},{n:'_',b:.5},
+            {n:'C5',b:.5},{n:'D5',b:.25},{n:'C5',b:.25},{n:'As4',b:.5},{n:'A4',b:.5},{n:'D5',b:1.5},{n:'_',b:.5},
+          ]},
+          { wave:'triangle', vol:0.18, notes:[
+            {n:'D3',b:1},{n:'A3',b:1},{n:'C3',b:1},{n:'G3',b:1},
+            {n:'As2',b:1},{n:'F3',b:1},{n:'A2',b:.5},{n:'E3',b:.5},{n:'A2',b:1},
+            {n:'D3',b:1},{n:'A3',b:1},{n:'C3',b:1},{n:'G3',b:1},
+            {n:'As2',b:1},{n:'F3',b:1},{n:'A2',b:.5},{n:'E3',b:.5},{n:'A2',b:1},
+          ]},
+        ]},
+
+        // ── Triplets: E minor, intense trio boss battle, 168 BPM (16 beats) ──
+        triplets: { bpm: 168, voices: [
+          { wave:'square', vol:0.13, notes:[
+            {n:'E5',b:.5},{n:'G5',b:.5},{n:'B5',b:.5},{n:'A5',b:.5},
+            {n:'G5',b:.5},{n:'Fs5',b:.25},{n:'E5',b:.25},{n:'D5',b:.5},{n:'E5',b:.5},
+            {n:'A4',b:.5},{n:'C5',b:.5},{n:'E5',b:.5},{n:'D5',b:.5},
+            {n:'C5',b:.5},{n:'B4',b:.25},{n:'A4',b:.25},{n:'G4',b:.5},{n:'A4',b:.5},
+            {n:'B4',b:.5},{n:'D5',b:.5},{n:'Fs5',b:.5},{n:'E5',b:.5},
+            {n:'D5',b:.5},{n:'C5',b:.25},{n:'B4',b:.25},{n:'A4',b:.5},{n:'B4',b:.5},
+            {n:'E5',b:.25},{n:'Fs5',b:.25},{n:'G5',b:.25},{n:'A5',b:.25},{n:'B5',b:1},{n:'_',b:2},
+          ]},
+          { wave:'sawtooth', vol:0.09, notes:[
+            {n:'E2',b:1},{n:'E2',b:.5},{n:'B2',b:.5},
+            {n:'A2',b:1},{n:'A2',b:.5},{n:'E3',b:.5},
+            {n:'C3',b:1},{n:'C3',b:.5},{n:'G3',b:.5},
+            {n:'B2',b:1},{n:'B2',b:.5},{n:'Fs3',b:.5},
+            {n:'E2',b:1},{n:'E2',b:.5},{n:'B2',b:.5},
+            {n:'A2',b:1},{n:'A2',b:.5},{n:'E3',b:.5},
+            {n:'C3',b:1},{n:'C3',b:.5},{n:'G3',b:.5},
+            {n:'B2',b:1},{n:'B2',b:.5},{n:'Fs3',b:.5},
+          ]},
+          { wave:'square', vol:0.07, notes:[
+            {n:'B4',b:2},{n:'A4',b:2},
+            {n:'G4',b:2},{n:'Fs4',b:2},
+            {n:'B4',b:2},{n:'A4',b:2},
+            {n:'G4',b:2},{n:'B4',b:2},
+          ]},
+        ]},
+
+        // ── Dungeon: A minor, eerie Zelda-style, 108 BPM (16 beats) ──
+        dungeon: { bpm: 108, voices: [
+          { wave:'square', vol:0.11, notes:[
+            {n:'A4',b:.5},{n:'_',b:.5},{n:'C5',b:.5},{n:'E5',b:.75},{n:'_',b:.25},{n:'D5',b:.5},{n:'C5',b:1},
+            {n:'G4',b:.5},{n:'_',b:.5},{n:'B4',b:.5},{n:'D5',b:.75},{n:'_',b:.25},{n:'C5',b:.5},{n:'A4',b:1},
+            {n:'F4',b:.5},{n:'_',b:.5},{n:'A4',b:.5},{n:'C5',b:.75},{n:'_',b:.25},{n:'B4',b:.5},{n:'A4',b:1},
+            {n:'E4',b:.5},{n:'F4',b:.25},{n:'E4',b:.25},{n:'A4',b:.5},{n:'_',b:.5},{n:'Gs4',b:.5},{n:'A4',b:1.5},
+          ]},
+          { wave:'triangle', vol:0.20, notes:[
+            {n:'A2',b:2},{n:'E3',b:2},
+            {n:'G2',b:2},{n:'D3',b:2},
+            {n:'F2',b:2},{n:'C3',b:2},
+            {n:'E2',b:2},{n:'A2',b:2},
+          ]},
+          { wave:'square', vol:0.06, notes:[
+            {n:'A3',b:.33},{n:'C4',b:.33},{n:'E4',b:.34},
+            {n:'A3',b:.33},{n:'C4',b:.33},{n:'E4',b:.34},
+            {n:'A3',b:.33},{n:'C4',b:.33},{n:'E4',b:.34},
+            {n:'A3',b:.33},{n:'C4',b:.33},{n:'E4',b:.34},
+            {n:'G3',b:.33},{n:'B3',b:.33},{n:'D4',b:.34},
+            {n:'G3',b:.33},{n:'B3',b:.33},{n:'D4',b:.34},
+            {n:'G3',b:.33},{n:'B3',b:.33},{n:'D4',b:.34},
+            {n:'G3',b:.33},{n:'B3',b:.33},{n:'D4',b:.34},
+            {n:'F3',b:.33},{n:'A3',b:.33},{n:'C4',b:.34},
+            {n:'F3',b:.33},{n:'A3',b:.33},{n:'C4',b:.34},
+            {n:'F3',b:.33},{n:'A3',b:.33},{n:'C4',b:.34},
+            {n:'F3',b:.33},{n:'A3',b:.33},{n:'C4',b:.34},
+            {n:'E3',b:.33},{n:'Gs3',b:.33},{n:'B3',b:.34},
+            {n:'E3',b:.33},{n:'Gs3',b:.33},{n:'B3',b:.34},
+            {n:'E3',b:.33},{n:'Gs3',b:.33},{n:'B3',b:.34},
+            {n:'E3',b:.5},{n:'A3',b:1},{n:'_',b:.5},
+          ]},
+        ]},
+
+        // ── Shop: C major, upbeat & cheerful, 160 BPM (24 beats) ──
+        shop: { bpm: 160, voices: [
+          { wave:'square', vol:0.12, notes:[
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:.5},{n:'E5',b:.5},{n:'F5',b:.5},{n:'A5',b:.5},{n:'G5',b:1},
+            {n:'E5',b:.5},{n:'G5',b:.5},{n:'A5',b:.5},{n:'G5',b:.5},{n:'E5',b:.5},{n:'C5',b:.5},{n:'D5',b:1},
+            {n:'F5',b:.5},{n:'E5',b:.25},{n:'D5',b:.25},{n:'C5',b:.5},{n:'D5',b:.5},{n:'E5',b:.5},{n:'F5',b:.5},{n:'G5',b:1},
+            {n:'A5',b:.5},{n:'G5',b:.5},{n:'F5',b:.5},{n:'E5',b:.5},{n:'D5',b:.5},{n:'C5',b:.5},{n:'G4',b:.5},{n:'C5',b:1.5},
+          ]},
+          { wave:'triangle', vol:0.17, notes:[
+            {n:'C3',b:1},{n:'G3',b:1},{n:'F3',b:1},{n:'C3',b:1},
+            {n:'G3',b:1},{n:'C3',b:1},{n:'G3',b:1},{n:'C3',b:1},
+            {n:'F3',b:1},{n:'C3',b:1},{n:'G3',b:1},{n:'F3',b:1},
+            {n:'C3',b:2},{n:'G3',b:2},
+          ]},
+        ]},
+
+        // ── Lab: F major, curious & warm, 138 BPM (32 beats) ──
+        lab: { bpm: 138, voices: [
+          { wave:'square', vol:0.11, notes:[
+            {n:'F5',b:1},{n:'G5',b:.5},{n:'A5',b:.5},{n:'Bb5',b:1},{n:'A5',b:1},
+            {n:'G5',b:2},{n:'_',b:2},
+            {n:'A5',b:1},{n:'G5',b:.5},{n:'F5',b:.5},{n:'E5',b:1},{n:'F5',b:1},
+            {n:'G5',b:2},{n:'_',b:2},
+            {n:'C6',b:1},{n:'Bb5',b:.5},{n:'A5',b:.5},{n:'G5',b:1},{n:'F5',b:1},
+            {n:'A5',b:1},{n:'G5',b:1},{n:'E5',b:2},
+            {n:'F5',b:1},{n:'G5',b:1},{n:'A5',b:1},{n:'Bb5',b:1},
+            {n:'F5',b:2},{n:'_',b:2},
+          ]},
+          { wave:'triangle', vol:0.16, notes:[
+            {n:'F3',b:2},{n:'C3',b:2},
+            {n:'Bb2',b:2},{n:'F3',b:2},
+            {n:'F3',b:2},{n:'C3',b:2},
+            {n:'C3',b:2},{n:'G3',b:2},
+            {n:'A3',b:2},{n:'F3',b:2},
+            {n:'C3',b:2},{n:'G3',b:2},
+            {n:'F3',b:2},{n:'C3',b:2},
+            {n:'F3',b:4},
+          ]},
+        ]},
+
+        // ── Clinic: E minor, gentle & calm, 120 BPM (32 beats) ──
+        clinic: { bpm: 120, voices: [
+          { wave:'triangle', vol:0.13, notes:[
+            {n:'E5',b:1.5},{n:'Fs5',b:.5},{n:'G5',b:1},{n:'E5',b:1},
+            {n:'D5',b:2},{n:'_',b:2},
+            {n:'G5',b:1.5},{n:'A5',b:.5},{n:'B5',b:1},{n:'G5',b:1},
+            {n:'Fs5',b:2},{n:'_',b:2},
+            {n:'A5',b:1},{n:'G5',b:.5},{n:'Fs5',b:.5},{n:'E5',b:1},{n:'D5',b:1},
+            {n:'E5',b:1.5},{n:'D5',b:.5},{n:'C5',b:2},
+            {n:'B4',b:1},{n:'C5',b:.5},{n:'D5',b:.5},{n:'E5',b:1},{n:'Fs5',b:1},
+            {n:'G5',b:2},{n:'_',b:2},
+          ]},
+          { wave:'sine', vol:0.15, notes:[
+            {n:'E3',b:2},{n:'B3',b:2},
+            {n:'G3',b:2},{n:'D3',b:2},
+            {n:'G3',b:2},{n:'D3',b:2},
+            {n:'D3',b:2},{n:'A3',b:2},
+            {n:'A3',b:2},{n:'E3',b:2},
+            {n:'C3',b:2},{n:'G3',b:2},
+            {n:'B2',b:2},{n:'Fs3',b:2},
+            {n:'E3',b:4},
+          ]},
+        ]},
+
+        // ── Surf Battle: D minor, rolling & aquatic, 158 BPM (16 beats) ──
+        surfBattle: { bpm: 158, voices: [
+          // Driving melody — urgent square, wave-cresting phrases
+          { wave:'square', vol:0.12, notes:[
+            {n:'D5',b:.25},{n:'_',b:.25},{n:'F5',b:.25},{n:'A5',b:.25},{n:'C6',b:.5},{n:'_',b:.25},{n:'A5',b:.25},{n:'Bb5',b:.5},{n:'_',b:.25},{n:'A5',b:.25},{n:'G5',b:.5},{n:'_',b:.5},
+            {n:'F5',b:.25},{n:'_',b:.25},{n:'A5',b:.25},{n:'C6',b:.25},{n:'Eb6',b:.5},{n:'_',b:.25},{n:'C6',b:.25},{n:'D6',b:.5},{n:'_',b:.25},{n:'C6',b:.25},{n:'A5',b:.5},{n:'_',b:.5},
+            {n:'Bb5',b:.25},{n:'_',b:.25},{n:'D5',b:.25},{n:'F5',b:.25},{n:'A5',b:.5},{n:'_',b:.25},{n:'G5',b:.25},{n:'F5',b:.5},{n:'_',b:.25},{n:'E5',b:.25},{n:'F5',b:.5},{n:'_',b:.5},
+            {n:'A4',b:.25},{n:'_',b:.25},{n:'C5',b:.25},{n:'E5',b:.25},{n:'G5',b:.5},{n:'_',b:.25},{n:'F5',b:.25},{n:'A5',b:1},{n:'_',b:1},
+          ]},
+          // Rolling wave arpeggio — sawtooth, constant motion like churning water
+          { wave:'sawtooth', vol:0.07, notes:[
+            {n:'D3',b:.25},{n:'F3',b:.25},{n:'A3',b:.25},{n:'D4',b:.25},
+            {n:'D3',b:.25},{n:'F3',b:.25},{n:'A3',b:.25},{n:'D4',b:.25},
+            {n:'C3',b:.25},{n:'E3',b:.25},{n:'G3',b:.25},{n:'C4',b:.25},
+            {n:'C3',b:.25},{n:'E3',b:.25},{n:'G3',b:.25},{n:'C4',b:.25},
+            {n:'Bb2',b:.25},{n:'D3',b:.25},{n:'F3',b:.25},{n:'Bb3',b:.25},
+            {n:'Bb2',b:.25},{n:'D3',b:.25},{n:'F3',b:.25},{n:'Bb3',b:.25},
+            {n:'A2',b:.25},{n:'C3',b:.25},{n:'E3',b:.25},{n:'A3',b:.25},
+            {n:'A2',b:.25},{n:'C3',b:.25},{n:'E3',b:.25},{n:'A3',b:.25},
+            {n:'D3',b:.25},{n:'F3',b:.25},{n:'A3',b:.25},{n:'D4',b:.25},
+            {n:'D3',b:.25},{n:'F3',b:.25},{n:'A3',b:.25},{n:'D4',b:.25},
+            {n:'C3',b:.25},{n:'Eb3',b:.25},{n:'G3',b:.25},{n:'C4',b:.25},
+            {n:'C3',b:.25},{n:'Eb3',b:.25},{n:'G3',b:.25},{n:'C4',b:.25},
+            {n:'F2',b:.25},{n:'A2',b:.25},{n:'C3',b:.25},{n:'F3',b:.25},
+            {n:'F2',b:.25},{n:'A2',b:.25},{n:'C3',b:.25},{n:'F3',b:.25},
+            {n:'A2',b:.25},{n:'C3',b:.25},{n:'E3',b:.25},{n:'A3',b:.25},
+            {n:'A2',b:.5},{n:'E3',b:.5},{n:'A3',b:1},
+          ]},
+          // Deep bass pulse — triangle, anchors the groove
+          { wave:'triangle', vol:0.20, notes:[
+            {n:'D2',b:1},{n:'A2',b:1},
+            {n:'C2',b:1},{n:'G2',b:1},
+            {n:'Bb2',b:1},{n:'F2',b:1},
+            {n:'A2',b:1},{n:'E2',b:1},
+            {n:'D2',b:1},{n:'A2',b:1},
+            {n:'C2',b:1},{n:'G2',b:1},
+            {n:'F2',b:1},{n:'C2',b:1},
+            {n:'A2',b:2},
+          ]},
+        ]},
+
+        // ── Credits: G major, slow & grand, 88 BPM — emotional ending theme ──
+        credits: { bpm: 88, voices: [
+          // Main melody — warm triangle, sweeping phrases
+          { wave:'triangle', vol:0.16, notes:[
+            {n:'G5',b:2},{n:'D5',b:1},{n:'E5',b:1},{n:'G5',b:1.5},{n:'A5',b:.5},{n:'B5',b:2},{n:'_',b:1},
+            {n:'C6',b:1},{n:'B5',b:1},{n:'A5',b:2},{n:'G5',b:2},{n:'_',b:2},
+            {n:'D5',b:2},{n:'Fs5',b:1},{n:'G5',b:1},{n:'A5',b:1},{n:'B5',b:1},{n:'A5',b:1},{n:'_',b:1},
+            {n:'G5',b:3},{n:'E5',b:1},{n:'D5',b:2},{n:'_',b:2},
+          ]},
+          // Counter-melody — quiet sine, fills space between main phrases
+          { wave:'sine', vol:0.10, notes:[
+            {n:'_',b:4},{n:'D5',b:1},{n:'E5',b:1},{n:'Fs5',b:2},
+            {n:'E5',b:2},{n:'_',b:2},{n:'B4',b:1},{n:'C5',b:1},{n:'D5',b:2},
+            {n:'_',b:4},{n:'Fs5',b:1.5},{n:'G5',b:.5},{n:'A5',b:2},
+            {n:'B5',b:2},{n:'A5',b:1},{n:'G5',b:1},{n:'_',b:4},
+          ]},
+          // Slow bass — sine, one note per 2 beats, grounding
+          { wave:'sine', vol:0.20, notes:[
+            {n:'G2',b:4},{n:'C3',b:4},
+            {n:'A2',b:4},{n:'D3',b:4},
+            {n:'G2',b:4},{n:'D3',b:4},
+            {n:'C3',b:4},{n:'G2',b:4},
+          ]},
+          // Bell arpeggio — very soft square, adds shimmer
+          { wave:'square', vol:0.04, notes:[
+            {n:'G4',b:.5},{n:'B4',b:.5},{n:'D5',b:.5},{n:'_',b:.5},
+            {n:'G4',b:.5},{n:'B4',b:.5},{n:'D5',b:.5},{n:'_',b:.5},
+            {n:'C4',b:.5},{n:'E4',b:.5},{n:'G4',b:.5},{n:'_',b:.5},
+            {n:'C4',b:.5},{n:'E4',b:.5},{n:'G4',b:.5},{n:'_',b:.5},
+            {n:'A3',b:.5},{n:'C4',b:.5},{n:'E4',b:.5},{n:'_',b:.5},
+            {n:'A3',b:.5},{n:'C4',b:.5},{n:'E4',b:.5},{n:'_',b:.5},
+            {n:'D4',b:.5},{n:'Fs4',b:.5},{n:'A4',b:.5},{n:'_',b:.5},
+            {n:'D4',b:.5},{n:'Fs4',b:.5},{n:'A4',b:.5},{n:'_',b:.5},
+            {n:'G4',b:.5},{n:'B4',b:.5},{n:'D5',b:.5},{n:'_',b:.5},
+            {n:'G4',b:.5},{n:'B4',b:.5},{n:'D5',b:.5},{n:'_',b:.5},
+            {n:'D4',b:.5},{n:'Fs4',b:.5},{n:'A4',b:.5},{n:'_',b:.5},
+            {n:'D4',b:.5},{n:'Fs4',b:.5},{n:'A4',b:.5},{n:'_',b:.5},
+            {n:'C4',b:.5},{n:'E4',b:.5},{n:'G4',b:.5},{n:'_',b:.5},
+            {n:'C4',b:.5},{n:'E4',b:.5},{n:'G4',b:.5},{n:'_',b:.5},
+            {n:'G3',b:.5},{n:'B3',b:.5},{n:'D4',b:.5},{n:'_',b:.5},
+            {n:'G3',b:.5},{n:'B3',b:.5},{n:'D4',b:1},{n:'_',b:1},
+          ]},
+        ]},
+
+        // ── Rooftop: C major, airy & open, 116 BPM, with bird chirps ──
+        rooftop: { bpm: 116, voices: [
+          // Airy triangle melody — wide intervals, lots of breathing room
+          { wave:'triangle', vol:0.14, notes:[
+            {n:'G5',b:1},{n:'_',b:1},{n:'E5',b:1},{n:'C6',b:2},{n:'_',b:1},
+            {n:'A5',b:.5},{n:'G5',b:.5},{n:'_',b:1},{n:'E5',b:1.5},{n:'_',b:.5},{n:'_',b:2},
+            {n:'F5',b:1},{n:'_',b:1},{n:'A5',b:1},{n:'C6',b:1.5},{n:'_',b:1.5},
+            {n:'G5',b:1},{n:'E5',b:1},{n:'_',b:1},{n:'D5',b:2},{n:'_',b:1},
+            {n:'C5',b:2},{n:'_',b:2},{n:'G5',b:1.5},{n:'A5',b:.5},
+            {n:'E5',b:1},{n:'_',b:1},{n:'C6',b:1},{n:'B5',b:1},{n:'_',b:2},
+            {n:'A5',b:1.5},{n:'G5',b:.5},{n:'E5',b:1},{n:'_',b:1},{n:'F5',b:2},
+            {n:'G5',b:4},{n:'_',b:4},
+          ]},
+          // Soft sine bass — slow, open chords
+          { wave:'sine', vol:0.16, notes:[
+            {n:'C3',b:4},{n:'F3',b:4},
+            {n:'F3',b:4},{n:'G3',b:4},
+            {n:'C3',b:4},{n:'F3',b:4},
+            {n:'G3',b:4},{n:'C3',b:4},
+          ]},
+          // Gentle arpeggio shimmer — quiet square, C major/F major
+          { wave:'square', vol:0.05, notes:[
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:.5},{n:'_',b:.5},
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:.5},{n:'_',b:.5},
+            {n:'F5',b:.5},{n:'A5',b:.5},{n:'C6',b:.5},{n:'_',b:.5},
+            {n:'F5',b:.5},{n:'A5',b:.5},{n:'C6',b:.5},{n:'_',b:.5},
+            {n:'F5',b:.5},{n:'A5',b:.5},{n:'C6',b:.5},{n:'_',b:.5},
+            {n:'G5',b:.5},{n:'B5',b:.5},{n:'D6',b:.5},{n:'_',b:.5},
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:.5},{n:'_',b:.5},
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:.5},{n:'_',b:.5},
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:.5},{n:'_',b:.5},
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:.5},{n:'_',b:.5},
+            {n:'F5',b:.5},{n:'A5',b:.5},{n:'C6',b:.5},{n:'_',b:.5},
+            {n:'F5',b:.5},{n:'A5',b:.5},{n:'C6',b:.5},{n:'_',b:.5},
+            {n:'G5',b:.5},{n:'B5',b:.5},{n:'D6',b:.5},{n:'_',b:.5},
+            {n:'G5',b:.5},{n:'B5',b:.5},{n:'D6',b:.5},{n:'_',b:.5},
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:.5},{n:'_',b:.5},
+            {n:'C5',b:.5},{n:'E5',b:.5},{n:'G5',b:1},{n:'_',b:1},
+          ]},
+          // Bird chirps — short sine bursts sweeping upward, scattered with long rests
+          { wave:'chirp', vol:0.09, notes:[
+            {n:'_',b:3},
+            {n:'E6',b:.12,sweep:'A6'},{n:'_',b:.38},
+            {n:'_',b:2},{n:'Fs6',b:.1,sweep:'B6'},{n:'_',b:.4},{n:'E6',b:.1,sweep:'A6'},{n:'_',b:.4},
+            {n:'_',b:4},
+            {n:'_',b:2.5},{n:'A6',b:.12,sweep:'B6'},{n:'_',b:1.38},
+            {n:'_',b:1},{n:'G6',b:.1,sweep:'B6'},{n:'_',b:.9},{n:'_',b:2},
+            {n:'_',b:4},
+            {n:'_',b:1.5},{n:'E6',b:.12,sweep:'Fs6'},{n:'_',b:.38},{n:'_',b:2},
+            {n:'_',b:3},{n:'Fs6',b:.1,sweep:'A6'},{n:'_',b:.9},
+            {n:'_',b:2},{n:'B6',b:.08,sweep:'B6'},{n:'_',b:.92},{n:'_',b:1},
+            {n:'_',b:4},
+            {n:'_',b:4},
+            {n:'_',b:2},{n:'E6',b:.12,sweep:'G6'},{n:'_',b:.88},{n:'_',b:1},
+            {n:'_',b:3.5},{n:'A6',b:.1,sweep:'B6'},{n:'_',b:.4},
+            {n:'_',b:4},
+          ]},
+        ]},
+
+      };
+
+      function init() {
+        if (ctx) return;
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        master = ctx.createGain();
+        master.gain.value = 0.4;
+        master.connect(ctx.destination);
+      }
+
+      function scheduleVoice(voice, gainNode, startTime, beatDur) {
+        let t = startTime;
+        for (const note of voice.notes) {
+          const {n, b, sweep} = note;
+          const freq = N[n] || 0;
+          const dur  = b * beatDur;
+          if (freq > 0) {
+            const osc = ctx.createOscillator();
+            const g   = ctx.createGain();
+            osc.connect(g); g.connect(gainNode);
+            osc.type = voice.wave === 'chirp' ? 'sine' : voice.wave;
+            osc.frequency.setValueAtTime(freq, t);
+            // Frequency sweep for bird chirp sounds
+            if (sweep && N[sweep]) {
+              osc.frequency.exponentialRampToValueAtTime(N[sweep], t + dur * 0.85);
+            }
+            g.gain.setValueAtTime(voice.vol, t);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + dur * 0.82);
+            osc.start(t);
+            osc.stop(t + dur);
+          }
+          t += dur;
+        }
+        return t - startTime;
+      }
+
+      function loopTrack(name, startTime) {
+        if (curTrack !== name) return;
+        const track   = TRACKS[name];
+        const beatDur = 60 / track.bpm;
+        let loopDur   = 0;
+        for (const voice of track.voices) {
+          loopDur = Math.max(loopDur, scheduleVoice(voice, sessionGain, startTime, beatDur));
+        }
+        const ms = (startTime + loopDur - ctx.currentTime - 0.12) * 1000;
+        loopTimer = setTimeout(() => loopTrack(name, startTime + loopDur), Math.max(10, ms));
+      }
+
+      function fadeOutNode(g, dur) {
+        if (!g) return;
+        g.gain.cancelScheduledValues(ctx.currentTime);
+        g.gain.setValueAtTime(g.gain.value, ctx.currentTime);
+        g.gain.linearRampToValueAtTime(0, ctx.currentTime + dur);
+        setTimeout(() => { try { g.disconnect(); } catch(_){} }, dur * 1000 + 100);
+      }
+
+      function play(name) {
+        if (muted || !TRACKS[name]) return;
+        if (curTrack === name) return;
+        init();
+        if (ctx.state === 'suspended') ctx.resume();
+        if (loopTimer) clearTimeout(loopTimer);
+        fadeOutNode(sessionGain, 0.15);
+        curTrack    = name;
+        sessionGain = ctx.createGain();
+        sessionGain.gain.value = 1;
+        sessionGain.connect(master);
+        loopTrack(name, ctx.currentTime + 0.05);
+      }
+
+      function stop() {
+        if (loopTimer) clearTimeout(loopTimer);
+        fadeOutNode(sessionGain, 0.15);
+        sessionGain = null; curTrack = null; loopTimer = null;
+      }
+
+      function toggleMute() {
+        muted = !muted;
+        if (muted) stop();
+        return muted;
+      }
+
+      return { play, stop, toggleMute, isMuted: () => muted };
+    })();
+
+    // ── Sound Effects ─────────────────────────────────────────────
+    const SFX = (() => {
+      let ctx = null;
+
+      function init() {
+        if (ctx) return;
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      function resume() { if (ctx && ctx.state === 'suspended') ctx.resume(); }
+
+      // Single oscillator tone with optional frequency sweep
+      function tone(freq, type, vol, start, dur, freqEnd) {
+        const osc = ctx.createOscillator();
+        const g   = ctx.createGain();
+        osc.connect(g);
+        g.connect(ctx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, start);
+        if (freqEnd) osc.frequency.exponentialRampToValueAtTime(freqEnd, start + dur * 0.85);
+        g.gain.setValueAtTime(vol, start);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        osc.start(start);
+        osc.stop(start + dur + 0.01);
+      }
+
+      // Short white-noise burst
+      function noise(vol, start, dur) {
+        const len = Math.ceil(ctx.sampleRate * dur);
+        const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+        const d   = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const g = ctx.createGain();
+        src.connect(g);
+        g.connect(ctx.destination);
+        g.gain.setValueAtTime(vol, start);
+        g.gain.exponentialRampToValueAtTime(0.0001, start + dur);
+        src.start(start);
+        src.stop(start + dur + 0.01);
+      }
+
+      const sounds = {
+
+        // 3 electric zaps synced to white flashes, then a low impact on blackout
+        encounter() {
+          const t = ctx.currentTime;
+          // Flash 1 (0ms)
+          noise(0.30, t, 0.06);
+          tone(1800, 'sawtooth', 0.12, t,        0.07, 900);
+          // Flash 2 (200ms)
+          noise(0.30, t + 0.20, 0.06);
+          tone(1800, 'sawtooth', 0.12, t + 0.20, 0.07, 900);
+          // Flash 3 (400ms)
+          noise(0.35, t + 0.40, 0.06);
+          tone(1800, 'sawtooth', 0.13, t + 0.40, 0.07, 900);
+          // Black screen impact (520ms)
+          noise(0.22, t + 0.52, 0.10);
+          tone(80,  'sawtooth', 0.18, t + 0.52, 0.16, 40);
+        },
+
+        // Dramatic impact + rising sting
+        battleStart() {
+          const t = ctx.currentTime;
+          noise(0.28, t, 0.07);
+          tone(90,  'sawtooth', 0.14, t,        0.10);
+          tone(180, 'square',   0.10, t + 0.07, 0.14, 55);
+          tone(370, 'square',   0.09, t + 0.15, 0.28, 220);
+          tone(440, 'triangle', 0.08, t + 0.32, 0.25);
+        },
+
+        // Soft dialog blip
+        text() {
+          const t = ctx.currentTime;
+          tone(600, 'square', 0.055, t, 0.042);
+        },
+
+        // Ascending heal arpeggio — C E G C
+        heal() {
+          const t = ctx.currentTime;
+          [523, 659, 784, 1047].forEach((f, i) =>
+            tone(f, 'triangle', 0.13, t + i * 0.09, 0.13)
+          );
+        },
+
+        // Coin jingle — two quick rising notes
+        buy() {
+          const t = ctx.currentTime;
+          tone(659, 'square', 0.10, t,        0.07); // E5
+          tone(880, 'square', 0.10, t + 0.08, 0.11); // A5
+        },
+
+        // Low thud + descending buzz — player critter hit
+        damage() {
+          const t = ctx.currentTime;
+          noise(0.22, t, 0.05);
+          tone(200, 'sawtooth', 0.14, t,        0.16, 55);
+          tone(150, 'square',   0.07, t + 0.05, 0.12, 40);
+        },
+
+        // Triumphant catch fanfare — rising arpeggio then shimmer
+        recruit() {
+          const t = ctx.currentTime;
+          [523, 659, 784, 1047].forEach((f, i) =>
+            tone(f, 'square', 0.10, t + i * 0.08, 0.09)
+          );
+          tone(1047, 'triangle', 0.12, t + 0.40, 0.50);
+          tone(1319, 'triangle', 0.07, t + 0.55, 0.35);
+        },
+
+        // Zelda-style item fanfare — B4 E5 Gs5 B5 then held
+        keyItem() {
+          const t = ctx.currentTime;
+          [494, 659, 831, 988].forEach((f, i) =>
+            tone(f, 'square', 0.11, t + i * 0.09, 0.09)
+          );
+          tone(988, 'triangle', 0.13, t + 0.42, 0.55);
+        },
+
+        // Descending fall — opponent critter defeated
+        defeated() {
+          const t = ctx.currentTime;
+          [440, 370, 294, 220].forEach((f, i) =>
+            tone(f, 'triangle', 0.12 - i * 0.02, t + i * 0.12, 0.15)
+          );
+          noise(0.08, t + 0.45, 0.12);
+        },
+      };
+
+      function play(name) {
+        init();
+        resume();
+        if (sounds[name]) sounds[name]();
+      }
+
+      return { play };
+    })();
+
     // ── Intro sequence ────────────────────────────────────────────
     (function runIntro() {
       const screen   = document.getElementById('introScreen');
@@ -5696,9 +6468,10 @@
         }, 650);
       }, delay + 600);
 
-      // Dismiss on any key or tap
-      document.addEventListener('keydown', dismiss);
-      screen.addEventListener('click', dismiss);
+      // Dismiss on any key or tap — also starts music (requires user gesture for AudioContext)
+      function onDismissKey() { updateAreaMusic(); dismiss(); }
+      document.addEventListener('keydown', onDismissKey);
+      screen.addEventListener('click', () => { updateAreaMusic(); dismiss(); });
     })();
   </script>
 </body>
