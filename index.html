@@ -5015,7 +5015,7 @@
         type: 'garden',
         img: 'hedgeosaur.png',
         maxHp: 160,
-        atk: 20, dfc: 18, mag: 16, mdf: 15, spd: 13, lck: 11,
+        atk: 20, dfc: 18, mag: 16, mdf: 15, spd: 13, lck: 4,
         moves: [
           { name: 'Branch Bite',    type: 'garden', cat: 'physical', power: 20 },
           { name: 'Petal Barrage',  type: 'garden', cat: 'magic',    power: 17 },
@@ -5032,7 +5032,7 @@
         type: 'lava',
         img: 'ceraflame.png',
         maxHp: 150,
-        atk: 24, dfc: 13, mag: 20, mdf: 11, spd: 20, lck: 13,
+        atk: 24, dfc: 13, mag: 20, mdf: 11, spd: 20, lck: 5,
         moves: [
           { name: 'Blue Blaze',   type: 'lava',  cat: 'physical', power: 22 },
           { name: 'Soul Flame',   type: 'lava',  cat: 'magic',    power: 19 },
@@ -5049,7 +5049,7 @@
         type: 'ocean',
         img: 'pterrent.png',
         maxHp: 145,
-        atk: 17, dfc: 14, mag: 22, mdf: 16, spd: 24, lck: 15,
+        atk: 17, dfc: 14, mag: 22, mdf: 16, spd: 24, lck: 6,
         moves: [
           { name: 'Sky Dive',    type: 'ocean', cat: 'physical', power: 20 },
           { name: 'Cloud Burst', type: 'ocean', cat: 'magic',    power: 22 },
@@ -5350,7 +5350,7 @@
       }
 
       // ── LCK: Dodge check (defender's luck) ──────────────────────────────
-      const dodgeChance = (defender.lck ?? 0) * 0.008;  // lck 9 → 7.2%
+      const dodgeChance = (defender.lck ?? 0) * 0.018;  // lck 9 → 16.2%
       if (Math.random() < dodgeChance) {
         const defCard = document.getElementById(`card-${defenderSide}`);
         defCard.classList.add('dodge');
@@ -5380,7 +5380,7 @@
       }
 
       // ── LCK: Lucky hit check (attacker's luck) ──────────────────────────
-      const critChance = (attacker.lck ?? 0) * 0.02;    // lck 9 → 18%
+      const critChance = (attacker.lck ?? 0) * 0.04;    // lck 9 → 36%
       let isCrit = false;
       if (Math.random() < critChance) {
         damage = Math.round(damage * 1.5);
