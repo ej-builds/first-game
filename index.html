@@ -582,6 +582,7 @@
     .move-name  { display: block; font-weight: 700; font-size: 12px; }
     .move-meta  { display: block; font-size: 10px; color: rgba(0,0,0,0.5); margin-top: 2px; font-weight: 600; letter-spacing: 0.04em; }
     .move-power { display: block; font-size: 10px; color: rgba(0,0,0,0.4); margin-top: 1px; font-weight: 600; letter-spacing: 0.04em; }
+    .move-priority-tag { display: inline-block; font-size: 9px; font-weight: 700; letter-spacing: 0.06em; color: #fff; background: #e0a000; border-radius: 3px; padding: 1px 4px; margin-left: 5px; vertical-align: middle; }
 
     .vs {
       font-size: 28px;
@@ -2480,6 +2481,8 @@
     // ── NPC ────────────────────────────────────────────────────
     const NPC  = { tileX: 6,  tileY: 2 }; // Dr. Meadow — left side of bookshelves
     const NPC2 = { tileX: 10, tileY: 2 }; // Dr. Fern   — right side of bookshelves
+    const NPC3 = { tileX: 3,  tileY: 6 }; // Student researcher — open floor area
+    const NPC4 = { tileX: 10, tileY: 6 }; // Second student — right side of open floor
 
     const NPC_DIALOG = [
       ["Hello, catcher!",      "I'm Dr. Meadow.",      "I study wild critters."],
@@ -2502,6 +2505,29 @@
       ["Status effects clear", "when a critter is",     "swapped or battle ends."],
       ["Feeling outmatched?",  "FLICK the foe's card",  "to run away!"],
       ["Good luck out there!", "",                      "Press A to close."],
+    ];
+
+    const NPC3_DIALOG = [
+      ["Oh! You surprised me.", "I'm a student here",   "at the lab."],
+      ["I've been studying",   "a mechanic called",     "PRIORITY."],
+      ["Some moves are so",    "fast, they ALWAYS",     "go first!"],
+      ["It doesn't matter how","slow your critter is -","PRIORITY wins."],
+      ["Even DRENCHED status", "can't stop a",          "PRIORITY move!"],
+      ["Look for the gold",    "PRIORITY tag on",       "a move to spot one."],
+      ["Moves like Scratch,",  "Headbutt, Fast Pecks,", "Drift, Claw Scratch."],
+      ["Use them to strike",   "before a faster foe",   "can attack you!"],
+      ["OK, back to my notes.","Good luck out there!",  ""],
+    ];
+
+    const NPC4_DIALOG = [
+      ["Oh hey! I'm studying", "multi-hit moves.",      "Pretty wild stuff!"],
+      ["Some moves hit the",   "foe MULTIPLE TIMES",    "in one go!"],
+      ["Each hit rolls its",   "own damage. More hits", "= more total pain."],
+      ["But here's the thing -","each hit can also",    "trigger a LUCKY HIT!"],
+      ["So high LCK critters", "love multi-hit moves.", "More crit chances!"],
+      ["Look for moves that",  "say HITS 2-4 or",       "HITS 2-5 on the card."],
+      ["Seed Spit, Bubble",    "Barrage, Ember Flurry", "- all multi-hit!"],
+      ["Alright, back to",     "my research. Good luck!",""],
     ];
 
     const NPC2_DIALOG = [
@@ -2756,6 +2782,80 @@
       ctx.fillRect(cx+1, cy-8, 2, 2);
       ctx.fillStyle = '#c04030';
       ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
+    function drawNPC3(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (green sweater)
+      ctx.fillStyle = '#2a7a40';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#1f5e30';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (brown)
+      ctx.fillStyle = '#5a3210';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-6, cy-13, 2, 5);
+      ctx.fillRect(cx+4, cy-13, 2, 5);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+    }
+
+    function drawNPC4(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (purple shirt)
+      ctx.fillStyle = '#6040b0';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#4a2e90';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (blonde)
+      ctx.fillStyle = '#e0c030';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-6, cy-13, 2, 4);
+      ctx.fillRect(cx+4, cy-13, 2, 4);
+
+      // Eyes
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
     }
 
     function drawHouseNPC(ctx, sx, sy) {
@@ -3686,6 +3786,8 @@
       SFX.play('text');
       dialogPage++;
       const currentDialog = dialogType === 'healer'      ? HEALER_DIALOG
+                          : dialogType === 'labnpc3'     ? NPC3_DIALOG
+                          : dialogType === 'labnpc4'     ? NPC4_DIALOG
                           : dialogType === 'prof2'       ? NPC2_DIALOG
                           : dialogType === 'shopnpc'     ? SHOP_NPC_DIALOG
                           : dialogType === 'shopnpc2'    ? SHOP_NPC2_DIALOG
@@ -4151,6 +4253,22 @@
           dialogType   = 'prof2';
           return;
         }
+        // Walking into the student researcher triggers priority dialog (indoors only)
+        if (currentArea === 'indoor' && nx === NPC3.tileX && ny === NPC3.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'labnpc3';
+          return;
+        }
+        // Walking into the second student triggers multi-hit dialog (indoors only)
+        if (currentArea === 'indoor' && nx === NPC4.tileX && ny === NPC4.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'labnpc4';
+          return;
+        }
         // Walking into the healer triggers heal dialog (inside clinic only)
         if (currentArea === 'healer' && nx === HEALER.tileX && ny === HEALER.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
@@ -4376,7 +4494,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -4415,13 +4533,23 @@
       const npc2SY = INDOOR_OFFSET_Y + NPC2.tileY * TILE_SIZE;
       drawNPC2(ctx, npc2SX, npc2SY);
 
+      // Draw student researcher
+      const npc3SX = INDOOR_OFFSET_X + NPC3.tileX * TILE_SIZE;
+      const npc3SY = INDOOR_OFFSET_Y + NPC3.tileY * TILE_SIZE;
+      drawNPC3(ctx, npc3SX, npc3SY);
+
+      // Draw second student
+      const npc4SX = INDOOR_OFFSET_X + NPC4.tileX * TILE_SIZE;
+      const npc4SY = INDOOR_OFFSET_Y + NPC4.tileY * TILE_SIZE;
+      drawNPC4(ctx, npc4SX, npc4SY);
+
       // Draw player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, INDOOR_OFFSET_X + player.pixelX, INDOOR_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -4785,7 +4913,7 @@
           { name: 'Ember Snap',  type: 'lava',  cat: 'physical', power: 14 },
           { name: 'Heat Wave',   type: 'lava',  cat: 'magic',    power: 12 },
           { name: 'Intimidate',  type: 'basic', cat: 'status',   effect: { stat: 'atk', target: 'opponent', amount: -3 } },
-          { name: 'Scratch',     type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Scratch',     type: 'basic', cat: 'physical', power:  8, priority: true },
         ]
       },
     };
@@ -4801,7 +4929,7 @@
           { name: 'Splash Strike', type: 'ocean', cat: 'physical', power: 14 },
           { name: 'Whirlpool',    type: 'ocean', cat: 'magic',    power: 12 },
           { name: 'Smokescreen',  type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
-          { name: 'Slam',         type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Bubble Barrage', type: 'ocean', cat: 'physical', power: 4, hits: [2, 4] },
         ]
       },
       {
@@ -4809,12 +4937,12 @@
         type: 'lava',
         img: 'embrawl.png',
         maxHp: 105,
-        atk: 16, dfc: 8, mag: 3, mdf: 5, spd: 6, lck: 4,
+        atk: 16, dfc: 8, mag: 3, mdf: 8, spd: 10, lck: 4,
         moves: [
           { name: 'Flame Charge',  type: 'lava',  cat: 'physical', power: 14 },
-          { name: 'Lava Stomp',   type: 'lava',  cat: 'physical', power: 12 },
+          { name: 'Ember Flurry', type: 'lava',  cat: 'physical', power: 5, hits: [2, 3] },
           { name: 'Ember Scorch', type: 'lava',  cat: 'status',   effect: { type: 'apply_status', status: 'charred',  target: 'opponent' } },
-          { name: 'Headbutt',     type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Headbutt',     type: 'basic', cat: 'physical', power:  8, priority: true },
         ]
       },
       {
@@ -4824,7 +4952,7 @@
         maxHp: 95,
         atk: 5, dfc: 5, mag: 15, mdf: 12, spd: 10, lck: 8,
         moves: [
-          { name: 'Seed Spit',   type: 'garden', cat: 'physical', power: 5, hits: [2, 5] },
+          { name: 'Seed Spit',   type: 'garden', cat: 'physical', power: 3, hits: [2, 5] },
           { name: 'Leaf Storm',  type: 'garden', cat: 'magic',    power: 12 },
           { name: 'Leech Seed',  type: 'garden', cat: 'status',   effect: { type: 'apply_status', status: 'seeded',   target: 'opponent' } },
           { name: 'Fast Pecks',  type: 'basic', cat: 'physical', power:  7, priority: true },
@@ -4866,7 +4994,7 @@
           { name: 'Tentacle Zap',  type: 'ocean', cat: 'magic',    power: 14 },
           { name: 'Bubble Burst',  type: 'ocean', cat: 'magic',    power: 11 },
           { name: 'Venom Sting',   type: 'ocean', cat: 'status',   effect: { type: 'apply_status', status: 'toxic', target: 'opponent' } },
-          { name: 'Drift',         type: 'basic', cat: 'physical', power:  6 },
+          { name: 'Drift',         type: 'basic', cat: 'physical', power:  6, priority: true },
         ]
       },
       {
@@ -4919,7 +5047,7 @@
           { name: 'Aqua Swipe',   type: 'ocean', cat: 'physical', power: 13 },
           { name: 'Tidal Spin',   type: 'ocean', cat: 'magic',    power: 12 },
           { name: 'Smoky Mist',   type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
-          { name: 'Claw Scratch', type: 'basic', cat: 'physical', power:  8 },
+          { name: 'Claw Scratch', type: 'basic', cat: 'physical', power:  8, priority: true },
         ]
       },
       {
@@ -5177,15 +5305,17 @@
       state.player.moves.forEach((move, i) => {
         const btn = document.createElement('button');
         const catLabel = move.cat === 'magic' ? 'MAGIC' : move.cat === 'status' ? 'STATUS' : 'PHYS';
-        const fxDesc   = move.cat !== 'status' ? `PWR ${move.power}`
+        const fxDesc   = move.cat !== 'status'
+          ? (move.hits ? `PWR ${move.power} × ${move.hits[0]}-${move.hits[1]}` : `PWR ${move.power}`)
           : move.effect.type === 'apply_all_status' ? 'Foe: ALL STATUS'
           : move.effect.type === 'lower_all_stats'  ? `Foe: ALL STATS ${move.effect.amount}`
           : move.effect.type === 'apply_status'
             ? `${move.effect.target === 'self' ? 'Self' : 'Foe'}: ${move.effect.status.toUpperCase()}`
             : `${move.effect.target === 'self' ? 'Self' : 'Foe'} ${move.effect.stat.toUpperCase()} ${move.effect.amount > 0 ? '+' : ''}${move.effect.amount}`;
         btn.className = `move-btn cat-${move.cat}`;
+        const priorityTag = move.priority ? `<span class="move-priority-tag">PRIORITY</span>` : '';
         btn.innerHTML = `
-          <span class="move-name">${move.name}</span>
+          <span class="move-name">${move.name}${priorityTag}</span>
           <span class="move-meta">${move.type.toUpperCase()} · ${catLabel}</span>
           <span class="move-power">${fxDesc}</span>
         `;
@@ -5206,7 +5336,8 @@
       state.opponent.moves.forEach(move => {
         const btn = document.createElement('button');
         const catLabel = move.cat === 'magic' ? 'MAGIC' : move.cat === 'status' ? 'STATUS' : 'PHYS';
-        const fxDesc   = move.cat !== 'status' ? `PWR ${move.power}`
+        const fxDesc   = move.cat !== 'status'
+          ? (move.hits ? `PWR ${move.power} × ${move.hits[0]}-${move.hits[1]}` : `PWR ${move.power}`)
           : move.effect.type === 'apply_all_status' ? 'Foe: ALL STATUS'
           : move.effect.type === 'lower_all_stats'  ? `Foe: ALL STATS ${move.effect.amount}`
           : move.effect.type === 'apply_status'
@@ -5214,8 +5345,9 @@
             : `${move.effect.target === 'self' ? 'Self' : 'Foe'} ${move.effect.stat.toUpperCase()} ${move.effect.amount > 0 ? '+' : ''}${move.effect.amount}`;
         btn.className = `move-btn cat-${move.cat}`;
         btn.disabled  = true;
+        const oppPriorityTag = move.priority ? `<span class="move-priority-tag">PRIORITY</span>` : '';
         btn.innerHTML = `
-          <span class="move-name">${move.name}</span>
+          <span class="move-name">${move.name}${oppPriorityTag}</span>
           <span class="move-meta">${move.type.toUpperCase()} · ${catLabel}</span>
           <span class="move-power">${fxDesc}</span>
         `;
@@ -5350,7 +5482,7 @@
       }
 
       // ── LCK: Dodge check (defender's luck) ──────────────────────────────
-      const dodgeChance = (defender.lck ?? 0) * 0.018;  // lck 9 → 16.2%
+      const dodgeChance = (defender.lck ?? 0) * 0.012;  // lck 9 → 10.8%
       if (Math.random() < dodgeChance) {
         const defCard = document.getElementById(`card-${defenderSide}`);
         defCard.classList.add('dodge');
@@ -5380,7 +5512,7 @@
       }
 
       // ── LCK: Lucky hit check (attacker's luck) ──────────────────────────
-      const critChance = (attacker.lck ?? 0) * 0.04;    // lck 9 → 36%
+      const critChance = (attacker.lck ?? 0) * 0.028;   // lck 9 → 25.2%
       let isCrit = false;
       if (Math.random() < critChance) {
         damage = Math.round(damage * 1.5);
