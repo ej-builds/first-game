@@ -306,6 +306,9 @@
 
     @media (max-width: 700px) {
       .arena { grid-template-columns: 1fr; gap: 20px; }
+      /* Fixed 5:7 card squeezes the art once the swap button and wrapped tags appear */
+      .arena .creature-card { aspect-ratio: auto; }
+      .creature-card .card-art { flex: none; height: 170px; }
     }
 
     /* ── Opponent wrapper & flick hint ── */
