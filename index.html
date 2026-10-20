@@ -6236,20 +6236,35 @@
       ATD97S: 'Frostusk',    LDMMET: 'Grumblaze',  '2GWGED': 'Thornlet',  JNUPLT: 'Seakey',
       Z5B4T6: 'Magmoad',     FCDL8Y: 'Treer',      UWQHXJ: 'Lumijell',    GLZRYB: 'Rouxls Kaard',
     };
+    const SCAN_FORM_CHANCE = 0.05; // 1 in 20 scanned cards comes out as a rare form
     let scannedStarter = null;
     (function applyScannedCard() {
       const code = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
       const name = CARD_CODES[code];
-      if (!name || name === creatures.player.name) return;
+      if (!name) return;
       const allCritters = [
+        creatures.player,
         ...wildCreatures,
         ...[ROUXLS_CATCHER, HEDGEOSAUR_CATCHER, CERAFLAME_CATCHER, PTERRENT_CATCHER].map(c => c.critter),
       ];
       const found = allCritters.find(c => c.name === name);
       if (!found) return;
       const { noRecruit, landSpawn, ...critter } = found;
-      creatures.player = { ...critter, moves: critter.moves.map(m => ({ ...m })) };
-      scannedStarter = critter.name;
+
+      // A scan arrives via card.html with no roll yet, so it rolls; the result is then written into the
+      // address as &f=, so reloading keeps it and only a new scan re-rolls.
+      // Forms need an element type, so Rouxls Kaard (basic) always comes out normal.
+      const canForm = ELEMENT_TYPES.includes(critter.type);
+      const params  = new URLSearchParams(location.search);
+      let formIdx   = params.has('f') ? parseInt(params.get('f'), 10) : NaN;
+      if (Number.isNaN(formIdx)) {
+        formIdx = canForm && Math.random() < SCAN_FORM_CHANCE ? Math.floor(Math.random() * FORM_COUNT) : -1;
+        params.set('f', String(formIdx));
+        history.replaceState(null, '', `${location.pathname}?${params}`);
+      }
+      const starter = { ...critter, moves: critter.moves.map(m => ({ ...m })) };
+      creatures.player = canForm && formIdx >= 0 && formIdx < FORM_COUNT ? makeForm(starter, formIdx) : starter;
+      scannedStarter = creatures.player.name;
     })();
 
     // Start in the world
@@ -6855,7 +6870,9 @@
         screen.classList.add('fade-out');
         setTimeout(() => {
           screen.remove();
-          if (scannedStarter) showItemNotification(`🃏 ${scannedStarter} is your partner!`, true);
+          if (scannedStarter) showItemNotification(creatures.player.form
+            ? `🌈 Rare form! ${scannedStarter} is your partner!`
+            : `🃏 ${scannedStarter} is your partner!`, true);
         }, 750);
       }
 

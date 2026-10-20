@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Card Catchers</title>
-  <script>location.replace('index.html' + location.search);</script>
+  <script>
+    const c = new URLSearchParams(location.search).get('c') || '';
+    location.replace('index.html' + (c ? '?c=' + encodeURIComponent(c) : ''));
+  </script>
 </head>
 <body style="background:#1a1a2e;color:#ffcb05;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
   <a href="index.html" style="color:#ffcb05;">Opening Card Catchers…</a>
