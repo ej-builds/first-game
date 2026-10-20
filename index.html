@@ -759,7 +759,9 @@
       letter-spacing: 0.04em;
       box-shadow: 0 2px 10px rgba(0,160,0,0.3);
     }
-    .battle-bag-btn:hover { background: rgba(80,160,80,0.95); transform: translateY(-1px); }
+    .battle-bag-btn:hover:not(:disabled) { background: rgba(80,160,80,0.95); transform: translateY(-1px); }
+    .battle-bag-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .choice-selected { outline: 3px solid #ffcb05; outline-offset: 3px; }
 
     /* ── Recruit prompt ── */
     .recruit-prompt {
@@ -1301,8 +1303,8 @@
     <div style="background:#1a1a2e; border:2px solid #ffcb05; border-radius:16px; padding:28px 36px; text-align:center; max-width:340px; color:#fff; font-family:'Press Start 2P',monospace; font-size:11px; line-height:1.8;">
       <div style="font-size:13px; margin-bottom:18px;">⚔️ <strong style="color:#ffcb05;">Rouxls Kaard</strong> awaits...<br><br>What will you do?</div>
       <div style="display:flex; gap:14px; justify-content:center;">
-        <button class="btn-recruit" onclick="rouxlsChallenge()">Challenge him!</button>
-        <button class="btn-leave"   onclick="rouxlsLeave()">Leave him be</button>
+        <button class="btn-recruit" id="rouxlsYes" onclick="rouxlsChallenge()">Challenge him!</button>
+        <button class="btn-leave"   id="rouxlsNo"  onclick="rouxlsLeave()">Leave him be</button>
       </div>
     </div>
   </div>
@@ -1509,6 +1511,7 @@
     let lostBattle = false; // set when every critter faints; returnToWorld then sends you to Nurse Nina
 
     function returnToWorld() {
+      cancelTurnTimers(); // an attack still waiting must not land after you've left
       // Restore default background
       document.body.style.background = 'radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%)';
       const rm = document.getElementById('rouxlsMusic');
@@ -4054,9 +4057,7 @@
         }
         // Show challenge choice after Rouxls Kaard's dialog (if not yet defeated)
         if (closingType === 'house2npc' && !rouxlsDefeated) {
-          setTimeout(() => {
-            document.getElementById('rouxlsChoice').style.display = 'flex';
-          }, 100);
+          setTimeout(showRouxlsChoice, 100);
         }
         // Trigger catcher battle at end of Ivy's intro dialog
         if (closingType === 'ivynpc' && !ivyDefeated) {
@@ -4072,6 +4073,8 @@
         }
         // Show credits after end-of-demo dialog
         if (closingType === 'demoend') {
+          // The credits reload the page, so save first: continuing puts you back in the world to keep exploring
+          saveGame();
           setTimeout(showCredits, 400);
         }
         // Dismiss Skye's "!" and award Trio Medal once player reads her post-defeat dialog
@@ -4106,6 +4109,7 @@
     // ── Bag ────────────────────────────────────────────────────
     function openBag() {
       if (gameState !== 'world' && gameState !== 'battle') return;
+      if (gameState === 'battle' && turnBusy) return; // wait for the turn to finish
       document.getElementById('bagCoins').textContent      = coins;
       document.getElementById('bagPotionCount').textContent = inventory.potions;
       document.getElementById('bagReviveCount').textContent = inventory.revives;
@@ -4144,7 +4148,7 @@
     let bagFromMenu = false;
 
     function isShown(id) { return document.getElementById(id).style.display !== 'none'; }
-    function isMenuUIOpen() { return isShown('menuOverlay') || isShown('settingsOverlay') || isShown('partyOverlay') || isShown('bagOverlay') || isShown('confirmOverlay'); }
+    function isMenuUIOpen() { return isShown('rouxlsChoice') || isShown('menuOverlay') || isShown('settingsOverlay') || isShown('partyOverlay') || isShown('bagOverlay') || isShown('confirmOverlay'); }
 
     function openMenu() {
       if (gameState !== 'world' || dialogActive) return;
@@ -4278,6 +4282,7 @@
     }
 
     function handleBButton() {
+      if (isShown('rouxlsChoice'))   { rouxlsLeave();     return; }
       if (isShown('confirmOverlay')) { confirmSelect(1); return; }
       if (isShown('partyOverlay')) { closeParty(); return; }
       if (isShown('bagOverlay'))   { closeBag();   return; }
@@ -4330,6 +4335,7 @@
 
     function useBagItem(type) {
       const inBattle = gameState === 'battle';
+      if (inBattle && turnBusy) return;
 
       function afterUse() {
         closeBag();
@@ -4338,7 +4344,7 @@
           turnBusy = true;
           render();
           const opponentMove = pickOpponentMove();
-          setTimeout(() => {
+          turnLater(() => {
             resolveAttack('opponent', 'player', opponentMove);
             turnBusy = false;
             render();
@@ -4349,13 +4355,13 @@
       if (type === 'potion') {
         if (inventory.potions === 0) return;
         const targets = buildUsableTargets('potion');
-        if (targets.length === 0) { alert('All critters are already at full HP!'); return; }
+        if (targets.length === 0) { showItemNotification('💚 All critters are already at full HP!', true); return; }
         if (targets.length === 1) { applyPotion(targets[0].ref); afterUse(); return; }
         showBagTargetPicker(targets, (ref) => { applyPotion(ref); afterUse(); });
       } else if (type === 'revive') {
         if (inventory.revives === 0) return;
         const targets = buildUsableTargets('revive');
-        if (targets.length === 0) { alert('No fainted critters to revive!'); return; }
+        if (targets.length === 0) { showItemNotification('✨ No fainted critters to revive!', true); return; }
         if (targets.length === 1) { applyRevive(targets[0].ref); afterUse(); return; }
         showBagTargetPicker(targets, (ref) => { applyRevive(ref); afterUse(); });
       }
@@ -4476,6 +4482,7 @@
     }
 
     function handleAButton() {
+      if (isShown('rouxlsChoice'))   { rouxlsIndex === 0 ? rouxlsChallenge() : rouxlsLeave(); return; }
       if (isShown('confirmOverlay')) { confirmSelect(confirmIndex); return; }
       if (isShown('settingsOverlay')) { settingsSelect(SETTINGS_OPTS[settingsIndex]); return; }
       if (isShown('menuOverlay')) { menuSelect(MENU_OPTS[menuIndex]); return; }
@@ -4517,6 +4524,12 @@
         e.preventDefault();
         const i = BAG_TABS.indexOf(bagTab) + (e.key === 'ArrowLeft' ? -1 : 1);
         showBagTab(BAG_TABS[Math.max(0, Math.min(BAG_TABS.length - 1, i))]);
+        return;
+      }
+      if (isShown('rouxlsChoice') && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'a', 'd', 'w', 's'].includes(e.key)) {
+        e.preventDefault();
+        rouxlsIndex = 1 - rouxlsIndex;
+        highlightRouxlsChoice();
         return;
       }
       if (isShown('confirmOverlay') && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 's')) {
@@ -5926,7 +5939,8 @@
       const hasBench = roster.some(c => c.hp > 0);
       const showSwap = !state.over && state.player.hp > 0 && hasBench;
       swapBtn.style.display = showSwap ? 'block' : 'none';
-      if (showSwap) swapBtn.disabled = false;
+      if (showSwap) swapBtn.disabled = turnBusy;
+      document.querySelector('.battle-bag-btn').disabled = turnBusy;
 
       const oppContainer = document.getElementById('moves-opponent');
       oppContainer.innerHTML = '';
@@ -6248,8 +6262,24 @@
       });
     }
 
-    // True while the delayed half of a turn is still pending, so a second tap can't queue another attack
-    let turnBusy = false;
+    // True while the delayed half of a turn is still pending, so a second tap can't queue another attack.
+    // Bag, Swap and Run are locked too, and leaving a battle cancels anything still waiting.
+    let turnBusy   = false;
+    let turnTimers = [];
+
+    function turnLater(fn, ms) {
+      const id = setTimeout(() => {
+        turnTimers = turnTimers.filter(t => t !== id);
+        fn();
+      }, ms);
+      turnTimers.push(id);
+    }
+
+    function cancelTurnTimers() {
+      turnTimers.forEach(clearTimeout);
+      turnTimers = [];
+      turnBusy = false;
+    }
 
     function playerMove(moveIdx) {
       if (state.over || turnBusy) return;
@@ -6274,7 +6304,7 @@
       if (state.over) {
         turnBusy = false;
       } else {
-        setTimeout(() => {
+        turnLater(() => {
           resolveAttack(secondSide, firstSide, secondMove);
           applyStatusEffects();
           turnBusy = false;
@@ -6290,7 +6320,7 @@
     }
 
     function resetBattle(fromSurf = false, catcherCritter = null) {
-      turnBusy = false;
+      cancelTurnTimers();
       initState(fromSurf, catcherCritter);
       const introMsg = isCatcherBattle && activeCatcher
         ? `${activeCatcher.name} wants to battle! Go, ${state.opponent.name}!`
@@ -6375,6 +6405,20 @@
       returnToWorld();
     }
 
+    // Rouxls's "Challenge him?" box. Movement pauses while it's open; "Leave him be" starts selected.
+    let rouxlsIndex = 1;
+
+    function showRouxlsChoice() {
+      rouxlsIndex = 1;
+      document.getElementById('rouxlsChoice').style.display = 'flex';
+      highlightRouxlsChoice();
+    }
+
+    function highlightRouxlsChoice() {
+      ['rouxlsYes', 'rouxlsNo'].forEach((id, i) =>
+        document.getElementById(id).classList.toggle('choice-selected', i === rouxlsIndex));
+    }
+
     function rouxlsChallenge() {
       document.getElementById('rouxlsChoice').style.display = 'none';
       setTimeout(() => triggerCatcherBattle(ROUXLS_CATCHER), 100);
@@ -6432,7 +6476,7 @@
 
     // ── Mid-battle swap ───────────────────────────────────────────
     function openSwapMenu() {
-      if (state.over || state.player.hp <= 0) return;
+      if (state.over || state.player.hp <= 0 || turnBusy) return;
       const panel = document.getElementById('swapPanel');
       const list  = document.getElementById('swapList');
       list.innerHTML = '';
@@ -6478,7 +6522,7 @@
       render();
 
       // Opponent gets a free attack for the swap
-      setTimeout(() => {
+      turnLater(() => {
         if (!state.over) resolveAttack('opponent', 'player', pickOpponentMove());
         turnBusy = false;
         render();
@@ -6489,7 +6533,7 @@
     let flickState = null;
 
     function startFlick(x, y) {
-      if (state && state.over) return;
+      if (state && (state.over || turnBusy)) return;
       // Don't allow flick while recruit prompt is showing
       if (document.getElementById('recruitPrompt').style.display !== 'none') return;
       flickState = { startX: x, startY: y, lastX: x, lastY: y, lastT: Date.now(), vx: 0, vy: 0 };
@@ -6711,12 +6755,10 @@
     }
 
     function slotSummary(data) {
-      const beaten = ['alvinDefeated', 'deweyDefeated', 'bubblesDefeated', 'ivyDefeated',
-                      'emberDefeated', 'skyeDefeated', 'rouxlsDefeated'].filter(k => data.flags?.[k]).length;
       const party  = 1 + (data.roster?.length || 0);
       const date   = new Date(data.savedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
       return `${data.lead.name} · ${party} critter${party === 1 ? '' : 's'}<br>` +
-             `🪙 ${data.coins} · ${beaten}/7 trainers · ${date}`;
+             `🪙 ${data.coins} · ${date}`;
     }
 
     // Start in the world
