@@ -1205,7 +1205,7 @@
   ============================================================ -->
   <div id="battleSection">
     <h1>Card Catchers</h1>
-    <p class="subtitle">Skeleton build · v0.1</p>
+    <p class="subtitle">v1.0</p>
     <div class="roster-tray" id="rosterTray"></div>
 
     <div class="arena">
@@ -1399,14 +1399,27 @@
     }
 
     // ── Return to world after battle ───────────────────────────
+    let lostBattle = false; // set when every critter faints; returnToWorld then sends you to Nurse Nina
+
     function returnToWorld() {
       // Restore default background
       document.body.style.background = 'radial-gradient(ellipse at top, #2a2060 0%, #1a1a2e 60%)';
       const rm = document.getElementById('rouxlsMusic');
       if (rm) { rm.pause(); rm.currentTime = 0; }
-      updateAreaMusic();
       // Restore surfing if the battle was triggered on water
       isSurfing = !!(triggerEncounter._fromSurf);
+      if (lostBattle) {
+        lostBattle  = false;
+        isSurfing   = false;
+        currentArea = 'healer';
+        player.tileX = HEALER.tileX;
+        player.tileY = HEALER.tileY + 1; // standing at Nina's counter
+        player.pixelX = player.tileX * TILE_SIZE;
+        player.pixelY = player.tileY * TILE_SIZE;
+        player.dir = 'up';
+        setTimeout(() => showItemNotification('💗 Nurse Nina patched up your critters!', true), 700);
+      }
+      updateAreaMusic();
       // Clean up catcher battle state
       isCatcherBattle = false;
       activeCatcher   = null;
@@ -1415,7 +1428,8 @@
       // Save active creature's current HP (including if fainted — Nina can revive)
       // Restore base stats first so status move buffs/debuffs don't persist
       if (state) {
-        restoreBaseStats(state.player);
+        clearBattleChanges(state.player);
+        roster.forEach(clearBattleChanges);
         persistentPlayer = { ...state.player };
       }
 
@@ -3967,15 +3981,19 @@
 
     function healAllCreatures() {
       SFX.play('heal');
+      // Nurse Nina and losing a battle both come here: the only ways status conditions are cured
+      const cure = c => { c.statusEffects = {}; clearBattleChanges(c); };
       // Heal active creature
       if (persistentPlayer) {
         persistentPlayer = { ...persistentPlayer, hp: persistentPlayer.maxHp };
+        cure(persistentPlayer);
       }
       if (state && state.player) {
         state.player.hp = state.player.maxHp;
+        cure(state.player);
       }
       // Heal all roster members
-      roster = roster.map(c => ({ ...c, hp: c.maxHp }));
+      roster = roster.map(c => { const h = { ...c, hp: c.maxHp }; cure(h); return h; });
     }
 
     // ── Bag ────────────────────────────────────────────────────
@@ -4057,6 +4075,11 @@
       }
     }
 
+    function statusIcons(c) {
+      const se = c.statusEffects || {};
+      return [se.toxic && '☠️', se.charred && '🔥', se.drenched && '💧', se.seeded && '🌱'].filter(Boolean).join('');
+    }
+
     function openParty() {
       const active  = persistentPlayer || creatures.player;
       const members = [{ c: active, isActive: true }, ...roster.map(c => ({ c, isActive: false }))];
@@ -4071,7 +4094,7 @@
           <img src="${c.img}"${imgAttrs(c)} alt="${c.name}">
           <div class="party-info">
             <div class="party-name">${c.name}${isActive ? '<span class="party-tag">LEAD</span>' : ''}</div>
-            <div class="party-type">${c.type}${hp <= 0 ? ' · fainted' : ''}</div>
+            <div class="party-type">${c.type}${hp <= 0 ? ' · fainted' : ''} ${statusIcons(c)}</div>
             <div class="party-hpbar"><div class="party-hpfill${pct < 25 ? ' low' : pct < 50 ? ' warn' : ''}" style="width:${pct}%"></div></div>
           </div>
           <div class="party-hp">${hp}/${c.maxHp}</div>`;
@@ -4141,10 +4164,12 @@
         closeBag();
         if (inBattle && state && !state.over) {
           // Using an item costs the player's turn — enemy attacks
-          if (typeof render === 'function') render();
+          turnBusy = true;
+          render();
           const opponentMove = pickOpponentMove();
           setTimeout(() => {
             resolveAttack('opponent', 'player', opponentMove);
+            turnBusy = false;
             render();
           }, 500);
         }
@@ -5562,9 +5587,29 @@
       STAT_KEYS.forEach(k => critter._baseStats[k] = critter[k]);
     }
 
-    function restoreBaseStats(critter) {
-      if (!critter._baseStats) return;
-      STAT_KEYS.forEach(k => critter[k] = critter._baseStats[k]);
+    // A party critter's real stats, recorded the first time it's seen and never changed after
+    function ensureTrueStats(c) {
+      if (c.trueStats) return;
+      c.trueStats = {};
+      STAT_KEYS.forEach(k => c.trueStats[k] = c[k]);
+    }
+
+    // Undo every in-battle stat change. Status conditions are kept: they only clear when you lose
+    // a battle or Nurse Nina heals you (both go through healAllCreatures). Charred keeps its ATK halving.
+    function clearBattleChanges(c) {
+      if (!c) return;
+      ensureTrueStats(c);
+      STAT_KEYS.forEach(k => c[k] = c.trueStats[k]);
+      c.statusEffects = { ...(c.statusEffects || {}) };
+      if (c.statusEffects.charred) c.atk = Math.max(1, Math.floor(c.trueStats.atk / 2));
+    }
+
+    // A defeated wild critter joins with its clean stats, not whatever the battle did to it
+    function makeRecruit(o) {
+      const { _baseStats, trueStats, ...rest } = o;
+      const r = { ...rest, ...(_baseStats || {}), hp: o.maxHp, statusEffects: {} };
+      ensureTrueStats(r);
+      return r;
     }
 
     function initState(fromSurf = false, catcherCritter = null) {
@@ -5584,11 +5629,10 @@
       const playerBase   = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
       const playerCopy   = { ...playerBase };
       const opponentCopy = { ...opponent, hp: opponent.maxHp };
-      snapBaseStats(playerCopy);
+      clearBattleChanges(playerCopy);
       snapBaseStats(opponentCopy);
-      playerCopy.statusEffects   = {};
       opponentCopy.statusEffects = {};
-      state = { player: playerCopy, opponent: opponentCopy, over: false };
+      state = { player: playerCopy, opponent: opponentCopy, over: false, isCatcher: !!catcherCritter };
     }
 
     function triggerCatcherBattle(catcher) {
@@ -5686,7 +5730,7 @@
           <span class="move-meta">${move.type.toUpperCase()} · ${catLabel}</span>
           <span class="move-power">${fxDesc}</span>
         `;
-        btn.disabled = state.over || state.player.hp <= 0;
+        btn.disabled = state.over || state.player.hp <= 0 || turnBusy;
         btn.onclick  = () => playerMove(i);
         container.appendChild(btn);
       });
@@ -5734,6 +5778,7 @@
     function resolveAttack(attackerSide, defenderSide, moveIdx) {
       const attacker = state[attackerSide];
       const defender = state[defenderSide];
+      if (state.over || attacker.hp <= 0 || defender.hp <= 0) return;
       const move     = attacker.moves[moveIdx];
       const catTag   = move.cat === 'magic' ? '✨' : move.cat === 'status' ? '🌀' : '⚔️';
 
@@ -5792,6 +5837,17 @@
         return;
       }
 
+      // ── LCK: Dodge check (defender's luck) — a dodge avoids the whole move, multi-hit included ──
+      const dodgeChance = (defender.lck ?? 0) * 0.012;  // lck 9 → 10.8%
+      if (Math.random() < dodgeChance) {
+        const defCard = document.getElementById(`card-${defenderSide}`);
+        defCard.classList.add('dodge');
+        setTimeout(() => defCard.classList.remove('dodge'), 300);
+        log(`${catTag} ${attacker.name} used ${move.name}!`);
+        log(`🌟 ${defender.name} dodged the attack!`, 'effective');
+        return; // no damage
+      }
+
       // ── Multi-hit moves ──────────────────────────────────────────────────
       const hitCount = move.hits
         ? Math.floor(Math.random() * (move.hits[1] - move.hits[0] + 1)) + move.hits[0]
@@ -5799,16 +5855,19 @@
 
       if (hitCount > 1) {
         log(`${catTag} ${attacker.name} used ${move.name}!`);
-        let totalDamage = 0;
+        let totalDamage = 0, crits = 0;
         for (let h = 0; h < hitCount; h++) {
           if (defender.hp <= 0) break;
           let dmg = Math.round((attacker.atk + move.power) / 2);
           const eff = typeChart[move.type]?.[defender.type] ?? 1.0;
           dmg = Math.max(1, Math.round(dmg * eff * (30 / (30 + defender.dfc))));
+          // Each hit rolls its own lucky hit (attacker's luck), same odds as a single-hit move
+          if (Math.random() < (attacker.lck ?? 0) * 0.028) { dmg = Math.round(dmg * 1.5); crits++; }
           defender.hp -= dmg;
           totalDamage += dmg;
         }
         log(`💥 Hit ${hitCount} times! (${totalDamage} total dmg)`, 'effective');
+        if (crits) log(`⭐ ${crits === 1 ? 'A lucky hit' : `${crits} lucky hits`}! Extra damage!`, 'effective');
         if (defender.hp <= 0) {
           defender.hp = 0;
           state.over  = true;
@@ -5838,7 +5897,7 @@
             if (livingBench.length > 0) showRosterSelect();
             else {
               log('All critters fainted!', 'win');
-              log('Visit Nurse Nina to heal.', '');
+              log('You hurried back to Nurse Nina...', ''); lostBattle = true;
               healAllCreatures();
               state.player.hp = state.player.maxHp;
               document.getElementById('playAgain').classList.add('visible');
@@ -5848,16 +5907,6 @@
         return;
       }
 
-      // ── LCK: Dodge check (defender's luck) ──────────────────────────────
-      const dodgeChance = (defender.lck ?? 0) * 0.012;  // lck 9 → 10.8%
-      if (Math.random() < dodgeChance) {
-        const defCard = document.getElementById(`card-${defenderSide}`);
-        defCard.classList.add('dodge');
-        setTimeout(() => defCard.classList.remove('dodge'), 300);
-        log(`${catTag} ${attacker.name} used ${move.name}!`);
-        log(`🌟 ${defender.name} dodged the attack!`, 'effective');
-        return; // no damage
-      }
 
       let damage, effectiveness;
       const isMagic = move.cat === 'magic';
@@ -5938,7 +5987,7 @@
           } else {
             // All creatures fainted — blackout, heal everything
             log('All critters fainted!', 'win');
-            log('Visit Nurse Nina to heal.', '');
+            log('You hurried back to Nurse Nina...', ''); lostBattle = true;
             healAllCreatures();
             state.player.hp = state.player.maxHp;
             document.getElementById('playAgain').classList.add('visible');
@@ -5977,7 +6026,7 @@
         if (livingBench.length > 0) showRosterSelect();
         else {
           log('All critters fainted!', 'win');
-          log('Visit Nurse Nina to heal.', '');
+          log('You hurried back to Nurse Nina...', ''); lostBattle = true;
           healAllCreatures();
           state.player.hp = state.player.maxHp;
           document.getElementById('playAgain').classList.add('visible');
@@ -6013,30 +6062,36 @@
       });
     }
 
+    // True while the delayed half of a turn is still pending, so a second tap can't queue another attack
+    let turnBusy = false;
+
     function playerMove(moveIdx) {
-      if (state.over) return;
+      if (state.over || turnBusy) return;
+      turnBusy = true;
 
       const opponentMove   = pickOpponentMove();
       const pDrenched      = !!state.player.statusEffects?.drenched;
       const oDrenched      = !!state.opponent.statusEffects?.drenched;
-      const hasPriority    = !!state.player.moves[moveIdx].priority;
-      const playerFirst    = hasPriority ? true
+      // A priority move goes first; if both sides use one, fall back to the normal speed rules
+      const pPriority      = !!state.player.moves[moveIdx].priority;
+      const oPriority      = !!state.opponent.moves[opponentMove].priority;
+      const playerFirst    = pPriority !== oPriority ? pPriority
                            : pDrenched && !oDrenched ? false
                            : oDrenched && !pDrenched ? true
                            : state.player.spd >= state.opponent.spd;
 
-      if (playerFirst) {
-        resolveAttack('player', 'opponent', moveIdx);
-        if (!state.over) setTimeout(() => {
-          resolveAttack('opponent', 'player', opponentMove);
-          applyStatusEffects();
-          render();
-        }, 700);
+      const [firstSide, secondSide, firstMove, secondMove] = playerFirst
+        ? ['player', 'opponent', moveIdx, opponentMove]
+        : ['opponent', 'player', opponentMove, moveIdx];
+
+      resolveAttack(firstSide, secondSide, firstMove);
+      if (state.over) {
+        turnBusy = false;
       } else {
-        resolveAttack('opponent', 'player', opponentMove);
-        if (!state.over) setTimeout(() => {
-          resolveAttack('player', 'opponent', moveIdx);
+        setTimeout(() => {
+          resolveAttack(secondSide, firstSide, secondMove);
           applyStatusEffects();
+          turnBusy = false;
           render();
         }, 700);
       }
@@ -6049,6 +6104,7 @@
     }
 
     function resetBattle(fromSurf = false, catcherCritter = null) {
+      turnBusy = false;
       initState(fromSurf, catcherCritter);
       const introMsg = isCatcherBattle && activeCatcher
         ? `${activeCatcher.name} wants to battle! Go, ${state.opponent.name}!`
@@ -6089,7 +6145,8 @@
     const MAX_PARTY = 6; // 1 active + up to 5 in roster
 
     function showRecruitPrompt() {
-      if (isCatcherBattle || activeCatcher) return; // never recruit catcher critters
+      // never recruit catcher critters (state.isCatcher survives the flags being cleared on a win)
+      if (state.isCatcher || isCatcherBattle || activeCatcher) return;
       if (state.opponent.noRecruit) return; // critter flagged as unrecruitable
       document.getElementById('recruitName').textContent = state.opponent.name;
       document.getElementById('recruitPrompt').style.display = 'block';
@@ -6124,7 +6181,7 @@
     function replacePartyMember(index) {
       SFX.play('recruit');
       const released = roster.splice(index, 1)[0];
-      const recruit  = { ...state.opponent, hp: state.opponent.maxHp };
+      const recruit  = makeRecruit(state.opponent);
       roster.push(recruit);
       log(`${released.name} was released. ${recruit.name} joined your party!`, 'win');
       document.getElementById('recruitPrompt').style.display = 'none';
@@ -6144,7 +6201,7 @@
     function doRecruit() {
       SFX.play('recruit');
       // Add defeated opponent to roster at full HP
-      const recruit = { ...state.opponent, hp: state.opponent.maxHp };
+      const recruit = makeRecruit(state.opponent);
       roster.push(recruit);
       log(`${recruit.name} joined your party!`, 'win');
       document.getElementById('recruitPrompt').style.display = 'none';
@@ -6176,8 +6233,10 @@
     function sendInRecruit(index) {
       const incoming = roster.splice(index, 1)[0];
       // Put the fainted active creature on the bench (at 0 HP — revivable by Nina)
+      clearBattleChanges(state.player);
       roster.push({ ...state.player });
       state.player = { ...incoming };
+      clearBattleChanges(state.player);
       state.over   = false;
       document.getElementById('rosterSelect').style.display = 'none';
       log(`Go, ${incoming.name}!`, 'win');
@@ -6220,24 +6279,23 @@
 
     function doSwap(rosterIndex) {
       const incoming = roster.splice(rosterIndex, 1)[0];
-      restoreBaseStats(state.player);           // clear stat changes before benching
-      state.player.statusEffects = {};          // clear status effects before benching
+      clearBattleChanges(state.player);         // clear stat changes before benching (statuses stay)
       const outgoing = { ...state.player };     // save current creature to bench
       roster.push(outgoing);
 
       state.player = { ...incoming };
+      clearBattleChanges(state.player);
       closeSwapMenu(); // re-enables move buttons and swap btn
       log(`Come back, ${outgoing.name}! Go, ${incoming.name}!`);
       renderRosterTray();
+      turnBusy = true;
       render();
 
       // Opponent gets a free attack for the swap
       setTimeout(() => {
-        if (!state.over) {
-          const oppMove = pickOpponentMove();
-          resolveAttack('opponent', 'player', oppMove);
-          render();
-        }
+        if (!state.over) resolveAttack('opponent', 'player', pickOpponentMove());
+        turnBusy = false;
+        render();
       }, 500);
     }
 
