@@ -230,6 +230,33 @@
     #confirmPanel { width: min(300px, 90vw); }
     #confirmText { font-size: 10px; line-height: 1.8; }
 
+    /* ── Card-scanned popup (shown straight away when the page opens from a QR code) ── */
+    #scanPopup {
+      position: absolute; inset: 0; z-index: 2; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at center, rgba(42,32,96,0.95) 0%, #000 70%);
+    }
+    .scan-card {
+      width: min(300px, 82vw); padding: 20px;
+      display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center;
+      background: #1a1e2e; border: 3px solid #ffcb05; border-radius: 18px;
+      box-shadow: 0 0 40px rgba(255,203,5,0.45);
+      animation: scanPop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+    }
+    .scan-card.rare {
+      border-color: transparent;
+      background: linear-gradient(#1a1e2e, #1a1e2e) padding-box,
+                  linear-gradient(135deg, #ff6b6b, #ffcb05, #6bff9e, #6bc8ff, #c86bff) border-box;
+      box-shadow: 0 0 44px rgba(200,107,255,0.5);
+    }
+    @keyframes scanPop { from { transform: scale(0.6) rotate(-6deg); opacity: 0; } to { transform: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .scan-card { animation: none; } }
+    .scan-head { font-size: 12px; color: #ffcb05; }
+    .scan-art img { width: 180px; height: 180px; object-fit: contain; display: block; }
+    .scan-name { font-size: 14px; color: #fff; line-height: 1.5; }
+    .scan-rare { font-size: 9px; color: #ffcb05; }
+    .scan-tap  { font-size: 8px; color: #a090c8; animation: blink 1.1s step-end infinite; }
+
     /* ── Title screen save slots ── */
     #slotPicker {
       display: flex; flex-direction: column; gap: 10px;
@@ -6528,7 +6555,8 @@
      ...[ROUXLS_CATCHER, HEDGEOSAUR_CATCHER, CERAFLAME_CATCHER, PTERRENT_CATCHER].map(c => c.critter)]
       .forEach(c => buildShadowArt(c.name, c.img));
 
-    let scannedStarter = null;
+    let scannedStarter = null; // full name, e.g. 'Shiny Sharqua'
+    let scannedBase    = null; // plain critter name, e.g. 'Sharqua'
     (function applyScannedCard() {
       const code = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
       const name = CARD_CODES[code];
@@ -6561,6 +6589,7 @@
       const starter = { ...critter, moves: critter.moves.map(m => ({ ...m })) };
       creatures.player = allowedForms.includes(formIdx) ? makeForm(starter, formIdx) : starter;
       scannedStarter = creatures.player.name;
+      scannedBase    = critter.name;
     })();
 
     // ── Save slots (3, stored in this browser) ────────────────────
@@ -7338,7 +7367,40 @@
         begin(false);
       }
 
+      // ── "Card scanned!" popup: shown at once when the page opens from a QR code ──
+      let scanPopup = null;
+
+      function showScanPopup() {
+        const c = creatures.player;
+        const formLabel = c.form ? scannedStarter.replace(scannedBase, '').trim() : '';
+        const typeName  = c.type.charAt(0).toUpperCase() + c.type.slice(1);
+        scanPopup = document.createElement('div');
+        scanPopup.id = 'scanPopup';
+        scanPopup.innerHTML = `
+          <div class="scan-card${c.form ? ' rare' : ''}">
+            <div class="scan-head">✨ Card scanned!</div>
+            <div class="scan-art"><img src="${c.img}"${imgAttrs(c)} alt="${c.name}"></div>
+            <div class="scan-name">${c.name}</div>
+            <span class="type-badge ${c.type}">${typeName}</span>
+            ${formLabel ? `<div class="scan-rare">🌈 Rare form: ${formLabel}!</div>` : ''}
+            <div class="scan-tap">— Tap to continue —</div>
+          </div>`;
+        screen.appendChild(scanPopup);
+      }
+
+      function closeScanPopup() {
+        scanPopup.remove();
+        scanPopup = null;
+        // Skip the boot text: the card already got the player's attention
+        bootDiv.style.display = 'none';
+        titleCard.classList.add('visible');
+        ready = true;
+        SFX.play('recruit');
+        showSlots();
+      }
+
       function onTitleKey(e) {
+        if (scanPopup) { e.stopPropagation(); e.preventDefault(); closeScanPopup(); return; }
         if (!ready) return;
         // The title screen owns the keyboard: stop keys reaching the game underneath
         e.stopPropagation();
@@ -7357,6 +7419,7 @@
         }
       }
 
+      function runBoot() {
       // Phase 1: type out each boot line with a delay
       let delay = 300;
       bootLines.forEach((text, i) => {
@@ -7383,10 +7446,16 @@
           }, 1200);
         }, 650);
       }, delay + 600);
+      }
+
+      if (scannedStarter) showScanPopup(); else runBoot();
 
       // Any key or tap on the title card opens the save slots; music starts once a slot is picked
       document.addEventListener('keydown', onTitleKey, true);
-      screen.addEventListener('click', () => { if (ready && picker.style.display === 'none') showSlots(); });
+      screen.addEventListener('click', () => {
+        if (scanPopup) { closeScanPopup(); return; }
+        if (ready && picker.style.display === 'none') showSlots();
+      });
     })();
   </script>
 </body>
