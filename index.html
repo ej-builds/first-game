@@ -214,6 +214,55 @@
     }
     .bag-close-btn:hover { background: rgba(255,255,255,0.2); }
 
+    /* ── B menu & party overlays ── */
+    #menuOverlay, #partyOverlay {
+      position: fixed; inset: 0; z-index: 200;
+      background: rgba(0,0,0,0.6);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #menuPanel, #partyPanel {
+      background: #1a1e2e; border: 2px solid rgba(100,160,255,0.5);
+      border-radius: 18px; padding: 22px; width: min(260px, 90vw);
+      display: flex; flex-direction: column; gap: 10px;
+      font-family: 'Press Start 2P', monospace;
+    }
+    #partyPanel { width: min(340px, 90vw); }
+    .items-empty { font-size: 8px; color: #8890a8; text-align: center; line-height: 1.8; padding: 10px 0; }
+    .bag-tabs { display: flex; gap: 6px; }
+    .bag-tab {
+      flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18);
+      color: #8890a8; font-family: inherit; font-size: 8px;
+      border-radius: 8px; padding: 8px 4px; cursor: pointer;
+    }
+    .bag-tab.active { background: rgba(100,160,255,0.25); border-color: rgba(100,160,255,0.8); color: #fff; }
+    .menu-title { font-size: 13px; color: #f0c040; text-align: center; margin-bottom: 4px; }
+    .menu-opt {
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.18);
+      color: #fff; font-family: inherit; font-size: 10px; text-align: left;
+      border-radius: 10px; padding: 12px 14px; cursor: pointer;
+      transition: background 100ms;
+    }
+    .menu-opt:hover, .menu-opt:focus-visible { background: rgba(100,160,255,0.25); outline: none; }
+    .menu-opt.selected { background: rgba(100,160,255,0.3); border-color: rgba(100,160,255,0.8); }
+    .menu-opt.selected::before { content: '▶ '; color: #f0c040; }
+    .menu-hint { font-size: 7px; color: #8890a8; text-align: center; margin-top: 4px; line-height: 1.6; }
+    .party-row {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px; padding: 8px 12px;
+    }
+    .party-row.fainted { opacity: 0.45; filter: grayscale(1); }
+    .party-row img { width: 36px; height: 36px; object-fit: contain; }
+    .party-info { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .party-name { font-size: 9px; color: #fff; }
+    .party-tag { font-size: 6px; color: #f0c040; margin-left: 4px; }
+    .party-type { font-size: 6px; color: #aaa; text-transform: uppercase; }
+    .party-hpbar { height: 5px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+    .party-hpfill { height: 100%; background: #4cd964; }
+    .party-hpfill.warn { background: #ffcc00; }
+    .party-hpfill.low  { background: #ff3b30; }
+    .party-hp { font-size: 7px; color: #ccc; white-space: nowrap; }
+
     /* ── Shop overlay ── */
     #shopOverlay {
       position: fixed; inset: 0; z-index: 200;
@@ -367,6 +416,7 @@
     .creature-card.type-lava .card-inner  { background: linear-gradient(160deg, #fde4c8 0%, #f5c09a 35%, #f08030 100%); }
     .creature-card.type-ocean .card-inner { background: linear-gradient(160deg, #d0dcff 0%, #a8bef8 35%, #6890f0 100%); }
     .creature-card.type-garden .card-inner { background: linear-gradient(160deg, #d4f0c0 0%, #b0dfa0 35%, #78c850 100%); }
+    .creature-card.type-shadow .card-inner { background: linear-gradient(160deg, #e4def0 0%, #b8acd6 35%, #5b4690 100%); }
 
     #card-opponent { cursor: grab; }
     #card-opponent.dragging { cursor: grabbing; }
@@ -390,6 +440,19 @@
     }
 
     .creature-card.fainted { opacity: 0.35; filter: grayscale(1); }
+
+    /* Rare form: shifting rainbow trim instead of the gold one */
+    .creature-card.rare-form {
+      background: linear-gradient(120deg, #ff6b6b, #ffd93d, #6bff95, #6bc5ff, #c46bff, #ff6b6b);
+      background-size: 300% 300%;
+      animation: rareTrim 4s linear infinite;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 18px rgba(255,255,255,0.45);
+    }
+    @keyframes rareTrim { to { background-position: 300% 0; } }
+    .creature-card.rare-form.hit      { animation: shake 300ms ease-in-out, rareTrim 4s linear infinite; }
+    .creature-card.rare-form.dodge    { animation: dodgeAnim 300ms ease-in-out, rareTrim 4s linear infinite; }
+    .creature-card.rare-form.critical { animation: critAnim 300ms ease-in-out, rareTrim 4s linear infinite; }
+    @media (prefers-reduced-motion: reduce) { .creature-card.rare-form { animation: none; } }
 
     .card-header {
       display: flex;
@@ -481,6 +544,7 @@
     .type-badge.ocean { background: #3050c0; }
     .type-badge.garden { background: #3a8a20; }
     .type-badge.basic { background: #7a7a8a; }
+    .type-badge.shadow { background: #2e1f4f; }
 
     .card-stat-grid {
       display: grid;
@@ -1018,7 +1082,7 @@
       <!-- A button -->
       <button class="btn-a" id="btn-a">A</button>
       <!-- B button (bag) -->
-      <button class="btn-b" id="btn-b" onclick="openBag()">B</button>
+      <button class="btn-b" id="btn-b" onclick="handleBButton()">B</button>
     </div>
   </div>
 
@@ -1029,7 +1093,12 @@
     <div id="bagPanel">
       <div class="bag-title">🎒 Bag</div>
       <div class="bag-coins">🪙 <span id="bagCoins">0</span> coins</div>
-      <div class="bag-items">
+      <div class="bag-tabs">
+        <button class="bag-tab active" id="bagTabItems" onclick="showBagTab('items')">Healing Items</button>
+        <button class="bag-tab" id="bagTabGear" onclick="showBagTab('gear')">Gear</button>
+        <button class="bag-tab" id="bagTabKey" onclick="showBagTab('key')">Key Items</button>
+      </div>
+      <div class="bag-items" id="bagItemsPage">
         <div class="bag-item">
           <div class="bag-item-info">
             <span class="bag-item-name">🧪 Healing Juice</span>
@@ -1047,8 +1116,11 @@
           <button class="bag-use-btn" id="bagUseRevive" onclick="useBagItem('revive')">Use</button>
         </div>
       </div>
-      <div id="bagKeyItems" style="display:none; margin-top:10px;">
-        <div style="font-size:8px; color:#c0a8f0; text-align:center; margin-bottom:6px; letter-spacing:0.08em;">— KEY ITEMS —</div>
+      <div class="bag-items" id="bagGearPage" style="display:none;">
+        <div class="items-empty">No gear yet.<br>Gear you find will show up here.</div>
+      </div>
+      <div class="bag-items" id="bagKeyPage" style="display:none;">
+        <div class="items-empty" id="bagKeyEmpty">No key items yet.<br>Special items you earn will show up here.</div>
         <div class="bag-item" id="bagTrioMedalEntry" style="display:none;">
           <div class="bag-item-info">
             <span class="bag-item-name">
@@ -1061,6 +1133,29 @@
       <button class="bag-close-btn" onclick="closeBag()">Close</button>
     </div>
   </div>
+
+  <!-- ============================================================
+       B MENU
+  ============================================================ -->
+  <div id="menuOverlay" style="display:none" onclick="if (event.target === this) closeMenu()">
+    <div id="menuPanel">
+      <div class="menu-title">Menu</div>
+      <button class="menu-opt" onclick="menuSelect('bag')">🎒 Bag</button>
+      <button class="menu-opt" onclick="menuSelect('party')">🐾 Critters</button>
+      <button class="menu-opt" id="menuMusicOpt" onclick="menuSelect('music')">🔊 Music: On</button>
+      <button class="menu-opt" onclick="menuSelect('close')">✖ Close</button>
+      <div class="menu-hint">↑↓ choose · A select · B close</div>
+    </div>
+  </div>
+
+  <div id="partyOverlay" style="display:none" onclick="if (event.target === this) closeParty()">
+    <div id="partyPanel">
+      <div class="menu-title">🐾 Critters</div>
+      <div id="partyList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <button class="bag-close-btn" onclick="closeParty()">Back</button>
+    </div>
+  </div>
+
 
   <!-- ============================================================
        SHOP OVERLAY
@@ -3891,15 +3986,111 @@
       document.getElementById('bagReviveCount').textContent = inventory.revives;
       document.getElementById('bagUsePotion').disabled = inventory.potions === 0;
       document.getElementById('bagUseRevive').disabled = inventory.revives === 0;
-      // Key items
       const hasAnyKeyItem = inventory.trioMedal;
-      document.getElementById('bagKeyItems').style.display       = hasAnyKeyItem ? 'block' : 'none';
+      document.getElementById('bagKeyEmpty').style.display       = hasAnyKeyItem ? 'none' : 'block';
       document.getElementById('bagTrioMedalEntry').style.display = inventory.trioMedal ? 'flex' : 'none';
+      showBagTab('items');
       document.getElementById('bagOverlay').style.display = 'flex';
+    }
+
+    const BAG_TABS = ['items', 'gear', 'key'];
+    let bagTab = 'items';
+
+    function showBagTab(tab) {
+      bagTab = tab;
+      document.getElementById('bagItemsPage').style.display = tab === 'items' ? 'flex' : 'none';
+      document.getElementById('bagKeyPage').style.display   = tab === 'key'   ? 'flex' : 'none';
+      document.getElementById('bagGearPage').style.display  = tab === 'gear'  ? 'flex' : 'none';
+      document.getElementById('bagTabItems').classList.toggle('active', tab === 'items');
+      document.getElementById('bagTabKey').classList.toggle('active', tab === 'key');
+      document.getElementById('bagTabGear').classList.toggle('active', tab === 'gear');
     }
 
     function closeBag() {
       document.getElementById('bagOverlay').style.display = 'none';
+      if (bagFromMenu) { bagFromMenu = false; openMenu(); }
+    }
+
+    // ── B menu ─────────────────────────────────────────────────
+    const MENU_OPTS = ['bag', 'party', 'music', 'close'];
+    let menuIndex   = 0;
+    let bagFromMenu = false;
+
+    function isShown(id) { return document.getElementById(id).style.display !== 'none'; }
+    function isMenuUIOpen() { return isShown('menuOverlay') || isShown('partyOverlay') || isShown('bagOverlay'); }
+
+    function openMenu() {
+      if (gameState !== 'world' || dialogActive) return;
+      document.getElementById('menuMusicOpt').textContent = MUSIC.isMuted() ? '🔇 Music: Off' : '🔊 Music: On';
+      document.getElementById('menuOverlay').style.display = 'flex';
+      highlightMenu();
+    }
+
+    function closeMenu() {
+      document.getElementById('menuOverlay').style.display = 'none';
+    }
+
+    function highlightMenu() {
+      document.querySelectorAll('#menuPanel .menu-opt').forEach((el, i) =>
+        el.classList.toggle('selected', i === menuIndex));
+    }
+
+    function toggleMusic() {
+      const nowMuted = MUSIC.toggleMute();
+      document.getElementById('rouxlsMusic').muted = nowMuted;
+      if (!nowMuted && gameState === 'world') updateAreaMusic();
+      showItemNotification(nowMuted ? '🔇 Music off' : '🔊 Music on', true);
+    }
+
+    function menuSelect(opt) {
+      menuIndex = MENU_OPTS.indexOf(opt);
+      if (opt === 'bag') {
+        closeMenu(); bagFromMenu = true; openBag();
+      } else if (opt === 'party') {
+        closeMenu(); openParty();
+      } else if (opt === 'music') {
+        toggleMusic();
+        document.getElementById('menuMusicOpt').textContent = MUSIC.isMuted() ? '🔇 Music: Off' : '🔊 Music: On';
+        highlightMenu();
+      } else {
+        closeMenu();
+      }
+    }
+
+    function openParty() {
+      const active  = persistentPlayer || creatures.player;
+      const members = [{ c: active, isActive: true }, ...roster.map(c => ({ c, isActive: false }))];
+      const list = document.getElementById('partyList');
+      list.innerHTML = '';
+      members.forEach(({ c, isActive }) => {
+        const hp  = Math.max(0, c.hp ?? c.maxHp);
+        const pct = hp / c.maxHp * 100;
+        const row = document.createElement('div');
+        row.className = 'party-row' + (hp <= 0 ? ' fainted' : '');
+        row.innerHTML = `
+          <img src="${c.img}"${imgAttrs(c)} alt="${c.name}">
+          <div class="party-info">
+            <div class="party-name">${c.name}${isActive ? '<span class="party-tag">LEAD</span>' : ''}</div>
+            <div class="party-type">${c.type}${hp <= 0 ? ' · fainted' : ''}</div>
+            <div class="party-hpbar"><div class="party-hpfill${pct < 25 ? ' low' : pct < 50 ? ' warn' : ''}" style="width:${pct}%"></div></div>
+          </div>
+          <div class="party-hp">${hp}/${c.maxHp}</div>`;
+        list.appendChild(row);
+      });
+      document.getElementById('partyOverlay').style.display = 'flex';
+    }
+
+    function closeParty() {
+      document.getElementById('partyOverlay').style.display = 'none';
+      openMenu();
+    }
+
+    function handleBButton() {
+      if (isShown('partyOverlay')) { closeParty(); return; }
+      if (isShown('bagOverlay'))   { closeBag();   return; }
+      if (isShown('menuOverlay'))  { closeMenu();  return; }
+      if (gameState === 'battle')  { openBag();    return; }
+      openMenu();
     }
 
     function showCredits() {
@@ -3932,9 +4123,9 @@
       setTimeout(dismiss, 29000);
     }
 
-    function showItemNotification(itemName) {
+    function showItemNotification(itemName, rawText = false) {
       const el = document.getElementById('itemNotification');
-      el.textContent = '✨ Got ' + itemName + '!';
+      el.textContent = rawText ? itemName : '✨ Got ' + itemName + '!';
       el.classList.remove('item-notif-hide');
       el.classList.add('item-notif-show');
       setTimeout(() => {
@@ -4084,11 +4275,13 @@
 
     function hasWaterType() {
       const active = persistentPlayer || creatures.player;
-      if (active.type === 'ocean') return true;
-      return roster.some(c => c.type === 'ocean');
+      const isOcean = c => (c.baseType || c.type) === 'ocean';
+      return isOcean(active) || roster.some(isOcean);
     }
 
     function handleAButton() {
+      if (isShown('menuOverlay')) { menuSelect(MENU_OPTS[menuIndex]); return; }
+      if (isMenuUIOpen()) return;
       if (dialogActive) { advanceDialog(); return; }
 
       // Surf check — only outdoors, only when not moving
@@ -4118,16 +4311,26 @@
         handleAButton();
         return;
       }
-      if (e.key === 'b' || e.key === 'B') {
-        // Toggle bag if already open, otherwise open
-        const bag = document.getElementById('bagOverlay');
-        if (bag.style.display !== 'none') { closeBag(); } else { openBag(); }
+      if (e.key === 'b' || e.key === 'B' || (e.key === 'Escape' && isMenuUIOpen())) {
+        handleBButton();
+        return;
+      }
+      if (isShown('bagOverlay') && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        e.preventDefault();
+        const i = BAG_TABS.indexOf(bagTab) + (e.key === 'ArrowLeft' ? -1 : 1);
+        showBagTab(BAG_TABS[Math.max(0, Math.min(BAG_TABS.length - 1, i))]);
+        return;
+      }
+      if (isShown('menuOverlay') && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 's')) {
+        e.preventDefault();
+        const step = (e.key === 'ArrowUp' || e.key === 'w') ? -1 : 1;
+        menuIndex = (menuIndex + step + MENU_OPTS.length) % MENU_OPTS.length;
+        highlightMenu();
         return;
       }
       if (e.key === 'm' || e.key === 'M') {
-        const nowMuted = MUSIC.toggleMute();
-        document.getElementById('rouxlsMusic').muted = nowMuted;
-        showItemNotification(nowMuted ? '🔇 Music off' : '🔊 Music on');
+        toggleMusic();
+        if (isShown('menuOverlay')) openMenu();
         return;
       }
       keys[e.key] = true;
@@ -4213,6 +4416,7 @@
 
     function updatePlayer(dt) {
       if (dialogActive) return; // freeze player during dialog
+      if (isMenuUIOpen()) return;
 
       if (player.moving) {
         player.moveProgress += dt * 8; // ~125 ms per tile
@@ -4899,10 +5103,11 @@
     // ============================================================
 
     const typeChart = {
-      lava:  { lava: 1.0, garden: 2.0, ocean: 0.5, basic: 1.0 },
-      garden: { lava: 0.5, garden: 1.0, ocean: 2.0, basic: 1.0 },
-      ocean: { lava: 2.0, garden: 0.5, ocean: 1.0, basic: 1.0 },
-      basic: { lava: 1.0, garden: 1.0, ocean: 1.0, basic: 1.0 }
+      lava:   { lava: 1.0, garden: 2.0, ocean: 0.5, basic: 1.0, shadow: 2.0 },
+      garden: { lava: 0.5, garden: 1.0, ocean: 2.0, basic: 1.0, shadow: 2.0 },
+      ocean:  { lava: 2.0, garden: 0.5, ocean: 1.0, basic: 1.0, shadow: 2.0 },
+      basic:  { lava: 1.0, garden: 1.0, ocean: 1.0, basic: 1.0, shadow: 2.0 },
+      shadow: { lava: 2.0, garden: 2.0, ocean: 2.0, basic: 2.0, shadow: 1.0 },
     };
 
     const creatures = {
@@ -5068,6 +5273,52 @@
       },
     ];
 
+    // ── Rare forms ────────────────────────────────────────────────
+    // Each wild encounter has FORM_CHANCE to be one of a critter's 5 forms.
+    const FORM_CHANCE = 0.001;
+    const FORM_COUNT  = 5;
+    const ELEMENT_TYPES    = ['lava', 'garden', 'ocean'];
+    const TYPE_FORM_PREFIX = { lava: 'Blazing', garden: 'Verdant', ocean: 'Tidal' };
+    const TYPE_HUE         = { lava: 15, garden: 110, ocean: 210 };
+
+    function makeForm(base, formIdx) {
+      const c = { ...base, moves: base.moves.map(m => ({ ...m })), form: true };
+
+      if (formIdx === 0) {
+        c.name = `Shiny ${base.name}`;
+        c.lck += 2;
+        c.imgFilter = 'hue-rotate(160deg) saturate(1.4) brightness(1.1)';
+      } else if (formIdx === 1) {
+        // Alt art: own picture (e.g. sharqua-alt.png); falls back to the normal one until it exists
+        c.name    = `Alt Art ${base.name}`;
+        c.maxHp  += 5;
+        c.img     = base.img.replace(/\.png$/, '-alt.png');
+        c.baseImg = base.img;
+      } else if (formIdx === 2) {
+        // Shadow: becomes the shadow type, and so do its same-type moves
+        c.name     = `Shadow ${base.name}`;
+        c.type     = 'shadow';
+        c.baseType = base.type;
+        c.moves.forEach(m => { if (m.type === base.type) m.type = 'shadow'; });
+        c.imgFilter = 'brightness(0.45) saturate(0.5) contrast(1.2) drop-shadow(0 0 10px #8b5cf6)';
+      } else {
+        // Type swaps (forms 4 and 5): becomes one of the other two elements; same-type moves follow
+        const t = ELEMENT_TYPES.filter(e => e !== base.type)[formIdx - 3];
+        c.name = `${TYPE_FORM_PREFIX[t]} ${base.name}`;
+        c.type = t;
+        c.moves.forEach(m => { if (m.type === base.type) m.type = t; });
+        c.imgFilter = `hue-rotate(${TYPE_HUE[t] - TYPE_HUE[base.type]}deg)`;
+      }
+      return c;
+    }
+
+    function imgAttrs(c) {
+      // Alt art is a full scene, so it fills the frame instead of fitting inside it
+      const style = (c.imgFilter ? `filter:${c.imgFilter};` : '') + (c.baseImg ? 'object-fit:cover;' : '');
+      return (style ? ` style="${style}"` : '')
+           + (c.baseImg ? ` onerror="this.onerror=null;this.style.objectFit='';this.src='${c.baseImg}'"` : '');
+    }
+
     // ── Catcher data ──────────────────────────────────────────────
     const ROUXLS_CATCHER = {
       name: 'Rouxls Kaard',
@@ -5216,6 +5467,9 @@
           ? wildCreatures.filter(c => c.type === 'ocean')
           : wildCreatures.filter(c => c.type !== 'ocean' || c.landSpawn);
         opponent = pool[Math.floor(Math.random() * pool.length)];
+        if (Math.random() < FORM_CHANCE) {
+          opponent = makeForm(opponent, Math.floor(Math.random() * FORM_COUNT));
+        }
       }
       // Use saved player state if available, otherwise start fresh
       const playerBase   = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
@@ -5287,9 +5541,10 @@
         const card = document.getElementById(`card-${side}`);
         card.className = `creature-card type-${c.type}`;
         card.classList.toggle('fainted', c.hp <= 0);
+        card.classList.toggle('rare-form', !!c.form);
 
         const artEl = document.getElementById(`art-${side}`);
-        if (c.img) artEl.innerHTML = `<img src="${c.img}" alt="${c.name}">`;
+        if (c.img) artEl.innerHTML = `<img src="${c.img}"${imgAttrs(c)} alt="${c.name}">`;
 
         const hpPct  = Math.max(0, c.hp) / c.maxHp * 100;
         const hpFill = document.getElementById(`hpbar-${side}`);
@@ -5439,7 +5694,7 @@
         for (let h = 0; h < hitCount; h++) {
           if (defender.hp <= 0) break;
           let dmg = Math.round((attacker.atk + move.power) / 2);
-          const eff = move.type === 'basic' ? 1.0 : (typeChart[move.type]?.[defender.type] ?? 1.0);
+          const eff = typeChart[move.type]?.[defender.type] ?? 1.0;
           dmg = Math.max(1, Math.round(dmg * eff * (30 / (30 + defender.dfc))));
           defender.hp -= dmg;
           totalDamage += dmg;
@@ -5508,7 +5763,7 @@
       } else {
         // Physical (including basic) — uses ATK stat, DFC reduces damage
         damage        = Math.round((attacker.atk + move.power) / 2);
-        effectiveness = move.type === 'basic' ? 1.0 : (typeChart[move.type]?.[defender.type] ?? 1.0);
+        effectiveness = typeChart[move.type]?.[defender.type] ?? 1.0;
         damage        = Math.round(damage * effectiveness);
         // DFC reduction: 30/(30+dfc) → ~19% at dfc 7, ~26% at dfc 13
         damage        = Math.max(1, Math.round(damage * (30 / (30 + defender.dfc))));
@@ -5688,7 +5943,9 @@
       initState(fromSurf, catcherCritter);
       const introMsg = isCatcherBattle && activeCatcher
         ? `${activeCatcher.name} wants to battle! Go, ${state.opponent.name}!`
-        : `A wild ${state.opponent.name} appeared! Pick your move.`;
+        : state.opponent.form
+          ? `✨ A rare ${state.opponent.name} appeared! Pick your move.`
+          : `A wild ${state.opponent.name} appeared! Pick your move.`;
       document.getElementById('log').innerHTML = `<div class="log-line">${introMsg}</div>`;
       document.getElementById('playAgain').classList.remove('visible');
       document.getElementById('recruitPrompt').style.display = 'none';
@@ -5715,7 +5972,7 @@
         const pip = document.createElement('div');
         pip.className   = 'roster-pip' + (c.hp <= 0 ? ' fainted-pip' : '');
         pip.title       = c.hp <= 0 ? `${c.name} · FAINTED` : `${c.name} · HP ${c.hp}/${c.maxHp}`;
-        pip.innerHTML   = `<img src="${c.img}" alt="${c.name}">`;
+        pip.innerHTML   = `<img src="${c.img}"${imgAttrs(c)} alt="${c.name}">`;
         tray.appendChild(pip);
       });
     }
@@ -5743,7 +6000,7 @@
           const btn = document.createElement('button');
           btn.className = 'roster-btn';
           btn.innerHTML = `
-            <img src="${c.img}" alt="${c.name}">
+            <img src="${c.img}"${imgAttrs(c)} alt="${c.name}">
             <div class="rb-info">
               <div class="rb-name">${c.name}</div>
               <div class="rb-hp">HP ${c.hp} / ${c.maxHp}</div>
@@ -5795,7 +6052,7 @@
         const btn = document.createElement('button');
         btn.className = 'roster-btn';
         btn.innerHTML = `
-          <img src="${c.img}" alt="${c.name}">
+          <img src="${c.img}"${imgAttrs(c)} alt="${c.name}">
           <div class="rb-info">
             <div class="rb-name">${c.name}</div>
             <div class="rb-hp">HP ${c.hp} / ${c.maxHp}</div>
@@ -5830,7 +6087,7 @@
         const btn = document.createElement('button');
         btn.className = 'roster-btn';
         btn.innerHTML = `
-          <img src="${c.img}" alt="${c.name}">
+          <img src="${c.img}"${imgAttrs(c)} alt="${c.name}">
           <div class="rb-info">
             <div class="rb-name">${c.name}</div>
             <div class="rb-hp">HP ${c.hp} / ${c.maxHp}</div>
@@ -5971,6 +6228,29 @@
         if (flickState) endFlick(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
       });
     }
+
+    // ── Physical card scan: ?c=CODE picks the starter critter ──
+    const CARD_CODES = {
+      P7R2KP: 'Hedgeosaur',  '5DUYTX': 'Sharqua',  LF63GX: 'Scorchspine', SHKM7Q: 'Embrawl',
+      BEQ5QK: 'Kiwivy',      AX3P6F: 'Pterrent',   UXXXZX: 'Shroomkin',   AF2ANB: 'Ceraflame',
+      ATD97S: 'Frostusk',    LDMMET: 'Grumblaze',  '2GWGED': 'Thornlet',  JNUPLT: 'Seakey',
+      Z5B4T6: 'Magmoad',     FCDL8Y: 'Treer',      UWQHXJ: 'Lumijell',    GLZRYB: 'Rouxls Kaard',
+    };
+    let scannedStarter = null;
+    (function applyScannedCard() {
+      const code = (new URLSearchParams(location.search).get('c') || '').trim().toUpperCase();
+      const name = CARD_CODES[code];
+      if (!name || name === creatures.player.name) return;
+      const allCritters = [
+        ...wildCreatures,
+        ...[ROUXLS_CATCHER, HEDGEOSAUR_CATCHER, CERAFLAME_CATCHER, PTERRENT_CATCHER].map(c => c.critter),
+      ];
+      const found = allCritters.find(c => c.name === name);
+      if (!found) return;
+      const { noRecruit, landSpawn, ...critter } = found;
+      creatures.player = { ...critter, moves: critter.moves.map(m => ({ ...m })) };
+      scannedStarter = critter.name;
+    })();
 
     // Start in the world
     showWorld();
@@ -6573,7 +6853,10 @@
       function dismiss() {
         if (!ready) return;
         screen.classList.add('fade-out');
-        setTimeout(() => screen.remove(), 750);
+        setTimeout(() => {
+          screen.remove();
+          if (scannedStarter) showItemNotification(`🃏 ${scannedStarter} is your partner!`, true);
+        }, 750);
       }
 
       // Phase 1: type out each boot line with a delay
