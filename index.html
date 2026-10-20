@@ -215,18 +215,38 @@
     .bag-close-btn:hover { background: rgba(255,255,255,0.2); }
 
     /* ── B menu & party overlays ── */
-    #menuOverlay, #partyOverlay {
+    #menuOverlay, #settingsOverlay, #partyOverlay, #confirmOverlay {
       position: fixed; inset: 0; z-index: 200;
       background: rgba(0,0,0,0.6);
       display: flex; align-items: center; justify-content: center;
     }
-    #menuPanel, #partyPanel {
+    #menuPanel, #settingsPanel, #partyPanel, #confirmPanel {
       background: #1a1e2e; border: 2px solid rgba(100,160,255,0.5);
       border-radius: 18px; padding: 22px; width: min(260px, 90vw);
       display: flex; flex-direction: column; gap: 10px;
       font-family: 'Press Start 2P', monospace;
     }
     #partyPanel { width: min(340px, 90vw); }
+    #confirmPanel { width: min(300px, 90vw); }
+    #confirmText { font-size: 10px; line-height: 1.8; }
+
+    /* ── Title screen save slots ── */
+    #slotPicker {
+      display: flex; flex-direction: column; gap: 10px;
+      width: min(380px, 88vw); text-align: left;
+    }
+    .slot-head { font-size: 10px; color: #ffcb05; text-align: center; line-height: 1.8; margin-bottom: 4px; }
+    .slot-opt {
+      font-family: inherit; text-align: left; color: #fff;
+      background: rgba(255,255,255,0.06); border: 2px solid rgba(160,144,200,0.4);
+      border-radius: 12px; padding: 12px 14px; cursor: pointer;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .slot-opt:hover, .slot-opt:focus { outline: none; border-color: #ffcb05; background: rgba(255,203,5,0.12); }
+    .slot-opt.danger:hover, .slot-opt.danger:focus { border-color: #ff6b6b; background: rgba(255,107,107,0.12); }
+    .slot-title { font-size: 11px; }
+    .slot-sub   { font-size: 8px; color: #a090c8; line-height: 1.7; }
+    .slot-hint  { font-size: 7px; color: #6a5a8a; text-align: center; margin-top: 4px; }
     .items-empty { font-size: 8px; color: #8890a8; text-align: center; line-height: 1.8; padding: 10px 0; }
     .bag-tabs { display: flex; gap: 6px; }
     .bag-tab {
@@ -1055,6 +1075,7 @@
         <div id="titleMain">Card<br>Catchers</div>
       </div>
       <div id="pressKey">— Press any key to start —</div>
+      <div id="slotPicker" style="display:none"></div>
     </div>
 
   </div>
@@ -1142,9 +1163,21 @@
       <div class="menu-title">Menu</div>
       <button class="menu-opt" onclick="menuSelect('bag')">🎒 Bag</button>
       <button class="menu-opt" onclick="menuSelect('party')">🐾 Critters</button>
-      <button class="menu-opt" id="menuMusicOpt" onclick="menuSelect('music')">🔊 Music: On</button>
+      <button class="menu-opt" onclick="menuSelect('save')">💾 Save</button>
+      <button class="menu-opt" onclick="menuSelect('settings')">⚙️ Settings</button>
+      <button class="menu-opt" onclick="menuSelect('title')">🏠 Return to Title</button>
       <button class="menu-opt" onclick="menuSelect('close')">✖ Close</button>
       <div class="menu-hint">↑↓ choose · A select · B close</div>
+    </div>
+  </div>
+
+  <div id="settingsOverlay" style="display:none" onclick="if (event.target === this) closeSettings()">
+    <div id="settingsPanel">
+      <div class="menu-title">⚙️ Settings</div>
+      <button class="menu-opt" id="settingsMusicOpt" onclick="settingsSelect('music')">🔊 Music: On</button>
+      <button class="menu-opt" onclick="settingsSelect('delete')">🗑 Delete Save</button>
+      <button class="menu-opt" onclick="settingsSelect('back')">← Back</button>
+      <div class="menu-hint">↑↓ choose · A select · B back</div>
     </div>
   </div>
 
@@ -1153,6 +1186,14 @@
       <div class="menu-title">🐾 Critters</div>
       <div id="partyList" style="display:flex;flex-direction:column;gap:8px;"></div>
       <button class="bag-close-btn" onclick="closeParty()">Back</button>
+    </div>
+  </div>
+
+  <div id="confirmOverlay" style="display:none">
+    <div id="confirmPanel">
+      <div class="menu-title" id="confirmText"></div>
+      <button class="menu-opt" id="confirmYes" onclick="confirmSelect(0)"></button>
+      <button class="menu-opt" id="confirmNo" onclick="confirmSelect(1)">No, go back</button>
     </div>
   </div>
 
@@ -4030,16 +4071,17 @@
     }
 
     // ── B menu ─────────────────────────────────────────────────
-    const MENU_OPTS = ['bag', 'party', 'music', 'close'];
+    const MENU_OPTS     = ['bag', 'party', 'save', 'settings', 'title', 'close'];
+    const SETTINGS_OPTS = ['music', 'delete', 'back'];
+    let settingsIndex   = 0;
     let menuIndex   = 0;
     let bagFromMenu = false;
 
     function isShown(id) { return document.getElementById(id).style.display !== 'none'; }
-    function isMenuUIOpen() { return isShown('menuOverlay') || isShown('partyOverlay') || isShown('bagOverlay'); }
+    function isMenuUIOpen() { return isShown('menuOverlay') || isShown('settingsOverlay') || isShown('partyOverlay') || isShown('bagOverlay') || isShown('confirmOverlay'); }
 
     function openMenu() {
       if (gameState !== 'world' || dialogActive) return;
-      document.getElementById('menuMusicOpt').textContent = MUSIC.isMuted() ? '🔇 Music: Off' : '🔊 Music: On';
       document.getElementById('menuOverlay').style.display = 'flex';
       highlightMenu();
     }
@@ -4066,12 +4108,50 @@
         closeMenu(); bagFromMenu = true; openBag();
       } else if (opt === 'party') {
         closeMenu(); openParty();
-      } else if (opt === 'music') {
-        toggleMusic();
-        document.getElementById('menuMusicOpt').textContent = MUSIC.isMuted() ? '🔇 Music: Off' : '🔊 Music: On';
-        highlightMenu();
+      } else if (opt === 'save') {
+        const ok = saveGame();
+        showItemNotification(ok ? `💾 Saved to Slot ${currentSlot}!` : '⚠️ Could not save on this browser', true);
+      } else if (opt === 'settings') {
+        closeMenu(); openSettings();
+      } else if (opt === 'title') {
+        closeMenu();
+        showConfirm('Return to the title screen? Anything you haven\'t saved will be lost.', '🏠 Yes, return',
+          () => { location.href = location.pathname; },
+          () => openMenu());
       } else {
         closeMenu();
+      }
+    }
+
+    // ── Settings (from the B menu) ─────────────────────────────
+    function openSettings() {
+      document.getElementById('settingsMusicOpt').textContent = MUSIC.isMuted() ? '🔇 Music: Off' : '🔊 Music: On';
+      document.getElementById('settingsOverlay').style.display = 'flex';
+      highlightSettings();
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsOverlay').style.display = 'none';
+      openMenu();
+    }
+
+    function highlightSettings() {
+      document.querySelectorAll('#settingsPanel .menu-opt').forEach((el, i) =>
+        el.classList.toggle('selected', i === settingsIndex));
+    }
+
+    function settingsSelect(opt) {
+      settingsIndex = SETTINGS_OPTS.indexOf(opt);
+      if (opt === 'music') {
+        toggleMusic();
+        openSettings();
+      } else if (opt === 'delete') {
+        document.getElementById('settingsOverlay').style.display = 'none';
+        showConfirm(`Delete Slot ${currentSlot}? This can't be undone.`, '🗑 Yes, delete it',
+          () => { deleteSlot(currentSlot); location.href = location.pathname; },
+          () => openSettings());
+      } else {
+        closeSettings();
       }
     }
 
@@ -4108,9 +4188,34 @@
       openMenu();
     }
 
+    // ── In-game yes/no box (defaults to No, so a stray A press is safe) ──
+    let confirmIndex = 1, confirmYes = null, confirmNo = null;
+
+    function showConfirm(text, yesLabel, onYes, onNo) {
+      document.getElementById('confirmText').textContent = text;
+      document.getElementById('confirmYes').textContent  = yesLabel;
+      confirmYes = onYes; confirmNo = onNo; confirmIndex = 1;
+      document.getElementById('confirmOverlay').style.display = 'flex';
+      highlightConfirm();
+    }
+
+    function highlightConfirm() {
+      ['confirmYes', 'confirmNo'].forEach((id, i) =>
+        document.getElementById(id).classList.toggle('selected', i === confirmIndex));
+    }
+
+    function confirmSelect(i) {
+      document.getElementById('confirmOverlay').style.display = 'none';
+      const fn = i === 0 ? confirmYes : confirmNo;
+      confirmYes = confirmNo = null;
+      if (fn) fn();
+    }
+
     function handleBButton() {
+      if (isShown('confirmOverlay')) { confirmSelect(1); return; }
       if (isShown('partyOverlay')) { closeParty(); return; }
       if (isShown('bagOverlay'))   { closeBag();   return; }
+      if (isShown('settingsOverlay')) { closeSettings(); return; }
       if (isShown('menuOverlay'))  { closeMenu();  return; }
       if (gameState === 'battle')  { openBag();    return; }
       openMenu();
@@ -4305,6 +4410,8 @@
     }
 
     function handleAButton() {
+      if (isShown('confirmOverlay')) { confirmSelect(confirmIndex); return; }
+      if (isShown('settingsOverlay')) { settingsSelect(SETTINGS_OPTS[settingsIndex]); return; }
       if (isShown('menuOverlay')) { menuSelect(MENU_OPTS[menuIndex]); return; }
       if (isMenuUIOpen()) return;
       if (dialogActive) { advanceDialog(); return; }
@@ -4346,6 +4453,19 @@
         showBagTab(BAG_TABS[Math.max(0, Math.min(BAG_TABS.length - 1, i))]);
         return;
       }
+      if (isShown('confirmOverlay') && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 's')) {
+        e.preventDefault();
+        confirmIndex = 1 - confirmIndex;
+        highlightConfirm();
+        return;
+      }
+      if (isShown('settingsOverlay') && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 's')) {
+        e.preventDefault();
+        const step = (e.key === 'ArrowUp' || e.key === 'w') ? -1 : 1;
+        settingsIndex = (settingsIndex + step + SETTINGS_OPTS.length) % SETTINGS_OPTS.length;
+        highlightSettings();
+        return;
+      }
       if (isShown('menuOverlay') && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 's')) {
         e.preventDefault();
         const step = (e.key === 'ArrowUp' || e.key === 'w') ? -1 : 1;
@@ -4355,7 +4475,7 @@
       }
       if (e.key === 'm' || e.key === 'M') {
         toggleMusic();
-        if (isShown('menuOverlay')) openMenu();
+        if (isShown('settingsOverlay')) openSettings();
         return;
       }
       keys[e.key] = true;
@@ -6443,11 +6563,105 @@
       scannedStarter = creatures.player.name;
     })();
 
+    // ── Save slots (3, stored in this browser) ────────────────────
+    const SAVE_SLOTS   = [1, 2, 3];
+    const SAVE_VERSION = 1;
+    const saveKey = n => `cardCatchers.save.${n}`;
+    let currentSlot = null; // the slot picked on the title screen; Save writes here
+
+    function getFlags() {
+      return { meadowMet, houseNpcMet, rouxlsDefeated, alvinDefeated, deweyDefeated, bubblesDefeated,
+               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen };
+    }
+
+    function setFlags(f) {
+      meadowMet       = !!f.meadowMet;       houseNpcMet    = !!f.houseNpcMet;
+      rouxlsDefeated  = !!f.rouxlsDefeated;  alvinDefeated  = !!f.alvinDefeated;
+      deweyDefeated   = !!f.deweyDefeated;   bubblesDefeated = !!f.bubblesDefeated;
+      ivyDefeated     = !!f.ivyDefeated;     emberDefeated  = !!f.emberDefeated;
+      skyeDefeated    = !!f.skyeDefeated;    skyeWinSeen    = !!f.skyeWinSeen;
+      demoEndSeen     = !!f.demoEndSeen;
+      // Beaten trainers step aside, same as when you beat them
+      if (deweyDefeated)   HOUSE_NPC2.tileX  += 1;
+      if (bubblesDefeated) HOUSE2_NPC2.tileX += 1;
+    }
+
+    function serializeCritter(c) {
+      const o = JSON.parse(JSON.stringify(c));
+      delete o._baseStats;
+      if (o.hp == null) o.hp = o.maxHp;
+      // Shadow art is a temporary blob in memory; save the normal picture and rebuild the art on load
+      if (o.shadowOf) {
+        o.img       = o.shadowOf.toLowerCase().replace(/\s+/g, '') + '.png';
+        o.imgFilter = 'brightness(0.45) saturate(0.5) contrast(1.2) drop-shadow(0 0 10px #8b5cf6)';
+      }
+      return o;
+    }
+
+    function readSlot(n) {
+      try {
+        const data = JSON.parse(localStorage.getItem(saveKey(n)));
+        return data && data.v === SAVE_VERSION ? data : null;
+      } catch (_) { return null; }
+    }
+
+    function deleteSlot(n) {
+      try { localStorage.removeItem(saveKey(n)); } catch (_) {}
+    }
+
+    function saveGame() {
+      if (!currentSlot) return false;
+      const lead = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
+      const data = {
+        v: SAVE_VERSION,
+        savedAt: Date.now(),
+        area: currentArea,
+        pos: { x: player.moving ? player.toX : player.tileX,
+               y: player.moving ? player.toY : player.tileY, dir: player.dir },
+        surfing: isSurfing,
+        coins,
+        inventory: { ...inventory },
+        flags: getFlags(),
+        lead: serializeCritter(lead),
+        roster: roster.map(serializeCritter),
+      };
+      try { localStorage.setItem(saveKey(currentSlot), JSON.stringify(data)); return true; }
+      catch (_) { return false; }
+    }
+
+    function loadGame(data) {
+      currentArea = data.area;
+      Object.assign(player, {
+        tileX: data.pos.x, tileY: data.pos.y, fromX: data.pos.x, fromY: data.pos.y,
+        toX: data.pos.x, toY: data.pos.y, pixelX: data.pos.x * TILE_SIZE, pixelY: data.pos.y * TILE_SIZE,
+        dir: data.pos.dir || 'down', moving: false, moveProgress: 0,
+      });
+      isSurfing = !!data.surfing;
+      coins     = data.coins | 0;
+      inventory = { potions: 0, revives: 0, trioMedal: false, ...data.inventory };
+      setFlags(data.flags || {});
+      creatures.player = data.lead;
+      persistentPlayer = data.lead;
+      roster = data.roster || [];
+      [persistentPlayer, ...roster].forEach(c => { if (c.shadowOf) applyShadowArt(c); });
+      initState();
+    }
+
+    function slotSummary(data) {
+      const beaten = ['alvinDefeated', 'deweyDefeated', 'bubblesDefeated', 'ivyDefeated',
+                      'emberDefeated', 'skyeDefeated', 'rouxlsDefeated'].filter(k => data.flags?.[k]).length;
+      const party  = 1 + (data.roster?.length || 0);
+      const date   = new Date(data.savedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+      return `${data.lead.name} · ${party} critter${party === 1 ? '' : 's'}<br>` +
+             `🪙 ${data.coins} · ${beaten}/7 trainers · ${date}`;
+    }
+
     // Start in the world
     showWorld();
     initState();
     render();
     initFlickGesture();
+    gameState = 'title'; // nothing moves until a save slot is picked
 
     // ── 8-bit Music Engine ────────────────────────────────────────
     const MUSIC = (() => {
@@ -7040,16 +7254,107 @@
       ];
 
       let ready = false;
+      const picker = document.getElementById('slotPicker');
+      let pickerShownAt = 0;
 
-      function dismiss() {
-        if (!ready) return;
+      function dismiss(showScanNote) {
+        document.removeEventListener('keydown', onTitleKey, true);
         screen.classList.add('fade-out');
         setTimeout(() => {
           screen.remove();
-          if (scannedStarter) showItemNotification(creatures.player.form
+          if (showScanNote) showItemNotification(creatures.player.form
             ? `🌈 Rare form! ${scannedStarter} is your partner!`
             : `🃏 ${scannedStarter} is your partner!`, true);
         }, 750);
+      }
+
+      // Builds one view of the picker: a heading and a list of [title, subtitle, onPick, danger?] options
+      function showView(heading, options, hint) {
+        picker.innerHTML = '';
+        const h = document.createElement('div');
+        h.className = 'slot-head'; h.innerHTML = heading;
+        picker.appendChild(h);
+        options.forEach(([title, sub, onPick, danger]) => {
+          const b = document.createElement('button');
+          b.className = 'slot-opt' + (danger ? ' danger' : '');
+          b.innerHTML = `<span class="slot-title">${title}</span>` + (sub ? `<span class="slot-sub">${sub}</span>` : '');
+          b.onclick = e => { e.stopPropagation(); if (Date.now() - pickerShownAt > 400) onPick(); }; // ignore a double-tap's second tap
+          picker.appendChild(b);
+        });
+        const hintEl = document.createElement('div');
+        hintEl.className = 'slot-hint'; hintEl.textContent = hint;
+        picker.appendChild(hintEl);
+        picker.querySelector('.slot-opt').focus();
+        pickerShownAt = Date.now();
+      }
+
+      function showSlots() {
+        pressKey.style.display = 'none';
+        picker.style.display = 'flex';
+        const heading = scannedStarter
+          ? `🃏 You scanned ${scannedStarter}!<br>Pick a save slot`
+          : 'Choose a save slot';
+        showView(heading, SAVE_SLOTS.map(n => {
+          const data = readSlot(n);
+          return data
+            ? [`Slot ${n}`, slotSummary(data), () => showSlotChoices(n, data)]
+            : [`Slot ${n}`, scannedStarter ? `Empty · start with ${scannedStarter}` : 'Empty · new game', () => startNewGame(n)];
+        }), '↑↓ choose · Enter select');
+      }
+
+      function showSlotChoices(n, data) {
+        const newLabel = scannedStarter ? `New game with ${scannedStarter}` : 'New game';
+        showView(`Slot ${n}`, [
+          ['▶ Continue', slotSummary(data), () => continueGame(n, data)],
+          [`✦ ${newLabel}`, 'Erases this slot', () => confirmErase(n, newLabel)],
+          ['← Back', '', showSlots],
+        ], '↑↓ choose · Enter select · Esc back');
+      }
+
+      function confirmErase(n, newLabel) {
+        showView(`Erase Slot ${n} and start over?<br>This can't be undone.`, [
+          ['← No, go back', '', () => showSlotChoices(n, readSlot(n))],
+          [`🗑 Yes, erase it`, newLabel, () => { deleteSlot(n); startNewGame(n); }, true],
+        ], '↑↓ choose · Enter select · Esc back');
+      }
+
+      function begin(isNew) {
+        // The card's code has done its job; drop it so a reload goes back to the normal title screen
+        if (location.search) history.replaceState(null, '', location.pathname);
+        gameState = 'world';
+        updateAreaMusic();
+        dismiss(isNew && !!scannedStarter);
+      }
+
+      function startNewGame(n) {
+        currentSlot = n;
+        saveGame();
+        begin(true);
+      }
+
+      function continueGame(n, data) {
+        currentSlot = n;
+        loadGame(data);
+        begin(false);
+      }
+
+      function onTitleKey(e) {
+        if (!ready) return;
+        // The title screen owns the keyboard: stop keys reaching the game underneath
+        e.stopPropagation();
+        if (picker.style.display === 'none') { showSlots(); return; }
+        const opts = [...picker.querySelectorAll('.slot-opt')];
+        const i = opts.indexOf(document.activeElement);
+        if (['ArrowDown', 's', 'S', 'ArrowUp', 'w', 'W'].includes(e.key)) {
+          e.preventDefault();
+          const step = ['ArrowUp', 'w', 'W'].includes(e.key) ? -1 : 1;
+          opts[(Math.max(i, 0) + step + opts.length) % opts.length].focus();
+        } else if (e.key === 'Escape' || e.key === 'b' || e.key === 'B') {
+          const back = opts.find(o => o.textContent.startsWith('←'));
+          if (back) back.click();
+        } else if ((e.key === 'e' || e.key === 'E') && i >= 0) {
+          opts[i].click();
+        }
       }
 
       // Phase 1: type out each boot line with a delay
@@ -7079,10 +7384,9 @@
         }, 650);
       }, delay + 600);
 
-      // Dismiss on any key or tap — also starts music (requires user gesture for AudioContext)
-      function onDismissKey() { updateAreaMusic(); dismiss(); }
-      document.addEventListener('keydown', onDismissKey);
-      screen.addEventListener('click', () => { updateAreaMusic(); dismiss(); });
+      // Any key or tap on the title card opens the save slots; music starts once a slot is picked
+      document.addEventListener('keydown', onTitleKey, true);
+      screen.addEventListener('click', () => { if (ready && picker.style.display === 'none') showSlots(); });
     })();
   </script>
 </body>
