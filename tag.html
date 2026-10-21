@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Card Catchers</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      padding: 24px 16px; background: radial-gradient(circle at center, #2a2060 0%, #000 75%);
+      font-family: 'Press Start 2P', monospace; color: #fff; text-align: center;
+    }
+    .card {
+      width: min(420px, 100%); padding: 28px 22px; display: flex; flex-direction: column; align-items: center; gap: 16px;
+      background: #1a1e2e; border: 3px solid #ffcb05; border-radius: 18px; box-shadow: 0 0 40px rgba(255,203,5,0.45);
+    }
+    .head  { font-size: clamp(14px, 4.5vw, 18px); color: #ffcb05; line-height: 1.5; }
+    .icon  { font-size: min(130px, 32vw); line-height: 1.1; }
+    .name  { font-size: clamp(16px, 5vw, 22px); line-height: 1.5; }
+    .badge { font-size: 11px; padding: 6px 14px; border-radius: 50px; text-transform: uppercase; border: 1.5px solid rgba(0,0,0,0.2); }
+    .badge.lava { background: #c03010; } .badge.garden { background: #3a8a20; } .badge.ocean { background: #3050c0; }
+    .msg   { font-size: clamp(9px, 2.8vw, 11px); color: #c8d0e8; line-height: 2; }
+    .msg strong { color: #ffcb05; font-weight: normal; }
+    a.open {
+      margin-top: 4px; font-family: inherit; font-size: 10px; color: #1a1e2e; background: #ffcb05;
+      padding: 12px 16px; border-radius: 10px; text-decoration: none;
+    }
+    a.open:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <div class="head">Card Catchers</div>
+  </div>
+
+  <script>
+    // Each NFC tag's code → [key item id, name, icon, type]. The tag's link is tag.html?t=CODE.
+    // This page only queues the item in the inbox; the game collects it into the save being played.
+    const TAG_CODES = {
+      '8LNUCV': ['lavaBadge',   'Lava Badge',   '🔥', 'lava'],
+      JFJY4Z:   ['gardenBadge', 'Garden Badge', '🌿', 'garden'],
+      BMXFTU:   ['oceanBadge',  'Ocean Badge',  '🌊', 'ocean'],
+    };
+    const INBOX_KEY = 'cardCatchers.inbox'; // the game reads and empties this
+
+    const card  = document.getElementById('card');
+    const code  = (new URLSearchParams(location.search).get('t') || '').trim().toUpperCase();
+    const entry = TAG_CODES[code];
+
+    function show(html) { card.innerHTML = html; }
+
+    if (!entry) {
+      show(`<div class="head">Card Catchers</div>
+        <div class="msg">This tag isn't one the game knows.</div>
+        <a class="open" href="index.html">Open Card Catchers</a>`);
+    } else {
+      const [item, name, icon, type] = entry;
+      const typeName = type.charAt(0).toUpperCase() + type.slice(1);
+      let queued = false;
+      try {
+        let inbox = JSON.parse(localStorage.getItem(INBOX_KEY));
+        if (!Array.isArray(inbox)) inbox = [];
+        // Tapping the same tag again before the game collects it doesn't queue a second copy
+        if (!inbox.some(ev => ev && ev.type === 'keyItem' && ev.item === item)) {
+          inbox.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, type: 'keyItem', item, at: Date.now() });
+          localStorage.setItem(INBOX_KEY, JSON.stringify(inbox));
+        }
+        queued = true;
+      } catch (_) {}
+
+      show(`<div class="head">✨ Badge found!</div>
+        <div class="icon">${icon}</div>
+        <div class="name">${name}</div>
+        <span class="badge ${type}">${typeName} moves +10%</span>
+        ${queued
+          ? `<div class="msg"><strong>Saved to your inbox.</strong><br>Go back to Card Catchers and it'll be added to the game you're playing. Not playing right now? It waits until you next load a save on this browser.</div>
+             <a class="open" href="index.html">Open Card Catchers</a>`
+          : `<div class="msg">This browser couldn't store the badge. Private browsing can block it; try a normal tab.</div>`}`);
+    }
+  </script>
+</body>
+</html>

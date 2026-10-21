@@ -5638,7 +5638,21 @@
       elementChart:   { name: 'Element Chart',   icon: '🗺️', form: 'swap',   npc: 'labnpc8',
                         desc: 'Type-swapped critters show up 5x as often in the wild.',
                         page: ["Take my ELEMENT",      "CHART! It'll lead you", "to more type swaps."] },
+      // Elemental badges, from NFC tags: your moves of that type hit harder
+      lavaBadge:      { name: 'Lava Badge',      icon: '🔥', boostsType: 'lava',
+                        desc: 'Your Lava moves hit 10% harder.' },
+      gardenBadge:    { name: 'Garden Badge',    icon: '🌿', boostsType: 'garden',
+                        desc: 'Your Garden moves hit 10% harder.' },
+      oceanBadge:     { name: 'Ocean Badge',     icon: '🌊', boostsType: 'ocean',
+                        desc: 'Your Ocean moves hit 10% harder.' },
     };
+
+    // An elemental badge powers up the player's moves of its type
+    const BADGE_BOOST = 1.1;
+    function badgeBoost(attackerSide, move) {
+      if (attackerSide !== 'player') return 1;
+      return inventory.keyItems.some(id => KEY_ITEMS[id]?.boostsType === move.type) ? BADGE_BOOST : 1;
+    }
 
     function keyItemFor(npcType) {
       const id = Object.keys(KEY_ITEMS).find(k => KEY_ITEMS[k].npc === npcType);
@@ -5653,7 +5667,7 @@
     function rollWildForm() {
       const kinds = ['shiny', 'altart', 'shadow', 'swap', 'swap'];
       const boosted = new Set(Object.entries(KEY_ITEMS)
-        .filter(([id]) => inventory.keyItems.includes(id)).map(([, k]) => k.form));
+        .filter(([id, k]) => k.form && inventory.keyItems.includes(id)).map(([, k]) => k.form));
       let r = Math.random();
       for (let i = 0; i < kinds.length; i++) {
         const chance = FORM_CHANCE / FORM_COUNT * (boosted.has(kinds[i]) ? KEY_ITEM_FORM_BOOST : 1);
@@ -7572,7 +7586,7 @@
           if (defender.hp <= 0) break;
           let dmg = Math.round((attacker.atk + move.power) / 2);
           const eff = typeEff(move.type, defender);
-          dmg = reduceByDefence(dmg * eff, defender.dfc);
+          dmg = Math.round(reduceByDefence(dmg * eff, defender.dfc) * badgeBoost(attackerSide, move));
           // Each hit rolls its own lucky hit (attacker's luck), same odds as a single-hit move
           if (Math.random() < (attacker.lck ?? 0) * 0.028) { dmg = Math.round(dmg * 1.5); crits++; }
           defender.hp -= dmg;
@@ -7645,6 +7659,9 @@
         // DFC reduction: 30/(30+dfc) → ~19% at dfc 7, ~26% at dfc 13
         damage        = reduceByDefence(damage, defender.dfc);
       }
+
+      // Elemental badge: the player's moves of its type hit harder
+      damage = Math.round(damage * badgeBoost(attackerSide, move));
 
       // ── LCK: Lucky hit check (attacker's luck) ──────────────────────────
       const critChance = (attacker.lck ?? 0) * 0.028;   // lck 9 → 25.2%
@@ -8238,6 +8255,49 @@
       try { localStorage.setItem(PENDING_SCAN_KEY, JSON.stringify({ slot, at: Date.now() })); return true; }
       catch (_) { return false; }
     }
+
+    // ── NFC inbox ─────────────────────────────────────────────────
+    // Badge tags open tag.html, which only queues an event here: it never starts a game or touches
+    // a save. The game collects queued events into the save being played, whenever the player is
+    // free to see the message (not in battle, a dialog or a menu). Nothing is lost if no game is open.
+    const INBOX_KEY = 'cardCatchers.inbox';
+
+    function readInbox() {
+      try { const events = JSON.parse(localStorage.getItem(INBOX_KEY)); return Array.isArray(events) ? events : []; }
+      catch (_) { return []; }
+    }
+
+    function processInbox() {
+      if (gameState !== 'world' || !currentSlot || dialogActive || isMenuUIOpen()) return;
+      const events = readInbox();
+      if (!events.length) return;
+      const got = [], had = [];
+      events.forEach(ev => {
+        const k = ev && ev.type === 'keyItem' && KEY_ITEMS[ev.item];
+        if (!k) return; // unknown event: dropped below
+        if (inventory.keyItems.includes(ev.item)) had.push(k);
+        else { inventory.keyItems.push(ev.item); got.push(k); }
+      });
+      if (got.length && !saveGame()) {
+        // Couldn't save: undo, and leave the events in the inbox to try again
+        inventory.keyItems = inventory.keyItems.filter(id => !got.some(k => KEY_ITEMS[id] === k));
+        return;
+      }
+      // Remove only what was handled, in case a tag queued something new meanwhile
+      const done = new Set(events.map(ev => ev && ev.id));
+      try {
+        const rest = readInbox().filter(ev => !done.has(ev && ev.id));
+        rest.length ? localStorage.setItem(INBOX_KEY, JSON.stringify(rest)) : localStorage.removeItem(INBOX_KEY);
+      } catch (_) {}
+      const list = ks => ks.map(k => `${k.icon} ${k.name}`).join(' and ');
+      if (got.length) { SFX.play('recruit'); showItemNotification(`Got the ${list(got)}!`, true); }
+      else if (had.length) showItemNotification(`You already have the ${list(had)}!`, true);
+    }
+
+    // A tag tapped in another tab arrives at once; the timer catches anything queued while busy
+    window.addEventListener('storage', e => { if (e.key === INBOX_KEY) processInbox(); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) processInbox(); });
+    setInterval(processInbox, 1000);
 
     function clearPendingScan() {
       try { localStorage.removeItem(PENDING_SCAN_KEY); } catch (_) {}
