@@ -1242,6 +1242,7 @@
       <button class="menu-opt" onclick="menuSelect('bag')">🎒 Bag</button>
       <button class="menu-opt" onclick="menuSelect('party')">🐾 Critters</button>
       <button class="menu-opt" onclick="menuSelect('save')">💾 Save</button>
+      <button class="menu-opt" onclick="menuSelect('scan')">📷 Scan a Card</button>
       <button class="menu-opt" onclick="menuSelect('settings')">⚙️ Settings</button>
       <button class="menu-opt" onclick="menuSelect('title')">🏠 Return to Title</button>
       <button class="menu-opt" onclick="menuSelect('close')">✖ Close</button>
@@ -4932,7 +4933,7 @@
     }
 
     // ── B menu ─────────────────────────────────────────────────
-    const MENU_OPTS     = ['bag', 'party', 'save', 'settings', 'title', 'close'];
+    const MENU_OPTS     = ['bag', 'party', 'save', 'scan', 'settings', 'title', 'close'];
     const SETTINGS_OPTS = ['music', 'delete', 'back'];
     let settingsIndex   = 0;
     let menuIndex   = 0;
@@ -4973,6 +4974,16 @@
       } else if (opt === 'save') {
         const ok = saveGame();
         showItemNotification(ok ? `💾 Saved to Slot ${currentSlot}!` : '⚠️ Could not save on this browser', true);
+      } else if (opt === 'scan') {
+        closeMenu();
+        showConfirm('Save, then scan a card with this phone\'s camera? The critter will join your team (or the Lab Backyard if it\'s full).',
+          '📷 Save and scan', () => {
+            if (!saveGame() || !setPendingScan(currentSlot)) {
+              showItemNotification('⚠️ Could not save on this browser', true);
+              return;
+            }
+            showItemNotification(`💾 Saved! Scan a card now to add it to Slot ${currentSlot}.`, true);
+          }, () => openMenu());
       } else if (opt === 'settings') {
         closeMenu(); openSettings();
       } else if (opt === 'title') {
@@ -8217,6 +8228,30 @@
     const saveKey = n => `cardCatchers.save.${n}`;
     let currentSlot = null; // the slot picked on the title screen; Save writes here
 
+    // "Scan a Card" in the B menu saves and leaves this note, so the next card scanned on this device
+    // opens that save and adds the critter instead of offering it as a new game's starter.
+    // It lasts two hours, so a forgotten note doesn't hijack a scan days later.
+    const PENDING_SCAN_KEY = 'cardCatchers.pendingScan';
+    const PENDING_SCAN_MS  = 2 * 60 * 60 * 1000;
+
+    function setPendingScan(slot) {
+      try { localStorage.setItem(PENDING_SCAN_KEY, JSON.stringify({ slot, at: Date.now() })); return true; }
+      catch (_) { return false; }
+    }
+
+    function clearPendingScan() {
+      try { localStorage.removeItem(PENDING_SCAN_KEY); } catch (_) {}
+    }
+
+    // The waiting save, if a scan is expected; an expired or broken note is thrown away
+    function readPendingScan() {
+      let note = null;
+      try { note = JSON.parse(localStorage.getItem(PENDING_SCAN_KEY)); } catch (_) {}
+      const data = note && Date.now() - note.at <= PENDING_SCAN_MS ? readSlot(note.slot) : null;
+      if (!data) { clearPendingScan(); return null; }
+      return { slot: note.slot, data };
+    }
+
     function getFlags() {
       return { meadowMet, houseNpcMet, rouxlsDefeated, alvinDefeated, deweyDefeated, bubblesDefeated,
                ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen, travellerDefeated, travellerWinSeen, traveller2Defeated, travellerGone, yardMeadowMet };
@@ -8969,14 +9004,12 @@
       const picker = document.getElementById('slotPicker');
       let pickerShownAt = 0;
 
-      function dismiss(showScanNote) {
+      function dismiss(note) {
         document.removeEventListener('keydown', onTitleKey, true);
         screen.classList.add('fade-out');
         setTimeout(() => {
           screen.remove();
-          if (showScanNote) showItemNotification(creatures.player.form
-            ? `🌈 Rare form! ${scannedStarter} is your partner!`
-            : `🃏 ${scannedStarter} is your partner!`, true);
+          if (note) showItemNotification(note, true);
         }, 750);
       }
 
@@ -9030,12 +9063,15 @@
         ], HINT_BACK);
       }
 
-      function begin(isNew) {
+      function begin(isNew, note = null) {
         // The card's code has done its job; drop it so a reload goes back to the normal title screen
         if (location.search) history.replaceState(null, '', location.pathname);
         gameState = 'world';
         updateAreaMusic();
-        dismiss(isNew && !!scannedStarter);
+        if (isNew && scannedStarter) {
+          note = creatures.player.form ? `🌈 Rare form! ${scannedStarter} is your partner!` : `🃏 ${scannedStarter} is your partner!`;
+        }
+        dismiss(note);
       }
 
       function startNewGame(n) {
@@ -9044,10 +9080,24 @@
         begin(true);
       }
 
-      function continueGame(n, data) {
+      function continueGame(n, data, note = null) {
         currentSlot = n;
         loadGame(data);
-        begin(false);
+        begin(false, note);
+      }
+
+      // A card scanned after "Scan a Card": open the waiting save and add the scanned critter to it
+      function deliverScan({ slot, data }) {
+        const card = creatures.player; // the scanned critter, before the save replaces it
+        const c = { ...card, hp: card.maxHp, statusEffects: {}, moves: card.moves.map(m => ({ ...m })) };
+        currentSlot = slot;
+        loadGame(data);
+        const toTeam = 1 + roster.length < MAX_PARTY;
+        if (toTeam) roster.push(c); else sendToYard(c);
+        saveGame();
+        clearPendingScan(); // only now, so a reload during the popup still delivers
+        const rare = c.form ? '🌈 Rare form! ' : '🃏 ';
+        begin(false, toTeam ? `${rare}${c.name} joined your team!` : `${rare}${c.name} went to the Lab Backyard!`);
       }
 
       // ── "Card scanned!" popup: shown at once when the page opens from a QR code ──
@@ -9075,7 +9125,7 @@
         titleCard.classList.add('visible');
         ready = true;
         SFX.play('recruit');
-        showSlots();
+        if (pendingScan) deliverScan(pendingScan); else showSlots();
       }
 
       function onTitleKey(e) {
@@ -9141,6 +9191,8 @@
       }, delay + 600));
       }
 
+      // Only a scanned card collects the waiting note; a plain visit leaves it for the scan
+      const pendingScan = scannedStarter ? readPendingScan() : null;
       if (scannedStarter) showScanPopup(); else runBoot();
 
       // Any key or tap on the title card opens the save slots; music starts once a slot is picked
