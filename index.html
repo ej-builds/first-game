@@ -1507,6 +1507,7 @@
 
     // ── Return to world after battle ───────────────────────────
     let lostBattle = false; // set when every critter faints; returnToWorld then sends you to Nurse Nina
+    let afterBattleDialog = null; // a dialog that plays straight after a won battle (The Traveller's defeat lines)
 
     function returnToWorld() {
       cancelTurnTimers(); // an attack still waiting must not land after you've left
@@ -1560,7 +1561,15 @@
       setTimeout(() => {
         overlay.style.transition = 'opacity 600ms ease';
         overlay.style.opacity    = 0;
-        setTimeout(() => { overlay.style.transition = ''; }, 600);
+        setTimeout(() => {
+          overlay.style.transition = '';
+          if (afterBattleDialog && gameState === 'world') {
+            dialogActive = true;
+            dialogPage   = 0;
+            dialogType   = afterBattleDialog;
+          }
+          afterBattleDialog = null;
+        }, 600);
       }, 80);
     }
 
@@ -2966,7 +2975,7 @@
     ];
     const NUM_KID_AFTER_DIALOG = [
       ["Hey! You got the",     "NUM-NUMS! I wanted",   "those..."],
-      ["Give them to a",       "critter in your",      "Bag's GEAR tab."],
+      ["Give them to a",       "critter to hold -",    "they'll love them!"],
       ["When it drops to 30%", "HP it eats them and",  "heals 25%. Lucky!"],
       ["...Can I have one?",   "No? Okay...",          ""],
     ];
@@ -4496,6 +4505,7 @@
       if (dialogPage >= currentDialog.length) {
         const closingType = dialogType;
         giveGiftGear(closingType);
+        giveFormKeyItem(closingType);
         if (dialogType === 'healer')   healAllCreatures();
         if (dialogType === 'prof')     meadowMet = true;
         if (dialogType === 'housenpc') houseNpcMet = true;
@@ -4603,9 +4613,19 @@
       document.getElementById('bagReviveCount').textContent = inventory.revives;
       document.getElementById('bagUsePotion').disabled = inventory.potions === 0;
       document.getElementById('bagUseRevive').disabled = inventory.revives === 0;
-      const hasAnyKeyItem = inventory.trioMedal;
+      const hasAnyKeyItem = inventory.trioMedal || inventory.keyItems.length > 0;
       document.getElementById('bagKeyEmpty').style.display       = hasAnyKeyItem ? 'none' : 'block';
       document.getElementById('bagTrioMedalEntry').style.display = inventory.trioMedal ? 'flex' : 'none';
+      const keyPage = document.getElementById('bagKeyPage');
+      keyPage.querySelectorAll('.key-item-row').forEach(el => el.remove());
+      inventory.keyItems.forEach(id => {
+        const k = KEY_ITEMS[id];
+        if (!k) return;
+        const row = document.createElement('div');
+        row.className = 'bag-item key-item-row';
+        row.innerHTML = `<div class="bag-item-info"><span class="bag-item-name">${k.icon} ${k.name}</span><span class="bag-item-desc">${k.desc}</span></div>`;
+        keyPage.appendChild(row);
+      });
       renderGearTab();
       showBagTab('items');
       document.getElementById('bagOverlay').style.display = 'flex';
@@ -4965,7 +4985,7 @@
     // ── Surfing / Coins / Inventory ────────────────────────────
     let isSurfing = false;
     let coins     = 0;
-    let inventory = { potions: 0, revives: 0, trioMedal: false };
+    let inventory = { potions: 0, revives: 0, trioMedal: false, keyItems: [] };
 
     // ── Gear: held items, one per critter, given by NPCs ───────────
     const GEAR = {
@@ -4974,6 +4994,13 @@
       luckyCharm:  { name: 'Lucky Charm',  icon: '🍀', stat: 'lck', amount: 3, desc: '+3 LCK' },
       numNums:     { name: 'Num-Nums',     icon: '🍪', desc: 'Heals 25% HP at 30% HP, once a battle' },
       shacklePlate:{ name: 'Shackle Plate', icon: '⛓️', desc: 'Blocks the first attack each battle' },
+      // Rare-form gear: only works on a critter of that form
+      shadowVeil:       { name: 'Shadow Veil',       icon: '🌑', desc: 'Shadow critters take 1.5x damage, not double' },
+      masterpieceFrame: { name: 'Masterpiece Frame', icon: '🖼️', desc: 'Alt Art critters: +2 to every stat', forForm: 'altart',
+                          bonus: { atk: 2, dfc: 2, mag: 2, mdf: 2, spd: 2, lck: 2 } },
+      sparkleGem:       { name: 'Sparkle Gem',       icon: '💎', desc: 'Shiny critters: +4 LCK', forForm: 'shiny', bonus: { lck: 4 } },
+      elementCore:      { name: 'Element Core',      icon: '🔮', desc: 'Type-swapped critters: +3 ATK and MAG', forForm: 'swap',
+                          bonus: { atk: 3, mag: 3 } },
     };
 
     // Shackle Plate: the first attack that would hurt the holder each battle does nothing
@@ -4993,6 +5020,7 @@
       log(`🍪 ${c.name} munched its Num-Nums! Restored ${heal} HP!`, 'effective');
     }
     let gearOwned = []; // gear ids the player has been given; which critter holds each is c.gear
+    let giftsClaimed = []; // ids of one-off item gifts already handed over (e.g. the lab students)
 
     function partyMembers() {
       return [persistentPlayer || creatures.player, ...roster];
@@ -5068,10 +5096,10 @@
     const GEAR_GIFTS = [
       { type: 'shopnpc2', gear: 'powerBand', dialog: SHOP_NPC2_DIALOG, pages: [
         ["Hey, you train",       "critters? Take this",  "POWER BAND I found!"],
-        ["Equip it from the",    "Bag's GEAR tab for",   "+3 ATK. Go get 'em!"] ] },
+        ["It gives a critter",   "+3 ATK. Go get 'em!",  ""] ] },
       { type: 'clinicnurse', gear: 'sturdyShell', dialog: CLINIC_NURSE_DIALOG, pages: [
         ["Oh, and take this",    "STURDY SHELL. It",     "helps critters last."],
-        ["Equip it from the",    "Bag's GEAR tab for",   "+3 DFC. Stay safe!"] ] },
+        ["It gives a critter",   "+3 DFC. Stay safe!",   ""] ] },
       { type: 'numshelf', gear: 'numNums', dialog: NUM_SHELF_DIALOG, replace: true, pages: [
         ["A bag of NUM-NUMS",    "sits on the shelf.",   "\"FREE SAMPLE!\""] ] },
       { type: 'traveller2win', gear: 'shacklePlate', dialog: TRAVELLER2_WIN_DIALOG, replace: true, pages: [
@@ -5079,18 +5107,115 @@
         ["Fine. You win.",       "I'll be on my way, but", "first..."],
         ["I believe this is",    "now yours.",            ""],
         ["That SHACKLE PLATE",   "blocks the first hit",  "in every battle."] ] },
-      { type: 'labnpc7', gear: 'luckyCharm', dialog: NPC7_DIALOG, pages: [
-        ["Here - my LUCKY",      "CHARM! It's brought",  "me loads of luck."],
-        ["Equip it from the",    "Bag's GEAR tab for",   "+3 LCK. Good luck!"] ] },
+      { type: 'labnpc3', id: 'studentPriority', item: 'potions', count: 2, dialog: NPC3_DIALOG, beforeLast: true, pages: [
+        ["Oh! Take these too -",  "2 HEALING JUICES.",    "Good for long trips!"] ] },
+      { type: 'labnpc4', id: 'studentMultiHit', item: 'revives', count: 1, dialog: NPC4_DIALOG, beforeLast: true, pages: [
+        ["Here, have this",       "REVIVING DUST.",       "Just in case!"] ] },
+      { type: 'shopnpc', gear: 'luckyCharm', dialog: SHOP_NPC_DIALOG, beforeLast: true, pages: [
+        ["Oh, and take my",       "LUCKY CHARM! It's",     "brought me luck."],
+        ["It gives a critter",    "+3 LCK.",               ""] ] },
+      { type: 'labnpc5', gear: 'shadowVeil', dialog: NPC5_DIALOG, pages: [
+        ["Take this SHADOW VEIL.", "A Shadow critter",     "holding it..."],
+        ["...takes only 1.5x",    "damage, not double!",   ""] ] },
+      { type: 'labnpc6', gear: 'masterpieceFrame', dialog: NPC6_DIALOG, pages: [
+        ["Take my MASTERPIECE",   "FRAME! An Alt Art",     "critter holding it"],
+        ["gets +2 to every",      "stat. A true work",     "of art!"] ] },
+      { type: 'labnpc7', gear: 'sparkleGem', dialog: NPC7_DIALOG, pages: [
+        ["Here - my SPARKLE GEM!", "A Shiny critter",      "holding it gets"],
+        ["+4 LCK! Even more",     "dodges and lucky",      "hits. Sparkly!"] ] },
+      { type: 'labnpc8', gear: 'elementCore', dialog: NPC8_DIALOG, pages: [
+        ["Have this ELEMENT",     "CORE! A type-swapped",  "critter holding it"],
+        ["gets +3 ATK and",       "+3 MAG. Swap power!",   ""] ] },
     ];
     GEAR_GIFTS.forEach(gift => { gift.base = gift.dialog.slice(); });
+
+    // Keepsake key items from the form researchers (no battle effect)
+    const KEY_ITEMS = {
+      glowEyePhoto:   { name: 'Glow-Eye Photo',  icon: '📸', form: 'shadow', npc: 'labnpc5',
+                        desc: 'Shadow critters show up 5x as often in the wild.',
+                        page: ["Here - a GLOW-EYE",    "PHOTO! Carry it and", "Shadows find YOU."] },
+      signedSketch:   { name: 'Signed Sketch',   icon: '✏️', form: 'altart', npc: 'labnpc6',
+                        desc: 'Alt Art critters show up 5x as often in the wild.',
+                        page: ["Here's my SIGNED",     "SKETCH! Alt Arts will", "flock to you now."] },
+      sparklySticker: { name: 'Sparkly Sticker', icon: '⭐', form: 'shiny',  npc: 'labnpc7',
+                        desc: 'Shiny critters show up 5x as often in the wild.',
+                        page: ["Take this SPARKLY",    "STICKER! Shinies are", "drawn to it!"] },
+      elementChart:   { name: 'Element Chart',   icon: '🗺️', form: 'swap',   npc: 'labnpc8',
+                        desc: 'Type-swapped critters show up 5x as often in the wild.',
+                        page: ["Take my ELEMENT",      "CHART! It'll lead you", "to more type swaps."] },
+    };
+
+    function keyItemFor(npcType) {
+      const id = Object.keys(KEY_ITEMS).find(k => KEY_ITEMS[k].npc === npcType);
+      return id ? { id, ...KEY_ITEMS[id] } : null;
+    }
+
+    // Each form's key item makes that form this many times as likely in the wild
+    const KEY_ITEM_FORM_BOOST = 5;
+
+    // Picks a rare form for a wild critter (or null). Each of the 5 forms has an equal share of FORM_CHANCE,
+    // multiplied for any form whose key item you hold.
+    function rollWildForm() {
+      const kinds = ['shiny', 'altart', 'shadow', 'swap', 'swap'];
+      const boosted = new Set(Object.entries(KEY_ITEMS)
+        .filter(([id]) => inventory.keyItems.includes(id)).map(([, k]) => k.form));
+      let r = Math.random();
+      for (let i = 0; i < kinds.length; i++) {
+        const chance = FORM_CHANCE / FORM_COUNT * (boosted.has(kinds[i]) ? KEY_ITEM_FORM_BOOST : 1);
+        if (r < chance) return i;
+        r -= chance;
+      }
+      return null;
+    }
+
+    // After the reaction, the researcher hands over their key item (once)
+    function giveFormKeyItem(closingType) {
+      const k = keyItemFor(closingType);
+      if (!k || inventory.keyItems.includes(k.id)) return;
+      if (!partyMembers().some(c => formKind(c) === k.form)) return;
+      inventory.keyItems.push(k.id);
+      SFX.play('keyItem');
+      showItemNotification(`${k.icon} ${k.name}`);
+    }
+
+    // Form researchers react if your party has a critter of the form they study
+    const FORM_REACTIONS = {
+      shadow: name => [["Wait... is that",       `${name}?!`,              ""],
+                       ["Those glowing eyes...",  "it's even spookier",     "up close. Amazing!"]],
+      altart: name => [["Is that... an",          `${name}?!`,              ""],
+                       ["What a scene! Hold",     "still - I simply",       "MUST sketch it!"]],
+      shiny:  name => [["EEEK! Is that a",        `${name}?!`,              ""],
+                       ["Look at those colours!", "Best. Day. Ever!",       ""]],
+      swap:   name => [["Whoa! Is that",          `${name}?!`,              ""],
+                       ["A real type swap!",      "Its moves changed",      "type too! So cool!"]],
+    };
+
+    function addFormReaction(dialog, kind) {
+      syncGiftDialogs(); // start from the normal dialog (plus any gift lines)
+      const critter = partyMembers().find(c => formKind(c) === kind);
+      if (!critter) return;
+      dialog.push(...FORM_REACTIONS[kind](critter.name));
+      const [keyId, key] = Object.entries(KEY_ITEMS).find(([, item]) => item.form === kind) || [];
+      if (key && !inventory.keyItems.includes(keyId)) dialog.push(key.page);
+    }
+
+    // Shown only on the first gear gift of the game; once you own any gear, nobody repeats it
+    const GEAR_HOW_TO_PAGE = ["To use gear, press B,", "open the BAG, then the", "GEAR tab and Equip!"];
+
+    function giftDone(gift) {
+      return gift.gear ? gearOwned.includes(gift.gear) : giftsClaimed.includes(gift.id);
+    }
 
     function syncGiftDialogs() {
       GEAR_GIFTS.forEach(gift => {
         let pages = gift.base.slice();
-        if (!gearOwned.includes(gift.gear) && gift.replace) {
+        const giftPages = gift.gear && gearOwned.length === 0 ? [...gift.pages, GEAR_HOW_TO_PAGE] : gift.pages;
+        gift = { ...gift, pages: giftPages };
+        if (!giftDone(gift) && gift.replace) {
           pages = gift.pages.slice();
-        } else if (!gearOwned.includes(gift.gear)) {
+        } else if (!giftDone(gift) && gift.beforeLast) {
+          pages.splice(pages.length - 1, 0, ...gift.pages);
+        } else if (!giftDone(gift)) {
           // Keep a trailing "Press A to close." page last
           const last = pages[pages.length - 1];
           const at = last && !last[0] && !last[1] ? pages.length - 1 : pages.length;
@@ -5105,12 +5230,19 @@
 
     function giveGiftGear(closingType) {
       const gift = GEAR_GIFTS.find(g => g.type === closingType);
-      if (!gift || gearOwned.includes(gift.gear)) return;
-      gearOwned.push(gift.gear);
+      if (!gift || giftDone(gift)) return;
+      if (gift.gear) {
+        gearOwned.push(gift.gear);
+        const g = GEAR[gift.gear];
+        showItemNotification(`${g.icon} ${g.name}`);
+      } else {
+        inventory[gift.item] += gift.count;
+        giftsClaimed.push(gift.id);
+        const label = gift.item === 'potions' ? '🧪 Healing Juice' : '💊 Reviving Dust';
+        showItemNotification(gift.count > 1 ? `${label} ×${gift.count}` : label);
+      }
       syncGiftDialogs();
       SFX.play('keyItem');
-      const g = GEAR[gift.gear];
-      showItemNotification(`${g.icon} ${g.name}`);
     }
 
     function hasWaterType() {
@@ -5352,6 +5484,7 @@
         // Walking into the shadow researcher triggers Shadow form dialog (indoors only)
         if (currentArea === 'indoor' && nx === NPC5.tileX && ny === NPC5.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          addFormReaction(NPC5_DIALOG, 'shadow');
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'labnpc5';
@@ -5360,6 +5493,7 @@
         // Walking into the Alt Art artist triggers Alt Art dialog (indoors only)
         if (currentArea === 'indoor' && nx === NPC6.tileX && ny === NPC6.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          addFormReaction(NPC6_DIALOG, 'altart');
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'labnpc6';
@@ -5368,6 +5502,7 @@
         // Walking into the Shiny fan triggers Shiny dialog (indoors only)
         if (currentArea === 'indoor' && nx === NPC7.tileX && ny === NPC7.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          addFormReaction(NPC7_DIALOG, 'shiny');
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'labnpc7';
@@ -5376,6 +5511,7 @@
         // Walking into the type-swap researcher triggers type-swap dialog (indoors only)
         if (currentArea === 'indoor' && nx === NPC8.tileX && ny === NPC8.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          addFormReaction(NPC8_DIALOG, 'swap');
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'labnpc8';
@@ -5618,15 +5754,19 @@
         const dy = player.dir === 'up'   ? -1 : player.dir === 'down'  ? 1 : 0;
         const tx = player.tileX + dx, ty = player.tileY + dy;
         if (tx >= 0 && tx < MAP_COLS && ty >= 0 && ty < MAP_ROWS && MAP[ty][tx] === WATER) {
-          const px = player.pixelX - camX + TILE_SIZE / 2;
-          const py = player.pixelY - camY - 8;
+          // Label box sits a few pixels above the player's head, with the text centred inside it
+          const px   = player.pixelX - camX + TILE_SIZE / 2;
+          const boxH = 16;
+          const boxY = player.pixelY - camY - boxH - 6;
           ctx.fillStyle = 'rgba(0,0,0,0.55)';
-          ctx.fillRect(px - 28, py - 13, 56, 15);
+          ctx.fillRect(px - 30, boxY, 60, boxH);
           ctx.fillStyle = '#60d0ff';
           ctx.font = '7px "Press Start 2P"';
           ctx.textAlign = 'center';
-          ctx.fillText('A: SURF', px, py);
+          ctx.textBaseline = 'middle';
+          ctx.fillText('A: SURF', px, boxY + boxH / 2 + 1);
           ctx.textAlign = 'left';
+          ctx.textBaseline = 'alphabetic';
         }
       }
 
@@ -6270,6 +6410,7 @@
 
     function makeForm(base, formIdx) {
       const c = { ...base, moves: base.moves.map(m => ({ ...m })), form: true };
+      c.formKind = ['shiny', 'altart', 'shadow', 'swap', 'swap'][formIdx];
 
       if (formIdx === 0) {
         c.name = `Shiny ${base.name}`;
@@ -6299,6 +6440,23 @@
         c.imgFilter = TYPE_SWAP_FILTERS[base.name]?.[t] || `hue-rotate(${TYPE_HUE[t] - TYPE_HUE[base.type]}deg)`;
       }
       return c;
+    }
+
+    // Which rare form a critter is ('shiny', 'altart', 'shadow', 'swap'), also for saves made before formKind existed
+    function formKind(c) {
+      if (!c || !c.form) return null;
+      if (c.formKind) return c.formKind;
+      if (c.baseImg) return 'altart';
+      if (c.shadowOf) return 'shadow';
+      if (/^Shiny /.test(c.name)) return 'shiny';
+      return 'swap';
+    }
+
+    // Type effectiveness, with the Shadow Veil softening a Shadow critter's double-damage weakness to 1.5x
+    function typeEff(moveType, defender) {
+      const eff = typeChart[moveType]?.[defender.type] ?? 1.0;
+      if (defender.type === 'shadow' && defender.gear === 'shadowVeil' && eff > 1.5) return 1.5;
+      return eff;
     }
 
     // ── Shadow art with glowing eyes ──────────────────────────────
@@ -6570,6 +6728,7 @@
       STAT_KEYS.forEach(k => c[k] = c.trueStats[k]);
       const g = c.gear && GEAR[c.gear];
       if (g && g.stat) c[g.stat] += g.amount;
+      if (g && g.bonus && formKind(c) === g.forForm) Object.entries(g.bonus).forEach(([k, v]) => { c[k] += v; });
       c.statusEffects = { ...(c.statusEffects || {}) };
       if (c.statusEffects.charred) c.atk = Math.max(1, Math.floor(c.atk / 2));
     }
@@ -6591,9 +6750,8 @@
           ? wildCreatures.filter(c => c.type === 'ocean')
           : wildCreatures.filter(c => c.type !== 'ocean' || c.landSpawn);
         opponent = pool[Math.floor(Math.random() * pool.length)];
-        if (Math.random() < FORM_CHANCE) {
-          opponent = makeForm(opponent, Math.floor(Math.random() * FORM_COUNT));
-        }
+        const formIdx = rollWildForm();
+        if (formIdx !== null) opponent = makeForm(opponent, formIdx);
       }
       // Use saved player state if available, otherwise start fresh
       const playerBase   = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
@@ -6611,6 +6769,8 @@
     function triggerCatcherBattle(catcher) {
       if (gameState !== 'world') return;
       gameState = 'transitioning';
+      // Trainer battles never start on water; clear any leftover note from an earlier surfing encounter
+      triggerEncounter._fromSurf = false;
       activeCatcher    = catcher;
       isCatcherBattle  = true;
       SFX.play('encounter');
@@ -6839,7 +6999,7 @@
         for (let h = 0; h < hitCount && !plated; h++) {
           if (defender.hp <= 0) break;
           let dmg = Math.round((attacker.atk + move.power) / 2);
-          const eff = typeChart[move.type]?.[defender.type] ?? 1.0;
+          const eff = typeEff(move.type, defender);
           dmg = reduceByDefence(dmg * eff, defender.dfc);
           // Each hit rolls its own lucky hit (attacker's luck), same odds as a single-hit move
           if (Math.random() < (attacker.lck ?? 0) * 0.028) { dmg = Math.round(dmg * 1.5); crits++; }
@@ -6866,8 +7026,8 @@
               if (activeCatcher === HEDGEOSAUR_CATCHER)   ivyDefeated = true;
               if (activeCatcher === CERAFLAME_CATCHER)    emberDefeated = true;
               if (activeCatcher === PTERRENT_CATCHER)     skyeDefeated = true;
-              if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
-              if (activeCatcher === TRAVELLER2_CATCHER)   traveller2Defeated = true;
+              if (activeCatcher === TRAVELLER_CATCHER)    { travellerDefeated = true;  afterBattleDialog = 'travellerwin'; }
+              if (activeCatcher === TRAVELLER2_CATCHER)   { traveller2Defeated = true; afterBattleDialog = 'traveller2win'; }
               log(`You beat ${activeCatcher.name}!`, 'win');
               isCatcherBattle = false;
               activeCatcher   = null;
@@ -6898,14 +7058,14 @@
       if (isMagic) {
         // Magic — uses MAG stat, type effectiveness applies, MDF reduces (DFC ignored)
         damage        = Math.round((attacker.mag + move.power) / 2);
-        effectiveness = typeChart[move.type]?.[defender.type] ?? 1.0;
+        effectiveness = typeEff(move.type, defender);
         damage        = Math.round(damage * effectiveness);
         // MDF reduction: same formula as DFC — 30/(30+mdf)
         damage        = reduceByDefence(damage, defender.mdf);
       } else {
         // Physical (including basic) — uses ATK stat, DFC reduces damage
         damage        = Math.round((attacker.atk + move.power) / 2);
-        effectiveness = typeChart[move.type]?.[defender.type] ?? 1.0;
+        effectiveness = typeEff(move.type, defender);
         damage        = Math.round(damage * effectiveness);
         // DFC reduction: 30/(30+dfc) → ~19% at dfc 7, ~26% at dfc 13
         damage        = reduceByDefence(damage, defender.dfc);
@@ -6964,8 +7124,8 @@
             if (activeCatcher === HEDGEOSAUR_CATCHER)   ivyDefeated = true;
             if (activeCatcher === CERAFLAME_CATCHER)    emberDefeated = true;
             if (activeCatcher === PTERRENT_CATCHER)     skyeDefeated = true;
-            if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
-            if (activeCatcher === TRAVELLER2_CATCHER)   traveller2Defeated = true;
+            if (activeCatcher === TRAVELLER_CATCHER)    { travellerDefeated = true;  afterBattleDialog = 'travellerwin'; }
+            if (activeCatcher === TRAVELLER2_CATCHER)   { traveller2Defeated = true; afterBattleDialog = 'traveller2win'; }
             log(`You beat ${activeCatcher.name}!`, 'win');
             isCatcherBattle = false;
             activeCatcher   = null;
@@ -7008,8 +7168,8 @@
           if (activeCatcher === HEDGEOSAUR_CATCHER) ivyDefeated = true;
           if (activeCatcher === CERAFLAME_CATCHER)  emberDefeated = true;
           if (activeCatcher === PTERRENT_CATCHER)   skyeDefeated = true;
-          if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
-          if (activeCatcher === TRAVELLER2_CATCHER)   traveller2Defeated = true;
+          if (activeCatcher === TRAVELLER_CATCHER)    { travellerDefeated = true;  afterBattleDialog = 'travellerwin'; }
+          if (activeCatcher === TRAVELLER2_CATCHER)   { traveller2Defeated = true; afterBattleDialog = 'traveller2win'; }
           log(`You beat ${activeCatcher.name}!`, 'win');
           isCatcherBattle = false;
           activeCatcher   = null;
@@ -7542,8 +7702,9 @@
                y: player.moving ? player.toY : player.tileY, dir: player.dir },
         surfing: isSurfing,
         coins,
-        inventory: { ...inventory },
+        inventory: { ...inventory, keyItems: [...(inventory.keyItems || [])] },
         gear: gearOwned.slice(),
+        gifts: giftsClaimed.slice(),
         flags: getFlags(),
         lead: serializeCritter(lead),
         roster: roster.map(serializeCritter),
@@ -7596,8 +7757,10 @@
       });
       isSurfing = !!data.surfing;
       coins     = data.coins | 0;
-      inventory = { potions: 0, revives: 0, trioMedal: false, ...data.inventory };
+      inventory = { potions: 0, revives: 0, trioMedal: false, keyItems: [], ...data.inventory };
+      inventory.keyItems = Array.isArray(inventory.keyItems) ? inventory.keyItems.slice() : [];
       gearOwned = Array.isArray(data.gear) ? data.gear.filter(id => GEAR[id]) : [];
+      giftsClaimed = Array.isArray(data.gifts) ? data.gifts.slice() : [];
       syncGiftDialogs();
       setFlags(data.flags || {});
       creatures.player = data.lead;
