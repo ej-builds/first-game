@@ -215,18 +215,28 @@
     .bag-close-btn:hover { background: rgba(255,255,255,0.2); }
 
     /* ── B menu & party overlays ── */
-    #menuOverlay, #settingsOverlay, #partyOverlay, #confirmOverlay {
+    #menuOverlay, #settingsOverlay, #partyOverlay, #confirmOverlay, #yardOverlay {
       position: fixed; inset: 0; z-index: 200;
       background: rgba(0,0,0,0.6);
       display: flex; align-items: center; justify-content: center;
     }
-    #menuPanel, #settingsPanel, #partyPanel, #confirmPanel {
+    #menuPanel, #settingsPanel, #partyPanel, #confirmPanel, #yardPanel {
       background: #1a1e2e; border: 2px solid rgba(100,160,255,0.5);
       border-radius: 18px; padding: 22px; width: min(260px, 90vw);
       display: flex; flex-direction: column; gap: 10px;
       font-family: 'Press Start 2P', monospace;
     }
     #partyPanel { width: min(340px, 90vw); }
+    #yardPanel  { width: min(360px, 92vw); }
+    #yardMsg { font-size: 8px; line-height: 1.8; color: #c8d0e8; text-align: center; }
+    #yardList { display: flex; flex-direction: column; gap: 8px; max-height: 55vh; overflow-y: auto; padding: 2px; }
+    .yard-opt { display: flex; align-items: center; gap: 10px; }
+    .yard-opt img { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+    .yard-opt .party-info { gap: 5px; }
+    .yard-opt .party-type, #yardHead .party-type { line-height: 1.6; }
+    #yardHead { display: flex; align-items: center; gap: 12px; justify-content: center; }
+    #yardHead:empty { display: none; }
+    #yardHead img { width: 64px; height: 64px; object-fit: contain; }
     #confirmPanel { width: min(300px, 90vw); }
     #confirmText { font-size: 10px; line-height: 1.8; }
 
@@ -1257,6 +1267,15 @@
     </div>
   </div>
 
+  <div id="yardOverlay" style="display:none" onclick="if (event.target === this) closeYard()">
+    <div id="yardPanel">
+      <div class="menu-title">🌻 Lab Backyard</div>
+      <div id="yardHead"></div>
+      <div id="yardMsg"></div>
+      <div id="yardList"></div>
+    </div>
+  </div>
+
   <div id="confirmOverlay" style="display:none">
     <div id="confirmPanel">
       <div class="menu-title" id="confirmText"></div>
@@ -1404,7 +1423,7 @@
       </div>
       <!-- Replace picker (party full) -->
       <div id="replaceSection" style="display:none">
-        <div class="replace-label">Choose a party member to replace:</div>
+        <div class="replace-label">Choose who goes to the Lab Backyard:</div>
         <div id="replaceList" class="roster-list"></div>
         <button class="btn-leave" style="margin-top:10px" onclick="returnToWorld()">Leave</button>
       </div>
@@ -1622,6 +1641,50 @@
         player.moving      = false;
         player.dir         = 'down';
         MUSIC.play('overworld');
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function enterYard() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea   = 'yard';
+        player.tileX  = YARD_ENTRY.tileX; player.tileY  = YARD_ENTRY.tileY;
+        player.pixelX = YARD_ENTRY.tileX * TILE_SIZE; player.pixelY = YARD_ENTRY.tileY * TILE_SIZE;
+        player.fromX  = player.tileX; player.fromY = player.tileY;
+        player.toX    = player.tileX; player.toY   = player.tileY;
+        player.moving = false; player.dir = 'up';
+        MUSIC.play('overworld');
+        gameState = 'world';
+        overlay.style.transition = 'opacity 400ms ease';
+        overlay.style.opacity    = 0;
+        setTimeout(() => { overlay.style.transition = ''; }, 400);
+      }, 300);
+    }
+
+    function exitYard() {
+      if (gameState !== 'world') return;
+      gameState = 'transitioning';
+      const overlay = document.getElementById('transitionOverlay');
+      overlay.style.transition = 'none';
+      overlay.style.background = '#000';
+      overlay.style.opacity    = 1;
+      setTimeout(() => {
+        currentArea   = 'indoor';
+        player.tileX  = LAB_BACK_ENTRY.tileX; player.tileY  = LAB_BACK_ENTRY.tileY;
+        player.pixelX = LAB_BACK_ENTRY.tileX * TILE_SIZE; player.pixelY = LAB_BACK_ENTRY.tileY * TILE_SIZE;
+        player.fromX  = player.tileX; player.fromY = player.tileY;
+        player.toX    = player.tileX; player.toY   = player.tileY;
+        player.moving = false; player.dir = 'down';
+        MUSIC.play('lab');
         gameState = 'world';
         overlay.style.transition = 'opacity 400ms ease';
         overlay.style.opacity    = 0;
@@ -1908,9 +1971,14 @@
     const GCARPET = 28;                         // green carpet (walkable)
     const BCARPET = 29;                         // blue carpet (walkable)
     const HSTAIRS = 30;                         // ladder/stairs going up to floor 2
-    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, HROOF, HWALL, IWALL, IBOOK, ITABLE, CBED, SSHELF, H2ROOF, H2WIN, H2WALL, LROOF]);
+    const FENCE   = 31;                         // wooden fence on grass (solid)
+    const LBACK   = 32;                         // lab back door, set in the bookshelf wall (leads to the backyard)
+    const YEXIT   = 33;                         // backyard: the lab's back door, seen from outside (leads back in)
+    const FLOWER  = 34;                         // flower bed on grass (walkable)
+    const BENCH   = 35;                         // wooden garden bench (solid)
+    const SOLID_TILES = new Set([TREE, WATER, BROOF, BWALL, HROOF, HWALL, IWALL, IBOOK, ITABLE, CBED, SSHELF, H2ROOF, H2WIN, H2WALL, LROOF, FENCE, BENCH]);
 
-    const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER, R=BROOF, B=BWALL, D=BDOOR, LR=LROOF, RC=RCARPET, GC=GCARPET, BC=BCARPET, HS=HSTAIRS;
+    const G=GRASS, T=TREE, P=PATH, H=TALL, W=WATER, R=BROOF, B=BWALL, D=BDOOR, LR=LROOF, RC=RCARPET, GC=GCARPET, BC=BCARPET, HS=HSTAIRS, F=FENCE, LB=LBACK, YE=YEXIT, FL=FLOWER, BN=BENCH;
     const IV=IWALL, IF=FLOOR, IB=IBOOK, IT=ITABLE, IE=IEXIT;
     const HR=HROOF, HW=HWALL, HD=HDOOR;
     const SD=SDOOR;
@@ -1927,7 +1995,7 @@
       [T,G,T,T,G,G,H,H,H,G,G,G,H2L,H2L,H2L,H2L,H2L,G,G,G,H,H,H,G,G,T,T,G,T,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,H2L,H2L,H2D,H2L,H2L,G,G,G,G,G,G,G,G,G,G,G,G,T],
       [T,G,G,G,G,G,G,G,G,G,G,G,G,G,P,G,G,G,G,G,G,G,G,G,G,G,G,G,G,T],
-      [T,G,G,G,G,G,H,H,H,G,G,G,G,G,P,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
+      [T,G,G,G,G,G,H,H,F,F,F,F,F,G,P,G,G,G,G,G,G,G,H,H,H,G,G,G,G,T],
       [T,G,T,T,G,G,H,H,LR,LR,LR,LR,LR,G,P,HR,HR,HR,HR,HR,T,T,H,H,H,G,T,T,G,T],
       [T,G,T,T,G,G,G,G,B,B,B,B,B,G,P,HW,HW,HW,HW,HW,T,T,G,G,G,G,T,T,G,T],
       [T,G,G,G,G,G,G,G,B,B,D,B,B,G,P,HW,HW,HD,HW,HW,G,G,G,G,G,G,G,G,G,T],
@@ -1965,6 +2033,15 @@
     const INDOOR_OFFSET_Y = (CANVAS_H - INDOOR_ROWS * TILE_SIZE) / 2; // 48
     const INDOOR_ENTRY = { tileX: 6, tileY: 9 };  // where player appears inside lab
     const OUTDOOR_EXIT = { tileX: 10, tileY: 11 }; // where player reappears after leaving lab
+    const LAB_BACK_ENTRY = { tileX: 7, tileY: 2 }; // where player reappears inside the lab, coming in from the backyard
+
+    // ── Lab backyard — fenced garden behind the lab ───────────
+    // Big enough for one of every kind of critter (94 with every rare form) to have its own spot:
+    // rows of critter spots, each beside a walkway, all joined by the path up the middle
+    const YARD_COLS = 20, YARD_ROWS = 15;
+    const YARD_OFFSET_X = (CANVAS_W - YARD_COLS * TILE_SIZE) / 2; // 0: fills the screen
+    const YARD_OFFSET_Y = (CANVAS_H - YARD_ROWS * TILE_SIZE) / 2; // 0
+    const YARD_ENTRY = { tileX: 9, tileY: 13 };    // just outside the lab's back door
 
     // ── Healer clinic indoor area ─────────────────────────────
     const CLINIC_COLS = 12, CLINIC_ROWS = 10;
@@ -2051,6 +2128,24 @@
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
     ];
 
+    const YARD_MAP = [
+      [F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ,F ],  // fence
+      [F ,T ,G ,G ,G ,G ,G ,G ,G ,BN,G ,G ,G ,G ,G ,G ,G ,G ,T ,F ],  // critters · Dr. Meadow on the bench
+      [F ,G ,G ,FL,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,FL,G ,G ,G ,F ],  // walkway
+      [F ,G ,G ,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,G ,G ,G ,F ],  // critters
+      [F ,G ,G ,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,G ,G ,G ,F ],  // critters
+      [F ,FL,G ,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,G ,G ,FL,F ],  // walkway
+      [F ,G ,G ,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,G ,G ,G ,F ],  // critters
+      [F ,G ,G ,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,G ,G ,G ,F ],  // critters
+      [F ,G ,G ,G ,FL,G ,G ,G ,G ,P ,G ,G ,FL,G ,G ,G ,G ,G ,G ,F ],  // walkway
+      [F ,G ,G ,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,W ,W ,G ,F ],  // critters · pond
+      [F ,G ,G ,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,W ,W ,G ,F ],  // critters
+      [F ,G ,FL,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,FL,G ,G ,F ],  // walkway
+      [F ,G ,G ,G ,G ,G ,G ,G ,G ,P ,G ,G ,G ,G ,G ,G ,G ,G ,G ,F ],  // critters
+      [F ,G ,FL,G ,G ,FL,G ,G ,G ,P ,G ,G ,G ,FL,G ,G ,G ,FL,G ,F ],  // walkway
+      [B ,B ,B ,B ,B ,B ,B ,B ,B ,YE,B ,B ,B ,B ,B ,B ,B ,B ,B ,B ],  // the lab's back wall, with its back door
+    ];
+
     const SHOP_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],  // top wall
       [IV,SS,SS,SS,SS,SS,SS,SS,SS,SS,SS,IV],  // back wall shelves (goods on display)
@@ -2079,7 +2174,7 @@
 
     const INDOOR_MAP = [
       [IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV,IV],
-      [IV,IB,IB,IB,IB,IB,IB,IB,IB,IB,IB,IB,IB,IV],
+      [IV,IB,IB,IB,IB,IB,IB,LB,IB,IB,IB,IB,IB,IV],  // back door at col 7 → backyard
       [IV,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IF,IV],
       [IV,IF,IF,IT,IT,IT,IF,IF,IT,IT,IT,IF,IF,IV],
       [IV,IF,IF,IT,IT,IT,IF,IF,IT,IT,IT,IF,IF,IV],
@@ -2540,6 +2635,67 @@
           ctx.fillRect(sx+s-2,sy,    2, s);
           break;
 
+        case FENCE:
+          // Wooden picket fence standing on grass
+          drawTile(ctx, GRASS, sx, sy);
+          ctx.fillStyle = '#8b5a2b';                 // rails
+          ctx.fillRect(sx, sy+12, s, 3);
+          ctx.fillRect(sx, sy+22, s, 3);
+          for (const px of [3, 14, 25]) {            // pickets with pointed tops
+            ctx.fillStyle = '#a0703c';
+            ctx.fillRect(sx+px, sy+8, 5, 22);
+            ctx.fillRect(sx+px+1, sy+6, 3, 2);
+            ctx.fillStyle = '#c89058';
+            ctx.fillRect(sx+px+1, sy+9, 1, 19);
+            ctx.fillStyle = '#5e3a1a';
+            ctx.fillRect(sx+px, sy+29, 5, 1);
+          }
+          break;
+
+        case LBACK:
+          // Lab back door in the bookshelf wall
+          ctx.fillStyle = '#6b3a1f';
+          ctx.fillRect(sx, sy, s, s);
+          ctx.fillStyle = '#2a5e18';                 // frame
+          ctx.fillRect(sx+5, sy+2, 22, s-2);
+          ctx.fillStyle = '#3a8228';                 // panel
+          ctx.fillRect(sx+7, sy+4, 18, s-4);
+          ctx.fillStyle = '#4ea035';                 // highlight
+          ctx.fillRect(sx+9, sy+6, 4, 10);
+          ctx.fillStyle = '#f0d060';                 // knob
+          ctx.fillRect(sx+20, sy+18, 3, 3);
+          break;
+
+        case YEXIT:
+          // The lab's back door from outside: same look as its front door
+          drawTile(ctx, BDOOR, sx, sy);
+          break;
+
+        case FLOWER:
+          drawTile(ctx, GRASS, sx, sy);
+          for (const [fx, fy, c] of [[5,6,'#ff6b8a'],[18,4,'#ffd84a'],[11,16,'#b07cff'],[23,18,'#ff8a3d'],[6,24,'#ffd84a'],[20,26,'#ff6b8a']]) {
+            ctx.fillStyle = '#3e8a28';
+            ctx.fillRect(sx+fx+1, sy+fy+3, 1, 4);
+            ctx.fillStyle = c;
+            ctx.fillRect(sx+fx, sy+fy, 3, 3);
+            ctx.fillStyle = '#fff6c0';
+            ctx.fillRect(sx+fx+1, sy+fy+1, 1, 1);
+          }
+          break;
+
+        case BENCH:
+          drawTile(ctx, GRASS, sx, sy);
+          ctx.fillStyle = '#5e3a1a';                 // legs
+          ctx.fillRect(sx+4,  sy+20, 3, 9);
+          ctx.fillRect(sx+25, sy+20, 3, 9);
+          ctx.fillStyle = '#8b5a2b';                 // backrest and seat
+          ctx.fillRect(sx+2, sy+6,  28, 4);
+          ctx.fillRect(sx+2, sy+12, 28, 4);
+          ctx.fillRect(sx+1, sy+18, 30, 4);
+          ctx.fillStyle = '#b07a44';
+          ctx.fillRect(sx+2, sy+18, 28, 1);
+          break;
+
         case HSTAIRS:
           // Ladder/stairs going up
           ctx.fillStyle = '#6b3a1f';
@@ -2720,6 +2876,46 @@
     const NPC7 = { tileX: 12, tileY: 4 }; // Shiny fan — right wall, beside the table
     const NPC8 = { tileX: 1,  tileY: 4 }; // Type-swap researcher — left wall, beside the table
     const SAVE_GUIDE = { tileX: 11, tileY: 11 }; // outside, right beside where you step out of the lab
+    const YARD_MEADOW = { tileX: 9, tileY: 1 };  // Dr. Meadow taking a break on the backyard bench
+    // Every kind of critter has its own spot. Each species gets half a row beside the path:
+    // normal form nearest the path, then Shiny, Alt Art, Shadow and its two type swaps going outward.
+    // [left of path, right of path] for each critter row, bosses up top by Dr. Meadow.
+    const YARD_ROWS_BY_SPECIES = [
+      [1,  'Rouxls Kaard', 'Hedgeosaur'],
+      [3,  'Ceraflame',    'Pterrent'],
+      [4,  'Scorchspine',  'Embrawl'],
+      [6,  'Magmoad',      'Grumblaze'],
+      [7,  'Kiwivy',       'Shroomkin'],
+      [9,  'Treer',        'Thornlet'],
+      [10, 'Seakey',       'Sharqua'],
+      [12, 'Frostusk',     'Lumijell'],
+    ];
+    // Six spare spots saved for a species added later: a 3×2 block at the right end of rows 3 and 4.
+    // To use them, put the new species' name here; its six forms fill the block in the same order.
+    const YARD_SPARE_SPOTS   = [[16, 3], [17, 3], [18, 3], [16, 4], [17, 4], [18, 4]];
+    const YARD_SPARE_SPECIES = null;
+    let yardSpotTable = null; // kind name → [col, row], built the first time it's needed
+
+    function yardSpotFor(name) {
+      if (!yardSpotTable) {
+        yardSpotTable = new Map();
+        // The scannable cards cover every species you can own, the starter included
+        const typeOf = n => Object.values(SCAN_CARDS).find(([name]) => name === n)?.[1];
+        // A species' kinds in spot order: normal, Shiny, Alt Art, Shadow, then its two type swaps
+        const kindsOf = n => {
+          const t = typeOf(n);
+          const kinds = [n, `Shiny ${n}`, `Alt Art ${n}`, `Shadow ${n}`];
+          if (ELEMENT_TYPES.includes(t)) ELEMENT_TYPES.filter(e => e !== t).forEach(e => kinds.push(`${TYPE_FORM_PREFIX[e]} ${n}`));
+          return kinds;
+        };
+        YARD_ROWS_BY_SPECIES.forEach(([row, left, right]) => {
+          [[left, -1], [right, 1]].forEach(([n, side]) =>
+            kindsOf(n).forEach((k, i) => yardSpotTable.set(k, [YARD_MEADOW.tileX + side * (i + 1), row])));
+        });
+        if (YARD_SPARE_SPECIES) kindsOf(YARD_SPARE_SPECIES).forEach((k, i) => yardSpotTable.set(k, YARD_SPARE_SPOTS[i]));
+      }
+      return yardSpotTable.get(name) || null;
+    }
 
     const NPC_DIALOG = [
       ["Hello, catcher!",      "I'm Dr. Meadow.",      "I study wild critters."],
@@ -2805,6 +3001,24 @@
       ["A swap can turn a",     "bad matchup into a",    "great one!"],
       ["Any critter with a",    "Lava, Garden or Ocean", "type can swap!"],
       ["Scanning cards is",     "the best way to find",  "one. Good luck!"],
+    ];
+
+    const MEADOW_YARD_DIALOG = [
+      ["Oh! You found my",     "back garden!",         "Welcome, catcher."],
+      ["Let me explain how",   "this place works.",    ""],
+      ["Your team can hold",   "up to 6 critters.",    ""],
+      ["If it's full when you", "recruit a new one,",  "you pick who leaves."],
+      ["The one who leaves",   "comes to live here",   "in my backyard!"],
+      ["Walk up to any",       "critter out here to",  "bring it back."],
+      ["If your team is full", "you'll swap it with",  "someone on your team."],
+      ["Only one of each",     "kind plays out on",    "the grass at a time."],
+      ["Shiny, Shadow and",    "other rare forms",     "each count as a kind."],
+      ["The rest wait by the", "gate. Ask me and I'll", "fetch them for you."],
+      ["Gear can't come out",  "here. It goes back",   "into your bag."],
+      ["You can also leave",   "team critters here.",  "Just talk to me!"],
+    ];
+    const MEADOW_YARD_AGAIN_DIALOG = [
+      ["Want to leave a",      "critter here in the",  "garden for a while?"],
     ];
 
     const SAVE_GUIDE_DIALOG = [
@@ -3045,7 +3259,7 @@
     let travellerGone      = false; // vanished after handing over the Shackle Plate
     let demoEndSeen     = false;  // end-of-demo message shown once after leaving with Trio Medal
 
-    function drawNPC(ctx, sx, sy, playerAdjacent) {
+    function drawNPC(ctx, sx, sy, playerAdjacent, noAlert) {
       const s  = TILE_SIZE;
       const cx = sx + s / 2;
       const cy = sy + s / 2;
@@ -3083,8 +3297,8 @@
       ctx.fillStyle = '#c04030';
       ctx.fillRect(cx-2, cy-5, 4, 1);
 
-      // Exclamation mark — only shown before first conversation
-      if (!meadowMet) {
+      // Exclamation mark — only shown before first conversation (in the lab, not her backyard copy)
+      if (!meadowMet && !noAlert) {
         const blink = Math.floor(Date.now() / 500) % 2 === 0;
         ctx.fillStyle = blink ? '#ffcb05' : '#c89000';
         ctx.fillRect(cx-2, cy-24, 4, 8); // ! bar
@@ -4528,6 +4742,8 @@
                           : dialogType === 'labnpc7'     ? NPC7_DIALOG
                           : dialogType === 'labnpc8'     ? NPC8_DIALOG
                           : dialogType === 'saveguide'   ? SAVE_GUIDE_DIALOG
+                          : dialogType === 'meadowyard'  ? MEADOW_YARD_DIALOG
+                          : dialogType === 'meadowyard2' ? MEADOW_YARD_AGAIN_DIALOG
                           : dialogType === 'numshelf'    ? NUM_SHELF_DIALOG
                           : dialogType === 'statusnpc'   ? STATUS_NPC_DIALOG
                           : dialogType === 'traveller'   ? TRAVELLER_DIALOG
@@ -4568,6 +4784,10 @@
         giveFormKeyItem(closingType);
         if (dialogType === 'healer')   healAllCreatures();
         if (dialogType === 'prof')     meadowMet = true;
+        if (closingType === 'meadowyard' || closingType === 'meadowyard2') {
+          yardMeadowMet = true;
+          setTimeout(openYard, 0);
+        }
         if (dialogType === 'housenpc') houseNpcMet = true;
         dialogActive = false;
         dialogPage   = 0;
@@ -4717,7 +4937,7 @@
     let bagFromMenu = false;
 
     function isShown(id) { return document.getElementById(id).style.display !== 'none'; }
-    function isMenuUIOpen() { return isShown('shopOverlay') || isShown('rouxlsChoice') || isShown('menuOverlay') || isShown('settingsOverlay') || isShown('partyOverlay') || isShown('bagOverlay') || isShown('confirmOverlay'); }
+    function isMenuUIOpen() { return isShown('shopOverlay') || isShown('rouxlsChoice') || isShown('menuOverlay') || isShown('settingsOverlay') || isShown('partyOverlay') || isShown('bagOverlay') || isShown('confirmOverlay') || isShown('yardOverlay'); }
 
     function openMenu() {
       if (gameState !== 'world' || dialogActive) return;
@@ -4828,6 +5048,149 @@
       openMenu();
     }
 
+    // ── Lab Backyard: critters swapped off a full team live here until you want them back ──
+    let backyard = [];          // stored critters (saved)
+    let yardMeadowMet = false;  // heard Dr. Meadow's backyard explanation
+    let yardMode = 'main', yardPick = 0, yardIndex = 0, yardNote = '', yardOpts = [];
+    const yardImages = {};
+
+    // Which stored critters are out on the grass: the first of each kind (each form counts as its own),
+    // standing in that kind's own spot. Duplicates wait by the gate in Dr. Meadow's list.
+    function yardShown() {
+      const seen = new Set(), shown = [];
+      backyard.forEach((c, b) => {
+        const spot = yardSpotFor(c.name);
+        if (spot && !seen.has(c.name)) { seen.add(c.name); shown.push({ b, spot }); }
+      });
+      return shown;
+    }
+
+    function yardImage(c) {
+      if (!yardImages[c.img]) { const img = new Image(); img.src = c.img; yardImages[c.img] = img; }
+      return yardImages[c.img];
+    }
+
+    // Gear stays with the team: anything held goes back in the bag
+    function sendToYard(c) {
+      if (c.gear) { c.gear = null; clearBattleChanges(c); }
+      backyard.push(c);
+    }
+
+    // Dr. Meadow's menu: leave a team member in the yard (plus any critters with no spot left on the grass)
+    function openYard() {
+      yardMode = 'meadow'; yardIndex = 0; yardNote = '';
+      renderYardMenu();
+      document.getElementById('yardOverlay').style.display = 'flex';
+    }
+
+    // Walking up to one of the critters on the grass
+    function openYardCritter(i) {
+      yardMode = 'critter'; yardPick = i; yardIndex = 0; yardNote = '';
+      renderYardMenu();
+      document.getElementById('yardOverlay').style.display = 'flex';
+    }
+
+    function closeYard() {
+      document.getElementById('yardOverlay').style.display = 'none';
+    }
+
+    function yardBack() {
+      if (yardMode === 'swap') { yardMode = 'critter'; yardIndex = 0; renderYardMenu(); return; }
+      closeYard();
+    }
+
+    function yardRow(c, tag) {
+      const hp = Math.max(0, c.hp ?? c.maxHp);
+      return `<img src="${c.img}"${imgAttrs(c)} alt="">
+        <div class="party-info">
+          <div class="party-name">${c.name}</div>
+          <div class="party-type">${c.type} · HP ${hp}/${c.maxHp}${hp <= 0 ? ' · fainted' : ''} ${statusIcons(c)}${tag ? ' · ' + tag : ''}</div>
+        </div>`;
+    }
+
+    function renderYardMenu() {
+      const teamSize = 1 + roster.length;
+      const full = teamSize >= MAX_PARTY;
+      let msg, head = '';
+      yardOpts = [];
+      if (yardMode === 'critter') {
+        const c = backyard[yardPick];
+        head = yardRow(c);
+        msg = `${c.name} is relaxing in the yard. (Team ${teamSize}/${MAX_PARTY})`;
+        yardOpts.push({ label: full ? 'Swap onto your team' : 'Bring back to your team', act: () => takeFromYard(yardPick) });
+        yardOpts.push({ label: 'Leave it be', act: closeYard });
+      } else if (yardMode === 'swap') {
+        msg = `Your team is full! Who stays in the yard so ${backyard[yardPick].name} can join?`;
+        roster.forEach((c, i) => yardOpts.push({
+          html: yardRow(c, c.gear && GEAR[c.gear] ? `${GEAR[c.gear].icon} gear to bag` : ''),
+          act: () => swapWithYard(yardPick, i),
+        }));
+        yardOpts.push({ label: 'Back', act: yardBack });
+      } else {
+        msg = yardNote || (roster.length
+          ? 'Who should stay in the yard? (Your lead critter stays with you.)'
+          : 'Your lead critter has to stay with you!');
+        roster.forEach((c, i) => yardOpts.push({
+          html: yardRow(c, c.gear && GEAR[c.gear] ? `${GEAR[c.gear].icon} gear to bag` : ''),
+          act: () => leaveInYard(i),
+        }));
+        // Critters not out on the grass (a second of the same kind) wait by the gate
+        const shown = yardShown().map(s => s.b);
+        backyard.forEach((c, b) => {
+          if (shown.includes(b)) return;
+          yardOpts.push({ html: yardRow(c, 'by the gate · take back'), act: () => { yardMode = 'critter'; yardPick = b; takeFromYard(b); } });
+        });
+        yardOpts.push({ label: 'Done', act: closeYard });
+      }
+      document.getElementById('yardHead').innerHTML = head;
+      document.getElementById('yardMsg').textContent = msg;
+      const list = document.getElementById('yardList');
+      list.innerHTML = '';
+      yardOpts.forEach((o, i) => {
+        const btn = document.createElement('button');
+        btn.className = 'menu-opt' + (o.html ? ' yard-opt' : '');
+        if (o.html) btn.innerHTML = o.html; else btn.textContent = o.label;
+        btn.onclick = () => { yardIndex = i; o.act(); };
+        list.appendChild(btn);
+      });
+      yardIndex = Math.min(yardIndex, yardOpts.length - 1);
+      highlightYard();
+    }
+
+    function highlightYard() {
+      [...document.getElementById('yardList').children].forEach((b, i) => {
+        b.classList.toggle('selected', i === yardIndex);
+        if (i === yardIndex) b.scrollIntoView({ block: 'nearest' });
+      });
+    }
+
+    function takeFromYard(i) {
+      if (1 + roster.length >= MAX_PARTY) { yardMode = 'swap'; yardPick = i; yardIndex = 0; renderYardMenu(); return; }
+      const c = backyard.splice(i, 1)[0];
+      roster.push(c);
+      SFX.play('recruit');
+      closeYard();
+      showItemNotification(`🐾 ${c.name} rejoined your team!`, true);
+    }
+
+    function swapWithYard(yardI, rosterI) {
+      const incoming = backyard[yardI];
+      const out = roster.splice(rosterI, 1, incoming)[0];
+      if (out.gear) { out.gear = null; clearBattleChanges(out); }
+      backyard[yardI] = out; // heads to its own kind's spot (or the gate if one is already out)
+      SFX.play('recruit');
+      closeYard();
+      showItemNotification(`🐾 ${incoming.name} joined your team! ${out.name} stays in the yard.`, true);
+    }
+
+    function leaveInYard(rosterI) {
+      const c = roster.splice(rosterI, 1)[0];
+      sendToYard(c);
+      yardIndex = 0;
+      yardNote = `${c.name} is relaxing in the yard.`;
+      renderYardMenu();
+    }
+
     // ── In-game yes/no box (defaults to No, so a stray A press is safe) ──
     let confirmIndex = 1, confirmYes = null, confirmNo = null;
 
@@ -4856,6 +5219,7 @@
       if (isShown('rouxlsChoice'))   { rouxlsLeave();     return; }
       if (isShown('confirmOverlay')) { confirmSelect(1); return; }
       if (isShown('partyOverlay')) { closeParty(); return; }
+      if (isShown('yardOverlay'))  { yardBack();   return; }
       if (isShown('bagOverlay'))   { closeBag();   return; }
       if (isShown('settingsOverlay')) { closeSettings(); return; }
       if (isShown('menuOverlay'))  { closeMenu();  return; }
@@ -5316,6 +5680,7 @@
       if (isShown('confirmOverlay')) { confirmSelect(confirmIndex); return; }
       if (isShown('settingsOverlay')) { settingsSelect(SETTINGS_OPTS[settingsIndex]); return; }
       if (isShown('menuOverlay')) { menuSelect(MENU_OPTS[menuIndex]); return; }
+      if (isShown('yardOverlay')) { yardOpts[yardIndex]?.act(); return; }
       if (isMenuUIOpen()) return;
       if (dialogActive) { advanceDialog(); return; }
 
@@ -5375,6 +5740,13 @@
         highlightSettings();
         return;
       }
+      if (isShown('yardOverlay') && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 's')) {
+        e.preventDefault();
+        const step = (e.key === 'ArrowUp' || e.key === 'w') ? -1 : 1;
+        yardIndex = (yardIndex + step + yardOpts.length) % yardOpts.length;
+        highlightYard();
+        return;
+      }
       if (isShown('menuOverlay') && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 's')) {
         e.preventDefault();
         const step = (e.key === 'ArrowUp' || e.key === 'w') ? -1 : 1;
@@ -5419,6 +5791,10 @@
         if (col < 0 || col >= ROOF_COLS || row < 0 || row >= ROOF_ROWS) return false;
         return !SOLID_TILES.has(ROOF_MAP[row][col]);
       }
+      if (currentArea === 'yard') {
+        if (col < 0 || col >= YARD_COLS || row < 0 || row >= YARD_ROWS) return false;
+        return !SOLID_TILES.has(YARD_MAP[row][col]);
+      }
       if (col < 0 || col >= MAP_COLS || row < 0 || row >= MAP_ROWS) return false;
       const tile = MAP[row][col];
       if (isSurfing && tile === WATER) return true;
@@ -5436,6 +5812,7 @@
         case 'house':
         case 'house2':  MUSIC.play('dungeon');   break;
         case 'roof':    MUSIC.play('rooftop');   break;
+        case 'yard':    MUSIC.play('overworld'); break;
         default:        MUSIC.play('overworld'); break;
       }
     }
@@ -5453,6 +5830,7 @@
         if (isSurfing && MAP[row][col] === WATER && Math.random() < 0.35) triggerEncounter(true);
       } else if (currentArea === 'indoor') {
         if (INDOOR_MAP[row][col] === IEXIT) exitBuilding();
+        if (INDOOR_MAP[row][col] === LBACK) enterYard();
       } else if (currentArea === 'healer') {
         if (CLINIC_MAP[row][col] === IEXIT) exitClinic();
       } else if (currentArea === 'shop') {
@@ -5465,6 +5843,8 @@
         if (HOUSE2_MAP[row][col] === IEXIT)   exitHouse2();
       } else if (currentArea === 'roof') {
         if (ROOF_MAP[row][col] === IEXIT) exitRoof();
+      } else if (currentArea === 'yard') {
+        if (YARD_MAP[row][col] === YEXIT) exitYard();
       }
     }
 
@@ -5566,6 +5946,23 @@
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'labnpc7';
+          return;
+        }
+        // Walking into a critter living in the backyard: bring it back or swap it in
+        if (currentArea === 'yard') {
+          const here = yardShown().find(({ spot: [x, y] }) => x === nx && y === ny);
+          if (here) {
+            player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+            openYardCritter(here.b);
+            return;
+          }
+        }
+        // Walking into Dr. Meadow on the backyard bench
+        if (currentArea === 'yard' && nx === YARD_MEADOW.tileX && ny === YARD_MEADOW.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = yardMeadowMet ? 'meadowyard2' : 'meadowyard';
           return;
         }
         // Walking into the save guide outside the lab
@@ -5772,6 +6169,7 @@
       if (currentArea === 'house')  { renderHouse(ctx);  return; }
       if (currentArea === 'house2') { renderHouse2(ctx); return; }
       if (currentArea === 'roof')   { renderRoof(ctx);   return; }
+      if (currentArea === 'yard')   { renderYard(ctx);   return; }
 
       const { x: camX, y: camY } = getCameraOffset();
       const startCol = Math.floor(camX / TILE_SIZE);
@@ -6110,6 +6508,59 @@
                   : HOUSE_NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
+    }
+
+    function renderYard(ctx) {
+      // Trees beyond the fence
+      ctx.fillStyle = '#2a5e1a';
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+      for (let row = 0; row < YARD_ROWS; row++) {
+        for (let col = 0; col < YARD_COLS; col++) {
+          drawTile(ctx, YARD_MAP[row][col], YARD_OFFSET_X + col * TILE_SIZE, YARD_OFFSET_Y + row * TILE_SIZE);
+        }
+      }
+
+      // Banner
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, CANVAS_W, 24);
+      ctx.fillStyle = '#d4b060';
+      ctx.font = '10px "Press Start 2P"';
+      ctx.textAlign = 'center';
+      ctx.fillText('Lab Backyard', CANVAS_W / 2, 16);
+      ctx.textAlign = 'left';
+
+      // Dr. Meadow, sitting on the bench
+      const meadowSX = YARD_OFFSET_X + YARD_MEADOW.tileX * TILE_SIZE;
+      const meadowSY = YARD_OFFSET_Y + YARD_MEADOW.tileY * TILE_SIZE;
+      const adjacent = Math.abs(player.tileX - YARD_MEADOW.tileX) + Math.abs(player.tileY - YARD_MEADOW.tileY) === 1;
+      drawNPC(ctx, meadowSX, meadowSY, adjacent, true);
+
+      // Critters living in the backyard, bobbing about on the grass
+      yardShown().forEach(({ b, spot: [tx, ty] }, i) => {
+        const c = backyard[b];
+        const sx  = YARD_OFFSET_X + tx * TILE_SIZE;
+        const sy  = YARD_OFFSET_Y + ty * TILE_SIZE;
+        const bob = Math.round(Math.sin(Date.now() / 350 + i * 1.7) * 2);
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath();
+        ctx.ellipse(sx + 16, sy + 28, 10, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        const img = yardImage(c);
+        if (img.complete && img.naturalWidth) {
+          ctx.save();
+          if (c.imgFilter) ctx.filter = c.imgFilter;
+          ctx.drawImage(img, sx + 1, sy - 2 + bob, 30, 30);
+          ctx.restore();
+        }
+      });
+
+      // Player
+      const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
+      drawPlayer(ctx, YARD_OFFSET_X + player.pixelX, YARD_OFFSET_Y + player.pixelY, player.dir, walkFrame);
+
+      if (dialogActive && dialogType === 'meadowyard')  drawDialog(ctx, MEADOW_YARD_DIALOG[dialogPage]);
+      if (dialogActive && dialogType === 'meadowyard2') drawDialog(ctx, MEADOW_YARD_AGAIN_DIALOG[dialogPage]);
     }
 
     function renderRoof(ctx) {
@@ -6471,6 +6922,9 @@
       'Ceraflame':    'hue-rotate(185deg) saturate(1.3) brightness(1.1)',          // orange flames
       'Pterrent':     'hue-rotate(140deg)',                                        // crimson
       'Rouxls Kaard': 'invert(1) grayscale(1) brightness(0.9) contrast(4) sepia(1) saturate(12) hue-rotate(-10deg) brightness(1.15)', // yellow body, black trim
+      // The Traveller's critters: defined for later, not used anywhere yet
+      'Shacklith':             'hue-rotate(195deg) brightness(1.55) saturate(1.2)',        // silver armour, blue glow
+      'Shacklith (True Form)': 'sepia(1) saturate(3) hue-rotate(-12deg) brightness(1.35)', // gold armour
     };
 
     // Hand-picked type-swap colors where the plain hue shift misses (e.g. green art turning pink, not fiery)
@@ -7380,7 +7834,7 @@
       document.getElementById('recruitBtns').style.display    = full ? 'none'  : 'flex';
       document.getElementById('replaceSection').style.display = full ? 'block' : 'none';
       document.getElementById('recruitSubMsg').textContent    = full
-        ? 'Your party is full — replace someone?'
+        ? 'Your party is full! Send someone to the Lab Backyard?'
         : 'Add them to your party?';
 
       if (full) {
@@ -7405,9 +7859,10 @@
     function replacePartyMember(index) {
       SFX.play('recruit');
       const released = roster.splice(index, 1)[0];
+      sendToYard(released);
       const recruit  = makeRecruit(state.opponent);
       roster.push(recruit);
-      log(`${released.name} was released. ${recruit.name} joined your party!`, 'win');
+      log(`${released.name} went to the Lab Backyard. ${recruit.name} joined your party!`, 'win');
       document.getElementById('recruitPrompt').style.display = 'none';
       renderRosterTray();
       returnToWorld();
@@ -7696,7 +8151,7 @@
 
     function getFlags() {
       return { meadowMet, houseNpcMet, rouxlsDefeated, alvinDefeated, deweyDefeated, bubblesDefeated,
-               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen, travellerDefeated, travellerWinSeen, traveller2Defeated, travellerGone };
+               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen, travellerDefeated, travellerWinSeen, traveller2Defeated, travellerGone, yardMeadowMet };
     }
 
     function setFlags(f) {
@@ -7710,6 +8165,7 @@
       travellerWinSeen  = !!f.travellerWinSeen;
       traveller2Defeated = !!f.traveller2Defeated;
       travellerGone      = !!f.travellerGone;
+      yardMeadowMet      = !!f.yardMeadowMet;
       // Beaten trainers step aside, same as when you beat them
       if (deweyDefeated)   HOUSE_NPC2.tileX  += 1;
       if (bubblesDefeated) HOUSE2_NPC2.tileX += 1;
@@ -7757,6 +8213,7 @@
         flags: getFlags(),
         lead: serializeCritter(lead),
         roster: roster.map(serializeCritter),
+        backyard: backyard.map(serializeCritter),
       };
     }
 
@@ -7815,7 +8272,8 @@
       creatures.player = data.lead;
       persistentPlayer = data.lead;
       roster = data.roster || [];
-      [persistentPlayer, ...roster].forEach(c => { if (c.shadowOf) applyShadowArt(c); });
+      backyard = Array.isArray(data.backyard) ? data.backyard : [];
+      [persistentPlayer, ...roster, ...backyard].forEach(c => { if (c.shadowOf) applyShadowArt(c); });
       initState();
       lastSavedSnapshot = progressSnapshot();
     }
