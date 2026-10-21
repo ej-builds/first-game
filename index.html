@@ -7248,6 +7248,8 @@
         const pool = fromSurf
           ? wildCreatures.filter(c => c.type === 'ocean')
           : wildCreatures.filter(c => c.type !== 'ocean' || c.landSpawn);
+        // Started with a different critter? Scorchspine joins the tall grass
+        if (!fromSurf && starterSpecies !== 'Scorchspine') pool.push(SCORCHSPINE);
         opponent = pool[Math.floor(Math.random() * pool.length)];
         const formIdx = rollWildForm();
         if (formIdx !== null) opponent = makeForm(opponent, formIdx);
@@ -8106,6 +8108,11 @@
      ...[ROUXLS_CATCHER, HEDGEOSAUR_CATCHER, CERAFLAME_CATCHER, PTERRENT_CATCHER].map(c => c.critter)]
       .forEach(c => buildShadowArt(c.name, c.img));
 
+    // Scorchspine as defined before a scanned card can replace the starter: it turns up in the
+    // tall grass whenever you started with a different critter
+    const SCORCHSPINE = { ...creatures.player, moves: creatures.player.moves.map(m => ({ ...m })) };
+    let starterSpecies = 'Scorchspine'; // plain name of the species you started with (saved)
+
     let scannedStarter = null; // full name, e.g. 'Shiny Sharqua'
     let scannedBase    = null; // plain critter name, e.g. 'Sharqua'
     (function applyScannedCard() {
@@ -8141,6 +8148,7 @@
       creatures.player = allowedForms.includes(formIdx) ? makeForm(starter, formIdx) : starter;
       scannedStarter = creatures.player.name;
       scannedBase    = critter.name;
+      starterSpecies = critter.name;
     })();
 
     // ── Save slots (3, stored in this browser) ────────────────────
@@ -8214,6 +8222,7 @@
         lead: serializeCritter(lead),
         roster: roster.map(serializeCritter),
         backyard: backyard.map(serializeCritter),
+        starter: starterSpecies,
       };
     }
 
@@ -8273,6 +8282,9 @@
       persistentPlayer = data.lead;
       roster = data.roster || [];
       backyard = Array.isArray(data.backyard) ? data.backyard : [];
+      // Saves from before the starter was recorded: if you own no Scorchspine, treat it as a different start
+      starterSpecies = data.starter ||
+        ([data.lead, ...roster, ...backyard].some(c => c && /Scorchspine$/.test(c.name)) ? 'Scorchspine' : 'unknown');
       [persistentPlayer, ...roster, ...backyard].forEach(c => { if (c.shadowOf) applyShadowArt(c); });
       initState();
       lastSavedSnapshot = progressSnapshot();
