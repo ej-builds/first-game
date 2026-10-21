@@ -1538,7 +1538,7 @@
       if (state) {
         clearBattleChanges(state.player);
         roster.forEach(clearBattleChanges);
-        [state.player, ...roster].forEach(c => { delete c.numNumsUsed; });
+        [state.player, ...roster].forEach(c => { delete c.numNumsUsed; delete c.plateUsed; });
         persistentPlayer = { ...state.player };
       }
 
@@ -2722,12 +2722,6 @@
       ["DFC reduces damage",   "from physical moves.",  "A sturdy shield!"],
       ["MDF reduces damage",   "from magic attacks.",   "Guards the mind!"],
       ["LCK raises your odds", "to DODGE attacks and",  "land LUCKY HITS!"],
-      ["Now - STATUS moves!",  "They deal no damage",   "but change the fight."],
-      ["TOXIC deals 10 dmg",   "to the foe every",      "turn. Watch out!"],
-      ["SEEDED drains 5 HP",   "from the foe and",      "heals you each turn."],
-      ["CHARRED halves the",   "foe's ATK stat for",    "the whole battle!"],
-      ["DRENCHED forces the",  "foe to always move",    "last every turn."],
-      ["Status effects clear", "when a critter is",     "swapped or battle ends."],
       ["Feeling outmatched?",  "FLICK the foe's card",  "to run away!"],
       ["Good luck out there!", "",                      "Press A to close."],
     ];
@@ -2931,8 +2925,35 @@
     ];
     const TRAVELLER_WIN_DIALOG = [
       ["...I LOST?!",           "That's never happened", "before..."],
-      ["You're no chump.",      "You're the real deal.", ""],
-      ["Next time we meet,",    "I'll be ready. Watch",  "your back, champ!"],
+      ["BUT THAT WAS ONLY",     "MY FIRST PHASE!",       ""],
+      ["...But I'll give you",  "time to prepare,",      "chump."],
+    ];
+    // Narration once he's gone, right after the black flash
+    const TRAVELLER_GONE_DIALOG = [
+      ["The Traveller says,",   "\"Until next time...",  "Champ.\""],
+      ["He runs into the",      "trees and disappears.", ""],
+    ];
+    const TRAVELLER2_DIALOG = [
+      ["So, are you ready to",  "get TROUNCED, chump?",  ""],
+    ];
+    // What he says after handing over the Shackle Plate (the gift lines are in GEAR_GIFTS)
+    const TRAVELLER2_WIN_DIALOG = [
+      ["...Impossible.",        "Both of my phases...",  "beaten?!"],
+      ["Fine. You win.",        "I'll be on my way.",    ""],
+    ];
+
+    const STATUS_NPC = { tileX: 2, tileY: 3 }; // patient in the clinic's top-left corner
+    const STATUS_NPC_DIALOG = [
+      ["Ouch... my critter's",  "still POISONED from",  "yesterday's battle."],
+      ["I'm learning all the",  "STATUS CONDITIONS.",   "Want to hear?"],
+      ["TOXIC: takes 10",       "damage at the end",    "of every turn."],
+      ["SEEDED: loses 5 HP",    "every turn, and the",  "foe drinks it up!"],
+      ["CHARRED: burns so",     "badly its ATK is",     "cut in half."],
+      ["DRENCHED: so soggy",    "it moves AFTER a",     "dry foe."],
+      ["Statuses don't wear",   "off after battle!",    "Only Nurse Nina..."],
+      ["...or losing a battle", "will clear them up.",  ""],
+      ["Oh, and TOXIC and",     "SEEDED ignore DFC.",   "Nothing can block"],
+      ["them - not even the",   "toughest critter!",    ""],
     ];
 
     const NUM_SHELF = { tileX: 2, tileY: 5 }; // shelf right next to the kid
@@ -2998,6 +3019,9 @@
     let skyeDefeated    = false;
     let skyeWinSeen     = false;  // clears Skye's post-defeat "!" once player talks to her
     let travellerDefeated = false; // secret boss at the end of the road
+    let travellerWinSeen  = false; // read his "first phase" lines after the first win
+    let traveller2Defeated = false; // beat his second phase
+    let travellerGone      = false; // vanished after handing over the Shackle Plate
     let demoEndSeen     = false;  // end-of-demo message shown once after leaving with Trio Medal
 
     function drawNPC(ctx, sx, sy, playerAdjacent) {
@@ -4266,6 +4290,61 @@
       ctx.fillRect(cx-2, cy-5, 4, 1);
     }
 
+    function drawStatusNPC(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs and slippers
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy+4, 4, 6);
+      ctx.fillRect(cx+1, cy+4, 4, 6);
+      ctx.fillStyle = '#7ab8e0';
+      ctx.fillRect(cx-6, cy+10, 5, 2);
+      ctx.fillRect(cx+1, cy+10, 5, 2);
+
+      // Pale blue hospital gown
+      ctx.fillStyle = '#bcd8ec';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#9cc0dc';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx-3, cy-2, 1, 1); ctx.fillRect(cx+2, cy+1, 1, 1); ctx.fillRect(cx-1, cy+3, 1, 1);
+
+      // Little purple antidote flask
+      ctx.fillStyle = '#b070e0';
+      ctx.fillRect(cx+6, cy+1, 4, 4);
+      ctx.fillStyle = '#e8d8f8';
+      ctx.fillRect(cx+7, cy-1, 2, 2);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Messy red hair
+      ctx.fillStyle = '#b84a2a';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-6, cy-14, 2, 4);
+      ctx.fillRect(cx+3, cy-16, 2, 2);
+
+      // Head bandage
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx-5, cy-12, 10, 2);
+      ctx.fillStyle = '#e05050';
+      ctx.fillRect(cx+2, cy-12, 2, 2);
+
+      // Tired eyes and a wobbly smile
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 1);
+      ctx.fillRect(cx+1, cy-8, 2, 1);
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
     function drawShopkeeper(ctx, sx, sy) {
       const s  = TILE_SIZE;
       const cx = sx + s / 2;
@@ -4381,8 +4460,12 @@
                           : dialogType === 'labnpc7'     ? NPC7_DIALOG
                           : dialogType === 'labnpc8'     ? NPC8_DIALOG
                           : dialogType === 'numshelf'    ? NUM_SHELF_DIALOG
+                          : dialogType === 'statusnpc'   ? STATUS_NPC_DIALOG
                           : dialogType === 'traveller'   ? TRAVELLER_DIALOG
                           : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG
+                          : dialogType === 'traveller2'  ? TRAVELLER2_DIALOG
+                          : dialogType === 'traveller2win' ? TRAVELLER2_WIN_DIALOG
+                          : dialogType === 'travellergone' ? TRAVELLER_GONE_DIALOG
                           : dialogType === 'numkid'      ? NUM_KID_DIALOG
                           : dialogType === 'numkid2'     ? NUM_KID_AFTER_DIALOG
                           : dialogType === 'prof2'       ? NPC2_DIALOG
@@ -4434,6 +4517,31 @@
         // Show challenge choice after Rouxls Kaard's dialog (if not yet defeated)
         if (closingType === 'house2npc' && !rouxlsDefeated) {
           setTimeout(showRouxlsChoice, 100);
+        }
+        // His final lines end with a black flash, and he's gone when it clears
+        if (closingType === 'traveller2win' && !travellerGone) {
+          gameState = 'transitioning';
+          const overlay = document.getElementById('transitionOverlay');
+          overlay.style.transition = 'none';
+          overlay.style.background = '#000';
+          overlay.style.opacity    = 1;
+          setTimeout(() => {
+            travellerGone = true;
+            gameState = 'world';
+            overlay.style.transition = 'opacity 700ms ease';
+            overlay.style.opacity    = 0;
+            setTimeout(() => {
+              overlay.style.transition = '';
+              dialogActive = true;
+              dialogPage   = 0;
+              dialogType   = 'travellergone';
+            }, 700);
+          }, 600);
+        }
+        // After his "first phase" lines, later talks offer the phase-two fight
+        if (closingType === 'travellerwin') travellerWinSeen = true;
+        if (closingType === 'traveller2' && !traveller2Defeated) {
+          setTimeout(() => showChallengeChoice(TRAVELLER2_CATCHER, 'Challenge him!', 'Get some prep time'), 100);
         }
         // The Traveller's intro ends in a boss battle
         if (closingType === 'traveller' && !travellerDefeated) {
@@ -4865,7 +4973,15 @@
       sturdyShell: { name: 'Sturdy Shell', icon: '🛡️', stat: 'dfc', amount: 3, desc: '+3 DFC' },
       luckyCharm:  { name: 'Lucky Charm',  icon: '🍀', stat: 'lck', amount: 3, desc: '+3 LCK' },
       numNums:     { name: 'Num-Nums',     icon: '🍪', desc: 'Heals 25% HP at 30% HP, once a battle' },
+      shacklePlate:{ name: 'Shackle Plate', icon: '⛓️', desc: 'Blocks the first attack each battle' },
     };
+
+    // Shackle Plate: the first attack that would hurt the holder each battle does nothing
+    function shacklePlateBlocks(c) {
+      if (!c || c.gear !== 'shacklePlate' || c.plateUsed) return false;
+      c.plateUsed = true;
+      return true;
+    }
 
     // Num-Nums: when the holder drops to 30% HP or lower in battle, it heals 25% of max HP (once per battle)
     function checkNumNums(c) {
@@ -4958,6 +5074,11 @@
         ["Equip it from the",    "Bag's GEAR tab for",   "+3 DFC. Stay safe!"] ] },
       { type: 'numshelf', gear: 'numNums', dialog: NUM_SHELF_DIALOG, replace: true, pages: [
         ["A bag of NUM-NUMS",    "sits on the shelf.",   "\"FREE SAMPLE!\""] ] },
+      { type: 'traveller2win', gear: 'shacklePlate', dialog: TRAVELLER2_WIN_DIALOG, replace: true, pages: [
+        ["...Impossible.",       "Both of my phases...",  "beaten?!"],
+        ["Fine. You win.",       "I'll be on my way, but", "first..."],
+        ["I believe this is",    "now yours.",            ""],
+        ["That SHACKLE PLATE",   "blocks the first hit",  "in every battle."] ] },
       { type: 'labnpc7', gear: 'luckyCharm', dialog: NPC7_DIALOG, pages: [
         ["Here - my LUCKY",      "CHARM! It's brought",  "me loads of luck."],
         ["Equip it from the",    "Bag's GEAR tab for",   "+3 LCK. Good luck!"] ] },
@@ -5186,11 +5307,14 @@
         const nx = player.tileX + dx;
         const ny = player.tileY + dy;
         // Walking into the traveller at the end of the road (outdoors)
-        if (currentArea === 'outdoor' && nx === TRAVELLER.tileX && ny === TRAVELLER.tileY) {
+        if (currentArea === 'outdoor' && !travellerGone && nx === TRAVELLER.tileX && ny === TRAVELLER.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
-          dialogType   = travellerDefeated ? 'travellerwin' : 'traveller';
+          dialogType   = !travellerDefeated ? 'traveller'
+                       : !travellerWinSeen  ? 'travellerwin'
+                       : !traveller2Defeated ? 'traveller2'
+                       : 'traveller2win';
           return;
         }
         // Walking into Dr. Meadow triggers dialog (indoors only)
@@ -5255,6 +5379,14 @@
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'labnpc8';
+          return;
+        }
+        // Walking into the patient who explains status conditions (clinic)
+        if (currentArea === 'healer' && nx === STATUS_NPC.tileX && ny === STATUS_NPC.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'statusnpc';
           return;
         }
         // Walking into the healer triggers heal dialog (inside clinic only)
@@ -5475,7 +5607,7 @@
       }
 
       // Traveller at the far right end of the road
-      drawTraveller(ctx, TRAVELLER.tileX * TILE_SIZE - camX, TRAVELLER.tileY * TILE_SIZE - camY);
+      if (!travellerGone) drawTraveller(ctx, TRAVELLER.tileX * TILE_SIZE - camX, TRAVELLER.tileY * TILE_SIZE - camY);
 
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, player.pixelX - camX, player.pixelY - camY, player.dir, walkFrame);
@@ -5499,7 +5631,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : dialogType === 'traveller' ? TRAVELLER_DIALOG : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : dialogType === 'traveller' ? TRAVELLER_DIALOG : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG : dialogType === 'traveller2' ? TRAVELLER2_DIALOG : dialogType === 'traveller2win' ? TRAVELLER2_WIN_DIALOG : dialogType === 'travellergone' ? TRAVELLER_GONE_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -5642,13 +5774,16 @@
       const cnurSY = CLINIC_OFFSET_Y + CLINIC_NURSE.tileY * TILE_SIZE;
       drawClinicNurse(ctx, cnurSX, cnurSY);
 
+      // Draw the status-conditions patient
+      drawStatusNPC(ctx, CLINIC_OFFSET_X + STATUS_NPC.tileX * TILE_SIZE, CLINIC_OFFSET_Y + STATUS_NPC.tileY * TILE_SIZE);
+
       // Draw player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, CLINIC_OFFSET_X + player.pixelX, CLINIC_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       // Dialog
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : dialogType === 'statusnpc' ? STATUS_NPC_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -6378,13 +6513,32 @@
         name: 'Shacklith',
         type: 'shadow',
         img: 'shacklith.png',
-        maxHp: 200,
-        atk: 21, dfc: 20, mag: 15, mdf: 16, spd: 10, lck: 6,
+        // Puzzle boss: infinite defences mean every hit does the minimum 1 damage
+        maxHp: 5,
+        atk: 50, dfc: Infinity, mag: 45, mdf: Infinity, spd: 1, lck: 6,
         moves: [
-          { name: 'Chain Lash', type: 'shadow', cat: 'physical', power: 20 },
-          { name: 'Void Pulse', type: 'shadow', cat: 'magic',    power: 19 },
+          { name: 'Chain Lash', type: 'shadow', cat: 'physical', power: 30 },
+          { name: 'Void Pulse', type: 'shadow', cat: 'magic',    power: 28 },
           { name: 'Shackle',    type: 'shadow', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
-          { name: 'Drill Arm',  type: 'basic',  cat: 'physical', power: 14 },
+          { name: 'Drill Arm',  type: 'basic',  cat: 'physical', power: 21 },
+        ]
+      }
+    };
+
+    // Phase two: Shacklith freed from the void. No more infinite defences — a straight power fight.
+    const TRAVELLER2_CATCHER = {
+      name: 'The Traveller',
+      critter: {
+        name: 'Shacklith (True Form)',
+        type: 'shadow',
+        img: 'shacklith-true.png',
+        maxHp: 180,
+        atk: 38, dfc: 18, mag: 32, mdf: 18, spd: 16, lck: 8,
+        moves: [
+          { name: 'Chain Lash', type: 'shadow', cat: 'physical', power: 30 },
+          { name: 'Void Pulse', type: 'shadow', cat: 'magic',    power: 28 },
+          { name: 'Unchained',  type: 'shadow', cat: 'status',   effect: { stat: 'atk', target: 'self', amount: 4 } },
+          { name: 'Iron Stomp', type: 'basic',  cat: 'physical', power: 24 },
         ]
       }
     };
@@ -6447,6 +6601,7 @@
       const opponentCopy = { ...opponent, hp: opponent.maxHp };
       clearBattleChanges(playerCopy);
       playerCopy.numNumsUsed = false;
+      playerCopy.plateUsed   = false;
       snapBaseStats(opponentCopy);
       opponentCopy.statusEffects = {};
       if (opponentCopy.shadowOf) applyShadowArt(opponentCopy);
@@ -6491,12 +6646,9 @@
         const c = state[side];
         document.getElementById(`name-${side}`).textContent = c.name;
         document.getElementById(`hp-${side}`).textContent   = Math.max(0, c.hp);
-        document.getElementById(`atk-${side}`).textContent  = c.atk;
-        document.getElementById(`dfc-${side}`).textContent  = c.dfc;
-        document.getElementById(`mag-${side}`).textContent  = c.mag;
-        document.getElementById(`mdf-${side}`).textContent  = c.mdf;
-        document.getElementById(`spd-${side}`).textContent  = c.spd;
-        document.getElementById(`lck-${side}`).textContent  = c.lck;
+        STAT_KEYS.forEach(k => {
+          document.getElementById(`${k}-${side}`).textContent = Number.isFinite(c[k]) ? c[k] : '∞';
+        });
 
         const typeBadge = document.getElementById(`type-${side}`);
         const se = c.statusEffects || {};
@@ -6594,6 +6746,13 @@
       while (el.children.length > 5) el.removeChild(el.firstChild);
     }
 
+    // Defence cuts damage to 30/(30+def), always at least 1 — except an infinite defence, which blocks it all.
+    // Status damage (Toxic, Seeded) doesn't go through here, so it still hurts.
+    function reduceByDefence(raw, def) {
+      if (!Number.isFinite(def)) return 0;
+      return Math.max(1, Math.round(raw * (30 / (30 + def))));
+    }
+
     function resolveAttack(attackerSide, defenderSide, moveIdx) {
       const attacker = state[attackerSide];
       const defender = state[defenderSide];
@@ -6675,19 +6834,22 @@
       if (hitCount > 1) {
         log(`${catTag} ${attacker.name} used ${move.name}!`);
         let totalDamage = 0, crits = 0;
-        for (let h = 0; h < hitCount; h++) {
+        const plated = shacklePlateBlocks(defender);
+        if (plated) log(`⛓️ ${defender.name}'s Shackle Plate blocked the attack!`, 'effective');
+        for (let h = 0; h < hitCount && !plated; h++) {
           if (defender.hp <= 0) break;
           let dmg = Math.round((attacker.atk + move.power) / 2);
           const eff = typeChart[move.type]?.[defender.type] ?? 1.0;
-          dmg = Math.max(1, Math.round(dmg * eff * (30 / (30 + defender.dfc))));
+          dmg = reduceByDefence(dmg * eff, defender.dfc);
           // Each hit rolls its own lucky hit (attacker's luck), same odds as a single-hit move
           if (Math.random() < (attacker.lck ?? 0) * 0.028) { dmg = Math.round(dmg * 1.5); crits++; }
           defender.hp -= dmg;
           if (defender.hp > 0) checkNumNums(defender);
           totalDamage += dmg;
         }
-        log(`💥 Hit ${hitCount} times! (${totalDamage} total dmg)`, 'effective');
-        if (crits) log(`⭐ ${crits === 1 ? 'A lucky hit' : `${crits} lucky hits`}! Extra damage!`, 'effective');
+        if (!plated) log(`💥 Hit ${hitCount} times! (${totalDamage} total dmg)`, 'effective');
+        if (totalDamage === 0 && !plated) log(`🛡️ ${defender.name} shrugged it off! No damage!`, 'weak');
+        else if (crits) log(`⭐ ${crits === 1 ? 'A lucky hit' : `${crits} lucky hits`}! Extra damage!`, 'effective');
         if (defender.hp <= 0) {
           defender.hp = 0;
           state.over  = true;
@@ -6705,6 +6867,7 @@
               if (activeCatcher === CERAFLAME_CATCHER)    emberDefeated = true;
               if (activeCatcher === PTERRENT_CATCHER)     skyeDefeated = true;
               if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
+              if (activeCatcher === TRAVELLER2_CATCHER)   traveller2Defeated = true;
               log(`You beat ${activeCatcher.name}!`, 'win');
               isCatcherBattle = false;
               activeCatcher   = null;
@@ -6738,14 +6901,14 @@
         effectiveness = typeChart[move.type]?.[defender.type] ?? 1.0;
         damage        = Math.round(damage * effectiveness);
         // MDF reduction: same formula as DFC — 30/(30+mdf)
-        damage        = Math.max(1, Math.round(damage * (30 / (30 + defender.mdf))));
+        damage        = reduceByDefence(damage, defender.mdf);
       } else {
         // Physical (including basic) — uses ATK stat, DFC reduces damage
         damage        = Math.round((attacker.atk + move.power) / 2);
         effectiveness = typeChart[move.type]?.[defender.type] ?? 1.0;
         damage        = Math.round(damage * effectiveness);
         // DFC reduction: 30/(30+dfc) → ~19% at dfc 7, ~26% at dfc 13
-        damage        = Math.max(1, Math.round(damage * (30 / (30 + defender.dfc))));
+        damage        = reduceByDefence(damage, defender.dfc);
       }
 
       // ── LCK: Lucky hit check (attacker's luck) ──────────────────────────
@@ -6756,6 +6919,8 @@
         isCrit = true;
       }
 
+      const plated = damage > 0 && shacklePlateBlocks(defender);
+      if (plated) damage = 0;
       defender.hp -= damage;
       if (defender.hp > 0) checkNumNums(defender);
 
@@ -6772,9 +6937,15 @@
       setTimeout(() => card.classList.remove(isCrit ? 'critical' : 'hit'), 300);
 
       log(`${catTag} ${attacker.name} used ${move.name}! Dealt ${damage} dmg.`);
-      if (isCrit) log('⭐ Lucky hit! Extra damage!', 'effective');
-      if (effectiveness > 1) log("It's super effective!", 'effective');
-      else if (effectiveness < 1) log("It's not very effective...", 'weak');
+      if (plated) {
+        log(`⛓️ ${defender.name}'s Shackle Plate blocked the attack!`, 'effective');
+      } else if (damage === 0) {
+        log(`🛡️ ${defender.name} shrugged it off! No damage!`, 'weak');
+      } else {
+        if (isCrit) log('⭐ Lucky hit! Extra damage!', 'effective');
+        if (effectiveness > 1) log("It's super effective!", 'effective');
+        else if (effectiveness < 1) log("It's not very effective...", 'weak');
+      }
 
       if (defender.hp <= 0) {
         defender.hp = 0;
@@ -6794,6 +6965,7 @@
             if (activeCatcher === CERAFLAME_CATCHER)    emberDefeated = true;
             if (activeCatcher === PTERRENT_CATCHER)     skyeDefeated = true;
             if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
+            if (activeCatcher === TRAVELLER2_CATCHER)   traveller2Defeated = true;
             log(`You beat ${activeCatcher.name}!`, 'win');
             isCatcherBattle = false;
             activeCatcher   = null;
@@ -6837,6 +7009,7 @@
           if (activeCatcher === CERAFLAME_CATCHER)  emberDefeated = true;
           if (activeCatcher === PTERRENT_CATCHER)   skyeDefeated = true;
           if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
+          if (activeCatcher === TRAVELLER2_CATCHER)   traveller2Defeated = true;
           log(`You beat ${activeCatcher.name}!`, 'win');
           isCatcherBattle = false;
           activeCatcher   = null;
@@ -7314,7 +7487,7 @@
 
     function getFlags() {
       return { meadowMet, houseNpcMet, rouxlsDefeated, alvinDefeated, deweyDefeated, bubblesDefeated,
-               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen, travellerDefeated };
+               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen, travellerDefeated, travellerWinSeen, traveller2Defeated, travellerGone };
     }
 
     function setFlags(f) {
@@ -7325,6 +7498,9 @@
       skyeDefeated    = !!f.skyeDefeated;    skyeWinSeen    = !!f.skyeWinSeen;
       demoEndSeen     = !!f.demoEndSeen;
       travellerDefeated = !!f.travellerDefeated;
+      travellerWinSeen  = !!f.travellerWinSeen;
+      traveller2Defeated = !!f.traveller2Defeated;
+      travellerGone      = !!f.travellerGone;
       // Beaten trainers step aside, same as when you beat them
       if (deweyDefeated)   HOUSE_NPC2.tileX  += 1;
       if (bubblesDefeated) HOUSE2_NPC2.tileX += 1;
