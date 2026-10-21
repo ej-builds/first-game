@@ -897,6 +897,8 @@
       text-align: center;
     }
     #titleCard.visible { opacity: 1; }
+    /* Skipping the boot text shows the title straight away, without its fade-in */
+    #titleCard.instant, #titleCard.instant * { transition: none !important; }
 
     #titleLogo {
       display: flex; flex-direction: column; align-items: center; gap: 16px;
@@ -2717,12 +2719,13 @@
     const NPC6 = { tileX: 10, tileY: 9 }; // Alt Art artist — bottom-right corner
     const NPC7 = { tileX: 12, tileY: 4 }; // Shiny fan — right wall, beside the table
     const NPC8 = { tileX: 1,  tileY: 4 }; // Type-swap researcher — left wall, beside the table
+    const SAVE_GUIDE = { tileX: 11, tileY: 11 }; // outside, right beside where you step out of the lab
 
     const NPC_DIALOG = [
       ["Hello, catcher!",      "I'm Dr. Meadow.",      "I study wild critters."],
       ["The TALL GRASS hides", "wild critters -",       "walk in to battle!"],
       ["LAVA beats GARDEN,",   "GARDEN beats OCEAN,",   "OCEAN beats LAVA."],
-      ["BASIC moves deal",     "flat damage. No",       "type bonus applies."],
+      ["BASIC moves get no",   "type bonus... except",  "against SHADOW types!"],
       ["Win a battle and",     "you can RECRUIT them",  "to your party!"],
       ["Your party holds",     "up to 6 critters.",     "Choose wisely!"],
       ["Now, about STATS -",   "each one shapes how",   "your critter fights!"],
@@ -2802,6 +2805,15 @@
       ["A swap can turn a",     "bad matchup into a",    "great one!"],
       ["Any critter with a",    "Lava, Garden or Ocean", "type can swap!"],
       ["Scanning cards is",     "the best way to find",  "one. Good luck!"],
+    ];
+
+    const SAVE_GUIDE_DIALOG = [
+      ["Hi! New here? Let me",  "show you how to SAVE", "your adventure."],
+      ["Press B to open your",  "MENU, then pick SAVE.", ""],
+      ["The game WON'T save",   "by itself - so save",  "often!"],
+      ["You have 3 SAVE SLOTS", "to pick from on the",  "title screen."],
+      ["Closing the page with", "unsaved progress",     "loses it. Careful!"],
+      ["Your save lives on",    "THIS device only.",    "Happy catching!"],
     ];
 
     const NPC2_DIALOG = [
@@ -3382,6 +3394,53 @@
       ctx.fillStyle = '#a0d8ff';
       ctx.fillRect(cx-3, cy-8, 1, 1);
       ctx.fillRect(cx+2, cy-8, 1, 1);
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
+    function drawSaveGuide(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#2a3a5a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Teal polo shirt and arms
+      ctx.fillStyle = '#2aa0a0';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#1f8080';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Floppy disk held up in one hand
+      ctx.fillStyle = '#2a5ac0';
+      ctx.fillRect(cx+6, cy-2, 7, 7);
+      ctx.fillStyle = '#d8e0f0';
+      ctx.fillRect(cx+8, cy-2, 3, 2);
+      ctx.fillStyle = '#f4f4f4';
+      ctx.fillRect(cx+7, cy+2, 5, 3);
+
+      // Head
+      ctx.fillStyle = '#d8a878';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair and a teal cap
+      ctx.fillStyle = '#3a2418';
+      ctx.fillRect(cx-6, cy-12, 2, 4);
+      ctx.fillStyle = '#2aa0a0';
+      ctx.fillRect(cx-5, cy-16, 10, 4);
+      ctx.fillRect(cx-5, cy-13, 12, 1);
+
+      // Eyes and smile
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-9, 2, 2);
+      ctx.fillRect(cx+1, cy-9, 2, 2);
       ctx.fillStyle = '#884020';
       ctx.fillRect(cx-2, cy-5, 4, 1);
     }
@@ -4468,6 +4527,7 @@
                           : dialogType === 'labnpc6'     ? NPC6_DIALOG
                           : dialogType === 'labnpc7'     ? NPC7_DIALOG
                           : dialogType === 'labnpc8'     ? NPC8_DIALOG
+                          : dialogType === 'saveguide'   ? SAVE_GUIDE_DIALOG
                           : dialogType === 'numshelf'    ? NUM_SHELF_DIALOG
                           : dialogType === 'statusnpc'   ? STATUS_NPC_DIALOG
                           : dialogType === 'traveller'   ? TRAVELLER_DIALOG
@@ -5508,6 +5568,14 @@
           dialogType   = 'labnpc7';
           return;
         }
+        // Walking into the save guide outside the lab
+        if (currentArea === 'outdoor' && nx === SAVE_GUIDE.tileX && ny === SAVE_GUIDE.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'saveguide';
+          return;
+        }
         // Walking into the type-swap researcher triggers type-swap dialog (indoors only)
         if (currentArea === 'indoor' && nx === NPC8.tileX && ny === NPC8.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
@@ -5742,6 +5810,9 @@
         ctx.textAlign = 'left';
       }
 
+      // Save guide just outside the lab
+      drawSaveGuide(ctx, SAVE_GUIDE.tileX * TILE_SIZE - camX, SAVE_GUIDE.tileY * TILE_SIZE - camY);
+
       // Traveller at the far right end of the road
       if (!travellerGone) drawTraveller(ctx, TRAVELLER.tileX * TILE_SIZE - camX, TRAVELLER.tileY * TILE_SIZE - camY);
 
@@ -5771,7 +5842,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : dialogType === 'traveller' ? TRAVELLER_DIALOG : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG : dialogType === 'traveller2' ? TRAVELLER2_DIALOG : dialogType === 'traveller2win' ? TRAVELLER2_WIN_DIALOG : dialogType === 'travellergone' ? TRAVELLER_GONE_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'saveguide' ? SAVE_GUIDE_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : dialogType === 'traveller' ? TRAVELLER_DIALOG : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG : dialogType === 'traveller2' ? TRAVELLER2_DIALOG : dialogType === 'traveller2win' ? TRAVELLER2_WIN_DIALOG : dialogType === 'travellergone' ? TRAVELLER_GONE_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -5832,13 +5903,14 @@
       // Draw type-swap researcher
       drawNPC8(ctx, INDOOR_OFFSET_X + NPC8.tileX * TILE_SIZE, INDOOR_OFFSET_Y + NPC8.tileY * TILE_SIZE);
 
+
       // Draw player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, INDOOR_OFFSET_X + player.pixelX, INDOOR_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'saveguide' ? SAVE_GUIDE_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -6176,14 +6248,18 @@
     requestAnimationFrame(worldLoop);
 
     // ── Mobile D-pad & A button ────────────────────────────────
+    // The on-screen D-pad acts exactly like the arrow keys: it walks the player, and when a menu or
+    // choice box is open it moves the highlight instead (the keyboard handler decides which).
     function bindDpadBtn(id, arrowKey) {
       const el = document.getElementById(id);
-      el.addEventListener('touchstart', e => { e.preventDefault(); keys[arrowKey] = true;  }, { passive: false });
-      el.addEventListener('touchend',   e => { e.preventDefault(); keys[arrowKey] = false; }, { passive: false });
-      el.addEventListener('touchcancel',() => { keys[arrowKey] = false; });
-      el.addEventListener('mousedown',  () => { keys[arrowKey] = true;  });
-      el.addEventListener('mouseup',    () => { keys[arrowKey] = false; });
-      el.addEventListener('mouseleave', () => { keys[arrowKey] = false; });
+      const press   = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: arrowKey }));
+      const release = () => { keys[arrowKey] = false; window.dispatchEvent(new KeyboardEvent('keyup', { key: arrowKey })); };
+      el.addEventListener('touchstart', e => { e.preventDefault(); press();   }, { passive: false });
+      el.addEventListener('touchend',   e => { e.preventDefault(); release(); }, { passive: false });
+      el.addEventListener('touchcancel',release);
+      el.addEventListener('mousedown',  press);
+      el.addEventListener('mouseup',    release);
+      el.addEventListener('mouseleave', release);
     }
 
     bindDpadBtn('btn-up',    'ArrowUp');
@@ -6359,13 +6435,13 @@
         name: 'Grumblaze',
         type: 'lava',
         img: 'grumblaze.png',
-        maxHp: 100,
-        atk: 15, dfc: 7, mag: 9, mdf: 6, spd: 8, lck: 5,
+        maxHp: 110,
+        atk: 15, dfc: 9, mag: 9, mdf: 8, spd: 8, lck: 5,
         moves: [
           { name: 'Ember Claw',    type: 'lava',  cat: 'physical', power: 15 },
           { name: 'Gut Blast',     type: 'lava',  cat: 'magic',    power: 12 },
           { name: 'Sluggish Aura', type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
-          { name: 'Dead Weight',   type: 'basic', cat: 'physical', power:  9 },
+          { name: 'Dead Weight',   type: 'basic', cat: 'physical', power: 11, drenchedBonus: true }, // double power vs a Drenched foe
         ]
       },
     ];
@@ -6562,55 +6638,24 @@
       }
     };
 
+    // Trainers use the exact same critter as the wild one (a fresh copy, so battles can't change the original)
+    function wildCritter(name) {
+      return JSON.parse(JSON.stringify(wildCreatures.find(c => c.name === name)));
+    }
+
     const ALVIN_CATCHER = {
       name: 'Alvin',
-      critter: {
-        name: 'Treer',
-        type: 'garden',
-        img: 'treer.png',
-        maxHp: 100,
-        atk: 8, dfc: 10, mag: 14, mdf: 11, spd: 12, lck: 9,
-        moves: [
-          { name: 'Antler Slam',  type: 'garden', cat: 'physical', power: 14 },
-          { name: 'Leaf Cascade', type: 'garden', cat: 'magic',    power: 13 },
-          { name: 'Petal Dance',  type: 'garden', cat: 'status',   effect: { stat: 'spd', target: 'self', amount: 3 } },
-          { name: 'Hoof Strike',  type: 'basic', cat: 'physical', power:  8 },
-        ]
-      }
+      critter: wildCritter('Treer'),
     };
 
     const DEWEY_CATCHER = {
       name: 'Dewey',
-      critter: {
-        name: 'Sharqua',
-        type: 'ocean',
-        img: 'sharqua.png',
-        maxHp: 100,
-        atk: 14, dfc: 11, mag: 6, mdf: 7, spd: 7, lck: 5,
-        moves: [
-          { name: 'Splash Strike', type: 'ocean', cat: 'physical', power: 14 },
-          { name: 'Whirlpool',     type: 'ocean', cat: 'magic',    power: 12 },
-          { name: 'Smokescreen',   type: 'basic', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
-          { name: 'Slam',          type: 'basic', cat: 'physical', power:  8 },
-        ]
-      }
+      critter: wildCritter('Sharqua'),
     };
 
     const BUBBLES_CATCHER = {
       name: 'Bubbles',
-      critter: {
-        name: 'Grumblaze',
-        type: 'lava',
-        img: 'grumblaze.png',
-        maxHp: 100,
-        atk: 15, dfc: 7, mag: 9, mdf: 6, spd: 8, lck: 5,
-        moves: [
-          { name: 'Ember Claw',    type: 'lava',  cat: 'physical', power: 15 },
-          { name: 'Gut Blast',     type: 'lava',  cat: 'magic',    power: 12 },
-          { name: 'Sluggish Aura', type: 'basic', cat: 'status',   effect: { type: 'apply_status', status: 'drenched', target: 'opponent' } },
-          { name: 'Dead Weight',   type: 'basic', cat: 'physical', power:  9 },
-        ]
-      }
+      critter: wildCritter('Grumblaze'),
     };
 
     // ── Boss Critters (triplets) ──────────────────────────────────────────────
@@ -6847,7 +6892,7 @@
         const btn = document.createElement('button');
         const catLabel = move.cat === 'magic' ? 'MAGIC' : move.cat === 'status' ? 'STATUS' : 'PHYS';
         const fxDesc   = move.cat !== 'status'
-          ? (move.hits ? `PWR ${move.power} × ${move.hits[0]}-${move.hits[1]}` : `PWR ${move.power}`)
+          ? (move.hits ? `PWR ${move.power} × ${move.hits[0]}-${move.hits[1]}` : `PWR ${move.power}${move.drenchedBonus ? ' · ×2 vs 💧' : ''}`)
           : move.effect.type === 'apply_all_status' ? 'Foe: ALL STATUS'
           : move.effect.type === 'lower_all_stats'  ? `Foe: ALL STATS ${move.effect.amount}`
           : move.effect.type === 'apply_status'
@@ -6879,7 +6924,7 @@
         const btn = document.createElement('button');
         const catLabel = move.cat === 'magic' ? 'MAGIC' : move.cat === 'status' ? 'STATUS' : 'PHYS';
         const fxDesc   = move.cat !== 'status'
-          ? (move.hits ? `PWR ${move.power} × ${move.hits[0]}-${move.hits[1]}` : `PWR ${move.power}`)
+          ? (move.hits ? `PWR ${move.power} × ${move.hits[0]}-${move.hits[1]}` : `PWR ${move.power}${move.drenchedBonus ? ' · ×2 vs 💧' : ''}`)
           : move.effect.type === 'apply_all_status' ? 'Foe: ALL STATUS'
           : move.effect.type === 'lower_all_stats'  ? `Foe: ALL STATS ${move.effect.amount}`
           : move.effect.type === 'apply_status'
@@ -7054,17 +7099,20 @@
 
       let damage, effectiveness;
       const isMagic = move.cat === 'magic';
+      // Dead Weight: double power against a Drenched foe
+      const heavy = move.drenchedBonus && defender.statusEffects?.drenched;
+      const power = heavy ? move.power * 2 : move.power;
 
       if (isMagic) {
         // Magic — uses MAG stat, type effectiveness applies, MDF reduces (DFC ignored)
-        damage        = Math.round((attacker.mag + move.power) / 2);
+        damage        = Math.round((attacker.mag + power) / 2);
         effectiveness = typeEff(move.type, defender);
         damage        = Math.round(damage * effectiveness);
         // MDF reduction: same formula as DFC — 30/(30+mdf)
         damage        = reduceByDefence(damage, defender.mdf);
       } else {
         // Physical (including basic) — uses ATK stat, DFC reduces damage
-        damage        = Math.round((attacker.atk + move.power) / 2);
+        damage        = Math.round((attacker.atk + power) / 2);
         effectiveness = typeEff(move.type, defender);
         damage        = Math.round(damage * effectiveness);
         // DFC reduction: 30/(30+dfc) → ~19% at dfc 7, ~26% at dfc 13
@@ -7102,6 +7150,7 @@
       } else if (damage === 0) {
         log(`🛡️ ${defender.name} shrugged it off! No damage!`, 'weak');
       } else {
+        if (heavy) log(`💧 ${defender.name} is Drenched! ${move.name} hit extra hard!`, 'effective');
         if (isCrit) log('⭐ Lucky hit! Extra damage!', 'effective');
         if (effectiveness > 1) log("It's super effective!", 'effective');
         else if (effectiveness < 1) log("It's not very effective...", 'weak');
@@ -8368,6 +8417,11 @@
       const bootDiv  = document.getElementById('bootText');
       const titleCard = document.getElementById('titleCard');
       const pressKey  = document.getElementById('pressKey');
+      // Phones get tap wording; keyboards keep the key hints
+      const isTouch   = (window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
+      const HINT_MAIN = isTouch ? 'Tap a slot to choose' : '↑↓ choose · Enter select';
+      const HINT_BACK = isTouch ? 'Tap an option · ← Back to return' : '↑↓ choose · Enter select · Esc back';
+      pressKey.textContent = isTouch ? '— Tap to start —' : '— Press any key to start —';
 
       const bootLines = [
         'CARD CATCHERS SYSTEM v1.0',
@@ -8426,7 +8480,7 @@
           return data
             ? [`Slot ${n}`, slotSummary(data), () => showSlotChoices(n, data)]
             : [`Slot ${n}`, scannedStarter ? `Empty · start with ${scannedStarter}` : 'Empty · new game', () => startNewGame(n)];
-        }), '↑↓ choose · Enter select');
+        }), HINT_MAIN);
       }
 
       function showSlotChoices(n, data) {
@@ -8435,14 +8489,14 @@
           ['▶ Continue', slotSummary(data), () => continueGame(n, data)],
           [`✦ ${newLabel}`, 'Erases this slot', () => confirmErase(n, newLabel)],
           ['← Back', '', showSlots],
-        ], '↑↓ choose · Enter select · Esc back');
+        ], HINT_BACK);
       }
 
       function confirmErase(n, newLabel) {
         showView(`Erase Slot ${n} and start over?<br>This can't be undone.`, [
           ['← No, go back', '', () => showSlotChoices(n, readSlot(n))],
           [`🗑 Yes, erase it`, newLabel, () => { deleteSlot(n); startNewGame(n); }, true],
-        ], '↑↓ choose · Enter select · Esc back');
+        ], HINT_BACK);
       }
 
       function begin(isNew) {
@@ -8495,7 +8549,7 @@
 
       function onTitleKey(e) {
         if (scanPopup) { e.stopPropagation(); e.preventDefault(); closeScanPopup(); return; }
-        if (!ready) return;
+        if (!ready) { if (booting) { e.stopPropagation(); skipBoot(); } return; }
         // The title screen owns the keyboard: stop keys reaching the game underneath
         e.stopPropagation();
         if (picker.style.display === 'none') { showSlots(); return; }
@@ -8513,33 +8567,47 @@
         }
       }
 
+      // Any key or tap during the boot text jumps straight to the title
+      let booting = false;
+      const bootTimers = [];
+      function skipBoot() {
+        bootTimers.forEach(clearTimeout);
+        booting = false;
+        bootDiv.style.display = 'none';
+        titleCard.classList.add('instant', 'visible');
+        pressKey.classList.add('visible');
+        ready = true;
+      }
+
       function runBoot() {
+      booting = true;
       // Phase 1: type out each boot line with a delay
       let delay = 300;
       bootLines.forEach((text, i) => {
-        setTimeout(() => {
+        bootTimers.push(setTimeout(() => {
           const line = document.createElement('div');
           line.className = 'boot-line';
           line.innerHTML = text;
           line.style.animationDelay = '0s';
           bootDiv.appendChild(line);
-        }, delay);
+        }, delay));
         delay += i === 0 ? 500 : 220;
       });
 
       // Phase 2: fade out boot text, reveal title card
-      setTimeout(() => {
+      bootTimers.push(setTimeout(() => {
         bootDiv.style.opacity = '0';
-        setTimeout(() => {
+        bootTimers.push(setTimeout(() => {
           bootDiv.style.display = 'none';
           titleCard.classList.add('visible');
           // Phase 3: start flashing prompt after title finishes animating in
-          setTimeout(() => {
+          bootTimers.push(setTimeout(() => {
             pressKey.classList.add('visible');
             ready = true;
-          }, 1200);
-        }, 650);
-      }, delay + 600);
+            booting = false;
+          }, 1200));
+        }, 650));
+      }, delay + 600));
       }
 
       if (scannedStarter) showScanPopup(); else runBoot();
@@ -8548,6 +8616,7 @@
       document.addEventListener('keydown', onTitleKey, true);
       screen.addEventListener('click', () => {
         if (scanPopup) { closeScanPopup(); return; }
+        if (!ready && booting) { skipBoot(); return; }
         if (ready && picker.style.display === 'none') showSlots();
       });
     })();
