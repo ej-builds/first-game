@@ -3015,6 +3015,8 @@
       ["Shiny, Shadow and",    "other rare forms",     "each count as a kind."],
       ["The rest wait by the", "gate. Ask me and I'll", "fetch them for you."],
       ["Gear can't come out",  "here. It goes back",   "into your bag."],
+      ["Resting out here",     "heals them fully,",    "even fainted ones!"],
+      ["Too many critters?",   "You can release them", "back into the wild."],
       ["You can also leave",   "team critters here.",  "Just talk to me!"],
     ];
     const MEADOW_YARD_AGAIN_DIALOG = [
@@ -4869,7 +4871,7 @@
 
     function healAllCreatures() {
       SFX.play('heal');
-      // Nurse Nina and losing a battle both come here: the only ways status conditions are cured
+      // Nurse Nina and losing a battle both come here (resting in the Lab Backyard also cures, see settleInYard)
       const cure = c => { c.statusEffects = {}; clearBattleChanges(c); };
       // Heal active creature
       if (persistentPlayer) {
@@ -5070,22 +5072,31 @@
       return yardImages[c.img];
     }
 
-    // Gear stays with the team: anything held goes back in the bag
+    // Getting a critter ready to live in the yard. Gear stays with the team: anything held goes back
+    // in the bag. Resting in the garden fully heals it, like Nurse Nina: HP (fainted ones too) and
+    // status conditions.
+    function settleInYard(c) {
+      c.gear = null;
+      c.statusEffects = {};
+      clearBattleChanges(c);
+      c.hp = c.maxHp;
+    }
+
     function sendToYard(c) {
-      if (c.gear) { c.gear = null; clearBattleChanges(c); }
+      settleInYard(c);
       backyard.push(c);
     }
 
-    // Dr. Meadow's menu: leave a team member in the yard (plus any critters with no spot left on the grass)
+    // Dr. Meadow's menu: leave a team member in the yard, or see to the critters waiting by the gate
     function openYard() {
-      yardMode = 'meadow'; yardIndex = 0; yardNote = '';
+      yardMode = 'meadow'; yardKind = null; yardIndex = 0; yardNote = '';
       renderYardMenu();
       document.getElementById('yardOverlay').style.display = 'flex';
     }
 
     // Walking up to one of the critters on the grass
     function openYardCritter(i) {
-      yardMode = 'critter'; yardPick = i; yardIndex = 0; yardNote = '';
+      yardMode = 'critter'; yardPick = i; yardKind = null; yardIndex = 0; yardNote = '';
       renderYardMenu();
       document.getElementById('yardOverlay').style.display = 'flex';
     }
@@ -5095,18 +5106,55 @@
     }
 
     function yardBack() {
-      if (yardMode === 'swap') { yardMode = 'critter'; yardIndex = 0; renderYardMenu(); return; }
+      if (yardMode === 'swap') { yardMode = yardKind ? 'gate' : 'critter'; yardIndex = 0; renderYardMenu(); return; }
+      if (yardMode === 'gate') { yardMode = 'meadow'; yardKind = null; yardIndex = 0; renderYardMenu(); return; }
       closeYard();
     }
 
-    function yardRow(c, tag) {
+    function yardRow(c, tag, count = 1) {
       const hp = Math.max(0, c.hp ?? c.maxHp);
       return `<img src="${c.img}"${imgAttrs(c)} alt="">
         <div class="party-info">
-          <div class="party-name">${c.name}</div>
+          <div class="party-name">${c.name}${count > 1 ? ` ×${count}` : ''}</div>
           <div class="party-type">${c.type} · HP ${hp}/${c.maxHp}${hp <= 0 ? ' · fainted' : ''} ${statusIcons(c)}${tag ? ' · ' + tag : ''}</div>
         </div>`;
     }
+
+    // Critters not out on the grass (extras of a kind already out there), grouped by kind: name → backyard indexes
+    function yardGate() {
+      const shown = new Set(yardShown().map(s => s.b));
+      const groups = new Map();
+      backyard.forEach((c, b) => {
+        if (shown.has(b)) return;
+        if (!groups.has(c.name)) groups.set(c.name, []);
+        groups.get(c.name).push(b);
+      });
+      return groups;
+    }
+
+    // Of several of the same kind, the healthiest comes back to the team first and the weakest is released first
+    const hpShare = b => Math.max(0, backyard[b].hp ?? backyard[b].maxHp) / backyard[b].maxHp;
+    const healthiest = list => list.reduce((a, b) => hpShare(b) > hpShare(a) ? b : a);
+    const weakest    = list => list.reduce((a, b) => hpShare(b) < hpShare(a) ? b : a);
+
+    function releaseFromYard(indexes) {
+      const names = indexes.map(b => backyard[b].name);
+      [...indexes].sort((a, b) => b - a).forEach(b => backyard.splice(b, 1));
+      return names;
+    }
+
+    function confirmRelease(indexes, then) {
+      const name  = backyard[indexes[0]].name;
+      const count = indexes.length;
+      showConfirm(count > 1 ? `Release all ${count} ${name}? They won't come back.` : `Release ${name}? It won't come back.`,
+        count > 1 ? `Release all ${count}` : 'Release', () => {
+          releaseFromYard(indexes);
+          showItemNotification(`👋 ${count > 1 ? `${count} ${name}` : name} ${count > 1 ? 'were' : 'was'} released.`, true);
+          then();
+        });
+    }
+
+    let yardKind = null; // the kind picked from the gate list in Dr. Meadow's menu
 
     function renderYardMenu() {
       const teamSize = 1 + roster.length;
@@ -5117,7 +5165,8 @@
         const c = backyard[yardPick];
         head = yardRow(c);
         msg = `${c.name} is relaxing in the yard. (Team ${teamSize}/${MAX_PARTY})`;
-        yardOpts.push({ label: full ? 'Swap onto your team' : 'Bring back to your team', act: () => takeFromYard(yardPick) });
+        yardOpts.push({ label: full ? 'Swap onto your team' : 'Bring back to your team', act: () => { yardKind = null; takeFromYard(yardPick); } });
+        yardOpts.push({ label: 'Release', act: () => confirmRelease([yardPick], closeYard) });
         yardOpts.push({ label: 'Leave it be', act: closeYard });
       } else if (yardMode === 'swap') {
         msg = `Your team is full! Who stays in the yard so ${backyard[yardPick].name} can join?`;
@@ -5126,7 +5175,20 @@
           act: () => swapWithYard(yardPick, i),
         }));
         yardOpts.push({ label: 'Back', act: yardBack });
+      } else if (yardMode === 'gate') {
+        const list = yardGate().get(yardKind);
+        if (!list) { yardMode = 'meadow'; yardKind = null; yardIndex = 0; renderYardMenu(); return; }
+        const best = healthiest(list);
+        head = yardRow(backyard[best], 'by the gate', list.length);
+        msg = list.length > 1
+          ? `${list.length} ${yardKind} are waiting by the gate. (Team ${teamSize}/${MAX_PARTY})`
+          : `${yardKind} is waiting by the gate. (Team ${teamSize}/${MAX_PARTY})`;
+        yardOpts.push({ label: full ? 'Swap one onto your team' : 'Take one back', act: () => takeFromYard(best) });
+        yardOpts.push({ label: 'Release one', act: () => confirmRelease([weakest(list)], renderYardMenu) });
+        if (list.length > 1) yardOpts.push({ label: `Release all ${list.length}`, act: () => confirmRelease(list, renderYardMenu) });
+        yardOpts.push({ label: 'Back', act: yardBack });
       } else {
+        const gate = yardGate();
         msg = yardNote || (roster.length
           ? 'Who should stay in the yard? (Your lead critter stays with you.)'
           : 'Your lead critter has to stay with you!');
@@ -5134,12 +5196,10 @@
           html: yardRow(c, c.gear && GEAR[c.gear] ? `${GEAR[c.gear].icon} gear to bag` : ''),
           act: () => leaveInYard(i),
         }));
-        // Critters not out on the grass (a second of the same kind) wait by the gate
-        const shown = yardShown().map(s => s.b);
-        backyard.forEach((c, b) => {
-          if (shown.includes(b)) return;
-          yardOpts.push({ html: yardRow(c, 'by the gate · take back'), act: () => { yardMode = 'critter'; yardPick = b; takeFromYard(b); } });
-        });
+        gate.forEach((list, name) => yardOpts.push({
+          html: yardRow(backyard[healthiest(list)], 'by the gate', list.length),
+          act: () => { yardMode = 'gate'; yardKind = name; yardIndex = 0; renderYardMenu(); },
+        }));
         yardOpts.push({ label: 'Done', act: closeYard });
       }
       document.getElementById('yardHead').innerHTML = head;
@@ -5176,7 +5236,7 @@
     function swapWithYard(yardI, rosterI) {
       const incoming = backyard[yardI];
       const out = roster.splice(rosterI, 1, incoming)[0];
-      if (out.gear) { out.gear = null; clearBattleChanges(out); }
+      settleInYard(out);
       backyard[yardI] = out; // heads to its own kind's spot (or the gate if one is already out)
       SFX.play('recruit');
       closeYard();
@@ -8282,6 +8342,7 @@
       persistentPlayer = data.lead;
       roster = data.roster || [];
       backyard = Array.isArray(data.backyard) ? data.backyard : [];
+      backyard.forEach(settleInYard); // saves from before the garden healed
       // Saves from before the starter was recorded: if you own no Scorchspine, treat it as a different start
       starterSpecies = data.starter ||
         ([data.lead, ...roster, ...backyard].some(c => c && /Scorchspine$/.test(c.name)) ? 'Scorchspine' : 'unknown');
