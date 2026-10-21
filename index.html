@@ -1205,9 +1205,7 @@
           <button class="bag-use-btn" id="bagUseRevive" onclick="useBagItem('revive')">Use</button>
         </div>
       </div>
-      <div class="bag-items" id="bagGearPage" style="display:none;">
-        <div class="items-empty">No gear yet.<br>Gear you find will show up here.</div>
-      </div>
+      <div class="bag-items" id="bagGearPage" style="display:none;"></div>
       <div class="bag-items" id="bagKeyPage" style="display:none;">
         <div class="items-empty" id="bagKeyEmpty">No key items yet.<br>Special items you earn will show up here.</div>
         <div class="bag-item" id="bagTrioMedalEntry" style="display:none;">
@@ -1301,7 +1299,7 @@
   ============================================================ -->
   <div id="rouxlsChoice" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.72); z-index:999; align-items:center; justify-content:center; flex-direction:column; gap:18px;">
     <div style="background:#1a1a2e; border:2px solid #ffcb05; border-radius:16px; padding:28px 36px; text-align:center; max-width:340px; color:#fff; font-family:'Press Start 2P',monospace; font-size:11px; line-height:1.8;">
-      <div style="font-size:13px; margin-bottom:18px;">⚔️ <strong style="color:#ffcb05;">Rouxls Kaard</strong> awaits...<br><br>What will you do?</div>
+      <div style="font-size:13px; margin-bottom:18px;">⚔️ <strong id="challengeName" style="color:#ffcb05;">Rouxls Kaard</strong> awaits...<br><br>What will you do?</div>
       <div style="display:flex; gap:14px; justify-content:center;">
         <button class="btn-recruit" id="rouxlsYes" onclick="rouxlsChallenge()">Challenge him!</button>
         <button class="btn-leave"   id="rouxlsNo"  onclick="rouxlsLeave()">Leave him be</button>
@@ -1540,6 +1538,7 @@
       if (state) {
         clearBattleChanges(state.player);
         roster.forEach(clearBattleChanges);
+        [state.player, ...roster].forEach(c => { delete c.numNumsUsed; });
         persistentPlayer = { ...state.player };
       }
 
@@ -2705,6 +2704,10 @@
     const NPC2 = { tileX: 10, tileY: 2 }; // Dr. Fern   — right side of bookshelves
     const NPC3 = { tileX: 3,  tileY: 6 }; // Student researcher — open floor area
     const NPC4 = { tileX: 10, tileY: 6 }; // Second student — right side of open floor
+    const NPC5 = { tileX: 3,  tileY: 9 }; // Shadow researcher — bottom-left corner
+    const NPC6 = { tileX: 10, tileY: 9 }; // Alt Art artist — bottom-right corner
+    const NPC7 = { tileX: 12, tileY: 4 }; // Shiny fan — right wall, beside the table
+    const NPC8 = { tileX: 1,  tileY: 4 }; // Type-swap researcher — left wall, beside the table
 
     const NPC_DIALOG = [
       ["Hello, catcher!",      "I'm Dr. Meadow.",      "I study wild critters."],
@@ -2750,6 +2753,52 @@
       ["Look for moves that",  "say HITS 2-4 or",       "HITS 2-5 on the card."],
       ["Seed Spit, Bubble",    "Barrage, Ember Flurry", "- all multi-hit!"],
       ["Alright, back to",     "my research. Good luck!",""],
+    ];
+
+    const NPC5_DIALOG = [
+      ["Shh... I'm studying",  "SHADOW forms. Very",    "rare critters!"],
+      ["Once in a long while", "a critter appears",     "cloaked in darkness."],
+      ["Its body turns dark",  "and its eyes GLOW",     "a ghostly purple."],
+      ["A Shadow critter",     "becomes SHADOW type -", "its typed moves too!"],
+      ["Shadow moves deal",    "DOUBLE damage to",      "every other type!"],
+      ["But it cuts both",     "ways - every type",     "hits SHADOW for x2."],
+      ["Hit hard, but guard",  "it carefully. One",     "wrong move and..."],
+      ["They're SO rare in",   "the wild. Scanning a",  "card is your best bet!"],
+      ["If you ever catch",    "one... show me, ok?",   ""],
+    ];
+
+    const NPC6_DIALOG = [
+      ["Oh! A fellow art fan?", "I'm researching ALT",    "ART forms!"],
+      ["Some critters show up", "in a whole new scene -", "a one-of-a-kind look!"],
+      ["It's the same picture", "printed on its card,",   "beach, lava and all."],
+      ["Alt Art critters are",  "a little tougher too:",  "+5 max HP!"],
+      ["Every critter has an",  "Alt Art. Even the",      "rarest ones..."],
+      ["Spotting one in the",   "wild takes real luck.",  "Like 1 in 5,000!"],
+      ["Scanning a card gives", "you a much better",      "shot. Keep scanning!"],
+      ["If you find one, let",  "me sketch it, ok?",      ""],
+    ];
+
+    const NPC7_DIALOG = [
+      ["Ooh, sparkly! I study", "SHINY forms. They're",  "my favourite!"],
+      ["A Shiny critter shows", "up in brand-new",       "colours. So pretty!"],
+      ["Every critter has its", "own shiny colours -",   "no two are alike."],
+      ["Shinies are lucky too:","+2 LCK! That means",    "more dodges..."],
+      ["...and more LUCKY",     "HITS for extra",        "damage. Nice, right?"],
+      ["They're super rare in", "the wild - about",      "1 in 5,000!"],
+      ["Scan a card and your",  "odds get way better.",  "Keep trying!"],
+      ["Find one? Come show",   "me those colours!",     ""],
+    ];
+
+    const NPC8_DIALOG = [
+      ["Hey! I study critters", "that switch TYPES.",    "Wild, right?"],
+      ["Rarely, a critter is",  "born a different",      "element entirely!"],
+      ["BLAZING means LAVA,",   "VERDANT means GARDEN,", "TIDAL means OCEAN."],
+      ["Its colours change to", "match - and so do",     "its typed moves!"],
+      ["Lava beats Garden,",    "Garden beats Ocean,",   "Ocean beats Lava!"],
+      ["So a Tidal Embrawl",    "hits Lava critters",    "super effectively!"],
+      ["A swap can turn a",     "bad matchup into a",    "great one!"],
+      ["Any critter with a",    "Lava, Garden or Ocean", "type can swap!"],
+      ["Scanning cards is",     "the best way to find",  "one. Good luck!"],
     ];
 
     const NPC2_DIALOG = [
@@ -2874,6 +2923,36 @@
       ["Son this is",         "a fridge",             "Press A to close."],
     ];
 
+    const TRAVELLER = { tileX: 28, tileY: 10 }; // far right end of the road past the lab and clinic
+    // Secret boss at the end of the road
+    const TRAVELLER_DIALOG = [
+      ["Oh, so you're",         "approaching ME!",       ""],
+      ["Be warned, chump...",   "I've never lost",       "before."],
+    ];
+    const TRAVELLER_WIN_DIALOG = [
+      ["...I LOST?!",           "That's never happened", "before..."],
+      ["You're no chump.",      "You're the real deal.", ""],
+      ["Next time we meet,",    "I'll be ready. Watch",  "your back, champ!"],
+    ];
+
+    const NUM_SHELF = { tileX: 2, tileY: 5 }; // shelf right next to the kid
+    const NUM_KID   = { tileX: 3, tileY: 6 }; // boy one tile south-east of the Num-Nums shelf
+    const NUM_KID_DIALOG = [
+      ["Those are NUM-NUMS!",  "I've wanted them for", "SO long..."],
+      ["If a critter holding", "them drops to 30% HP,", "it munches them!"],
+      ["That heals 25% of",    "its max HP. But only", "once a battle."],
+      ["Mum says they're for", "critters, not me.",    "Not fair!"],
+    ];
+    const NUM_KID_AFTER_DIALOG = [
+      ["Hey! You got the",     "NUM-NUMS! I wanted",   "those..."],
+      ["Give them to a",       "critter in your",      "Bag's GEAR tab."],
+      ["When it drops to 30%", "HP it eats them and",  "heals 25%. Lucky!"],
+      ["...Can I have one?",   "No? Okay...",          ""],
+    ];
+    const NUM_SHELF_DIALOG = [
+      ["Just crumbs left...",  "",                     ""],
+    ];
+
     const SHOP_CHILD_DIALOG = [
       ["Mum why is it",       "called Oven when",     "you of in the"],
       ["cold food of out",    "hot eat the food",     "Press A to close."],
@@ -2918,6 +2997,7 @@
     let emberDefeated   = false;
     let skyeDefeated    = false;
     let skyeWinSeen     = false;  // clears Skye's post-defeat "!" once player talks to her
+    let travellerDefeated = false; // secret boss at the end of the road
     let demoEndSeen     = false;  // end-of-demo message shown once after leaving with Trio Medal
 
     function drawNPC(ctx, sx, sy, playerAdjacent) {
@@ -3078,6 +3158,199 @@
       ctx.fillStyle = '#1a1a1a';
       ctx.fillRect(cx-3, cy-8, 2, 2);
       ctx.fillRect(cx+1, cy-8, 2, 2);
+    }
+
+    function drawNPC5(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (black)
+      ctx.fillStyle = '#1a1626';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (dark purple lab coat over a black top)
+      ctx.fillStyle = '#3b2a63';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#1a1626';
+      ctx.fillRect(cx-2, cy-4, 4, 10);
+      ctx.fillStyle = '#2c1f4d';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#e8c49a';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (silver-white, swept)
+      ctx.fillStyle = '#d8d4e8';
+      ctx.fillRect(cx-5, cy-16, 10, 4);
+      ctx.fillRect(cx-6, cy-14, 2, 5);
+      ctx.fillRect(cx+3, cy-17, 3, 3);
+
+      // Goggles with a faint purple glow
+      ctx.fillStyle = '#1a1626';
+      ctx.fillRect(cx-5, cy-9, 10, 3);
+      const glow = Math.floor(Date.now() / 600) % 2 === 0;
+      ctx.fillStyle = glow ? '#c084fc' : '#8b5cf6';
+      ctx.fillRect(cx-4, cy-9, 3, 2);
+      ctx.fillRect(cx+1, cy-9, 3, 2);
+    }
+
+    function drawNPC6(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (paint-splattered jeans)
+      ctx.fillStyle = '#3a5a9a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+      ctx.fillStyle = '#ffcb05';
+      ctx.fillRect(cx-4, cy+7, 1, 1);
+      ctx.fillStyle = '#e05050';
+      ctx.fillRect(cx+3, cy+9, 1, 1);
+
+      // Body (striped artist's top)
+      ctx.fillStyle = '#f4f0e8';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#2a3a6a';
+      ctx.fillRect(cx-6, cy-2, 12, 2);
+      ctx.fillRect(cx-6, cy+2, 12, 2);
+      ctx.fillStyle = '#f4f0e8';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Paint palette in one hand
+      ctx.fillStyle = '#c8924a';
+      ctx.fillRect(cx+6, cy+1, 6, 4);
+      ctx.fillStyle = '#e05050'; ctx.fillRect(cx+7,  cy+2, 1, 1);
+      ctx.fillStyle = '#5bc8f5'; ctx.fillRect(cx+9,  cy+2, 1, 1);
+      ctx.fillStyle = '#5ec45e'; ctx.fillRect(cx+10, cy+3, 1, 1);
+
+      // Head
+      ctx.fillStyle = '#c99a6a';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (dark, peeking out)
+      ctx.fillStyle = '#2a1a10';
+      ctx.fillRect(cx-6, cy-13, 2, 5);
+      ctx.fillRect(cx+4, cy-13, 2, 5);
+
+      // Red beret
+      ctx.fillStyle = '#c02a3a';
+      ctx.fillRect(cx-6, cy-17, 12, 4);
+      ctx.fillRect(cx-4, cy-18, 6, 2);
+      ctx.fillRect(cx+1, cy-19, 2, 2);
+
+      // Eyes and smile
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
+    function drawNPC7(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs (white)
+      ctx.fillStyle = '#eeeaf4';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body (bright pink jacket)
+      ctx.fillStyle = '#ff6fae';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#e04a90';
+      ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillRect(cx+5, cy-3, 3, 7);
+      ctx.fillStyle = '#ffe066'; // star badge
+      ctx.fillRect(cx-1, cy-1, 2, 2);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (golden pigtails)
+      ctx.fillStyle = '#f0c030';
+      ctx.fillRect(cx-5, cy-15, 10, 4);
+      ctx.fillRect(cx-8, cy-12, 3, 5);
+      ctx.fillRect(cx+5, cy-12, 3, 5);
+
+      // Eyes and smile
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-8, 2, 2);
+      ctx.fillRect(cx+1, cy-8, 2, 2);
+      ctx.fillStyle = '#c04060';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+
+      // Twinkling sparkle above their head
+      if (Math.floor(Date.now() / 400) % 2 === 0) {
+        ctx.fillStyle = '#ffe066';
+        ctx.fillRect(cx+6, cy-21, 1, 5);
+        ctx.fillRect(cx+4, cy-19, 5, 1);
+      }
+    }
+
+    function drawNPC8(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-6, cy+8, 12, 4);
+
+      // Legs
+      ctx.fillStyle = '#2a2a3a';
+      ctx.fillRect(cx-5, cy+4, 4, 8);
+      ctx.fillRect(cx+1, cy+4, 4, 8);
+
+      // Body: a hoodie in the three element colours (lava, garden, ocean)
+      ctx.fillStyle = '#e05a3a'; ctx.fillRect(cx-6, cy-4, 4, 10);
+      ctx.fillStyle = '#4caf50'; ctx.fillRect(cx-2, cy-4, 4, 10);
+      ctx.fillStyle = '#3a8ae0'; ctx.fillRect(cx+2, cy-4, 4, 10);
+      ctx.fillStyle = '#b8442a'; ctx.fillRect(cx-8, cy-3, 3, 7);
+      ctx.fillStyle = '#2a6abf'; ctx.fillRect(cx+5, cy-3, 3, 7);
+
+      // Head
+      ctx.fillStyle = '#d8a878';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Hair (short, dark) with a colour-shifting streak
+      ctx.fillStyle = '#2a2018';
+      ctx.fillRect(cx-5, cy-16, 10, 4);
+      ctx.fillRect(cx-6, cy-14, 2, 4);
+      const streak = ['#e05a3a', '#4caf50', '#3a8ae0'][Math.floor(Date.now() / 700) % 3];
+      ctx.fillStyle = streak;
+      ctx.fillRect(cx+1, cy-16, 3, 2);
+
+      // Glasses, eyes and grin
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-4, cy-9, 3, 3);
+      ctx.fillRect(cx+1, cy-9, 3, 3);
+      ctx.fillRect(cx-1, cy-8, 2, 1);
+      ctx.fillStyle = '#a0d8ff';
+      ctx.fillRect(cx-3, cy-8, 1, 1);
+      ctx.fillRect(cx+2, cy-8, 1, 1);
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
     }
 
     function drawHouseNPC(ctx, sx, sy) {
@@ -3900,6 +4173,99 @@
       ctx.fillRect(cx+1, cy-16, 3, 2); // little tuft on top
     }
 
+    function drawNumKid(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2 + 6; // shorter, like the other kid
+
+      ctx.fillStyle = 'rgba(0,0,0,0.2)';
+      ctx.fillRect(cx-5, cy+6, 10, 3);
+
+      // Legs (shorts and sneakers)
+      ctx.fillStyle = '#4a6a9a';
+      ctx.fillRect(cx-4, cy+2, 3, 4);
+      ctx.fillRect(cx+1, cy+2, 3, 4);
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-4, cy+5, 3, 2);
+      ctx.fillRect(cx+1, cy+5, 3, 2);
+      ctx.fillStyle = '#f0f0f0';
+      ctx.fillRect(cx-4, cy+7, 3, 1);
+      ctx.fillRect(cx+1, cy+7, 3, 1);
+
+      // Body (yellow t-shirt) and arms
+      ctx.fillStyle = '#f0c030';
+      ctx.fillRect(cx-5, cy-5, 10, 8);
+      ctx.fillRect(cx-7, cy-4, 3, 5);
+      ctx.fillRect(cx+4, cy-4, 3, 5);
+
+      // Head
+      ctx.fillStyle = '#f5c080';
+      ctx.fillRect(cx-5, cy-14, 10, 10);
+
+      // Red cap with a peak
+      ctx.fillStyle = '#d03030';
+      ctx.fillRect(cx-5, cy-16, 10, 4);
+      ctx.fillRect(cx-5, cy-13, 12, 2);
+
+      // Big hopeful eyes and a little frown
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-10, 2, 3);
+      ctx.fillRect(cx+1, cy-10, 2, 3);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx-3, cy-10, 1, 1);
+      ctx.fillRect(cx+1, cy-10, 1, 1);
+      ctx.fillStyle = '#a05030';
+      ctx.fillRect(cx-1, cy-6, 3, 1);
+    }
+
+    function drawTraveller(ctx, sx, sy) {
+      const s  = TILE_SIZE;
+      const cx = sx + s / 2;
+      const cy = sy + s / 2;
+
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(cx-7, cy+8, 14, 4);
+
+      // Backpack (behind, sticking out both sides)
+      ctx.fillStyle = '#7a5230';
+      ctx.fillRect(cx-9, cy-6, 18, 12);
+      ctx.fillStyle = '#5a3a1e';
+      ctx.fillRect(cx-9, cy-7, 18, 2);
+
+      // Legs (khaki) and boots
+      ctx.fillStyle = '#b8a070';
+      ctx.fillRect(cx-5, cy+4, 4, 7);
+      ctx.fillRect(cx+1, cy+4, 4, 7);
+      ctx.fillStyle = '#4a2e18';
+      ctx.fillRect(cx-5, cy+10, 4, 2);
+      ctx.fillRect(cx+1, cy+10, 4, 2);
+
+      // Body (green jacket) with straps
+      ctx.fillStyle = '#3f7a4a';
+      ctx.fillRect(cx-6, cy-4, 12, 10);
+      ctx.fillStyle = '#5a3a1e';
+      ctx.fillRect(cx-4, cy-4, 2, 10);
+      ctx.fillRect(cx+2, cy-4, 2, 10);
+
+      // Head
+      ctx.fillStyle = '#e0b080';
+      ctx.fillRect(cx-5, cy-13, 10, 10);
+
+      // Wide-brimmed hat
+      ctx.fillStyle = '#8a6a3a';
+      ctx.fillRect(cx-8, cy-14, 16, 2);
+      ctx.fillRect(cx-5, cy-18, 10, 4);
+      ctx.fillStyle = '#c04030';
+      ctx.fillRect(cx-5, cy-15, 10, 1);
+
+      // Eyes and smile
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(cx-3, cy-9, 2, 2);
+      ctx.fillRect(cx+1, cy-9, 2, 2);
+      ctx.fillStyle = '#884020';
+      ctx.fillRect(cx-2, cy-5, 4, 1);
+    }
+
     function drawShopkeeper(ctx, sx, sy) {
       const s  = TILE_SIZE;
       const cx = sx + s / 2;
@@ -4010,6 +4376,15 @@
       const currentDialog = dialogType === 'healer'      ? HEALER_DIALOG
                           : dialogType === 'labnpc3'     ? NPC3_DIALOG
                           : dialogType === 'labnpc4'     ? NPC4_DIALOG
+                          : dialogType === 'labnpc5'     ? NPC5_DIALOG
+                          : dialogType === 'labnpc6'     ? NPC6_DIALOG
+                          : dialogType === 'labnpc7'     ? NPC7_DIALOG
+                          : dialogType === 'labnpc8'     ? NPC8_DIALOG
+                          : dialogType === 'numshelf'    ? NUM_SHELF_DIALOG
+                          : dialogType === 'traveller'   ? TRAVELLER_DIALOG
+                          : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG
+                          : dialogType === 'numkid'      ? NUM_KID_DIALOG
+                          : dialogType === 'numkid2'     ? NUM_KID_AFTER_DIALOG
                           : dialogType === 'prof2'       ? NPC2_DIALOG
                           : dialogType === 'shopnpc'     ? SHOP_NPC_DIALOG
                           : dialogType === 'shopnpc2'    ? SHOP_NPC2_DIALOG
@@ -4037,6 +4412,7 @@
                           : NPC_DIALOG;
       if (dialogPage >= currentDialog.length) {
         const closingType = dialogType;
+        giveGiftGear(closingType);
         if (dialogType === 'healer')   healAllCreatures();
         if (dialogType === 'prof')     meadowMet = true;
         if (dialogType === 'housenpc') houseNpcMet = true;
@@ -4058,6 +4434,10 @@
         // Show challenge choice after Rouxls Kaard's dialog (if not yet defeated)
         if (closingType === 'house2npc' && !rouxlsDefeated) {
           setTimeout(showRouxlsChoice, 100);
+        }
+        // The Traveller's intro ends in a boss battle
+        if (closingType === 'traveller' && !travellerDefeated) {
+          setTimeout(() => showChallengeChoice(TRAVELLER_CATCHER, 'Approach him more', 'Leave'), 100);
         }
         // Trigger catcher battle at end of Ivy's intro dialog
         if (closingType === 'ivynpc' && !ivyDefeated) {
@@ -4118,6 +4498,7 @@
       const hasAnyKeyItem = inventory.trioMedal;
       document.getElementById('bagKeyEmpty').style.display       = hasAnyKeyItem ? 'none' : 'block';
       document.getElementById('bagTrioMedalEntry').style.display = inventory.trioMedal ? 'flex' : 'none';
+      renderGearTab();
       showBagTab('items');
       document.getElementById('bagOverlay').style.display = 'flex';
     }
@@ -4148,7 +4529,7 @@
     let bagFromMenu = false;
 
     function isShown(id) { return document.getElementById(id).style.display !== 'none'; }
-    function isMenuUIOpen() { return isShown('rouxlsChoice') || isShown('menuOverlay') || isShown('settingsOverlay') || isShown('partyOverlay') || isShown('bagOverlay') || isShown('confirmOverlay'); }
+    function isMenuUIOpen() { return isShown('shopOverlay') || isShown('rouxlsChoice') || isShown('menuOverlay') || isShown('settingsOverlay') || isShown('partyOverlay') || isShown('bagOverlay') || isShown('confirmOverlay'); }
 
     function openMenu() {
       if (gameState !== 'world' || dialogActive) return;
@@ -4167,6 +4548,7 @@
 
     function toggleMusic() {
       const nowMuted = MUSIC.toggleMute();
+      try { localStorage.setItem('cardCatchers.musicMuted', nowMuted ? '1' : '0'); } catch (_) {}
       document.getElementById('rouxlsMusic').muted = nowMuted;
       if (!nowMuted && gameState === 'world') updateAreaMusic();
       showItemNotification(nowMuted ? '🔇 Music off' : '🔊 Music on', true);
@@ -4186,7 +4568,7 @@
       } else if (opt === 'title') {
         closeMenu();
         showConfirm('Return to the title screen? Anything you haven\'t saved will be lost.', '🏠 Yes, return',
-          () => { location.href = location.pathname; },
+          () => { leavingOnPurpose = true; location.href = location.pathname; },
           () => openMenu());
       } else {
         closeMenu();
@@ -4218,7 +4600,7 @@
       } else if (opt === 'delete') {
         document.getElementById('settingsOverlay').style.display = 'none';
         showConfirm(`Delete Slot ${currentSlot}? This can't be undone.`, '🗑 Yes, delete it',
-          () => { deleteSlot(currentSlot); location.href = location.pathname; },
+          () => { deleteSlot(currentSlot); leavingOnPurpose = true; location.href = location.pathname; },
           () => openSettings());
       } else {
         closeSettings();
@@ -4244,7 +4626,7 @@
           <img src="${c.img}"${imgAttrs(c)} alt="${c.name}">
           <div class="party-info">
             <div class="party-name">${c.name}${isActive ? '<span class="party-tag">LEAD</span>' : ''}</div>
-            <div class="party-type">${c.type}${hp <= 0 ? ' · fainted' : ''} ${statusIcons(c)}</div>
+            <div class="party-type">${c.type}${hp <= 0 ? ' · fainted' : ''} ${statusIcons(c)}${c.gear && GEAR[c.gear] ? ` · ${GEAR[c.gear].icon} ${GEAR[c.gear].name}` : ''}</div>
             <div class="party-hpbar"><div class="party-hpfill${pct < 25 ? ' low' : pct < 50 ? ' warn' : ''}" style="width:${pct}%"></div></div>
           </div>
           <div class="party-hp">${hp}/${c.maxHp}</div>`;
@@ -4282,6 +4664,7 @@
     }
 
     function handleBButton() {
+      if (isShown('shopOverlay'))    { closeShopMenu();   return; }
       if (isShown('rouxlsChoice'))   { rouxlsLeave();     return; }
       if (isShown('confirmOverlay')) { confirmSelect(1); return; }
       if (isShown('partyOverlay')) { closeParty(); return; }
@@ -4311,7 +4694,7 @@
         document.removeEventListener('keydown', onKey);
         if (typeof MUSIC !== 'undefined') MUSIC.stop();
         screen.classList.add('fade-out');
-        setTimeout(() => location.reload(), 1000);
+        setTimeout(() => { leavingOnPurpose = true; location.reload(); }, 1000);
       }
       function onKey() { dismiss(); }
 
@@ -4368,7 +4751,8 @@
     }
 
     function buildUsableTargets(type) {
-      const active = persistentPlayer || (state && state.player);
+      // In battle the critter fighting is state.player; outside it, the saved lead
+      const active = (gameState === 'battle' && state) ? state.player : (persistentPlayer || (state && state.player));
       const targets = [];
       if (active) {
         if (type === 'potion' && active.hp > 0 && active.hp < active.maxHp)
@@ -4474,6 +4858,139 @@
     let isSurfing = false;
     let coins     = 0;
     let inventory = { potions: 0, revives: 0, trioMedal: false };
+
+    // ── Gear: held items, one per critter, given by NPCs ───────────
+    const GEAR = {
+      powerBand:   { name: 'Power Band',   icon: '💪', stat: 'atk', amount: 3, desc: '+3 ATK' },
+      sturdyShell: { name: 'Sturdy Shell', icon: '🛡️', stat: 'dfc', amount: 3, desc: '+3 DFC' },
+      luckyCharm:  { name: 'Lucky Charm',  icon: '🍀', stat: 'lck', amount: 3, desc: '+3 LCK' },
+      numNums:     { name: 'Num-Nums',     icon: '🍪', desc: 'Heals 25% HP at 30% HP, once a battle' },
+    };
+
+    // Num-Nums: when the holder drops to 30% HP or lower in battle, it heals 25% of max HP (once per battle)
+    function checkNumNums(c) {
+      if (!c || c.gear !== 'numNums' || c.numNumsUsed || c.hp <= 0 || c.hp > c.maxHp * 0.3) return;
+      const heal = Math.ceil(c.maxHp * 0.25);
+      c.hp = Math.min(c.maxHp, c.hp + heal);
+      c.numNumsUsed = true;
+      SFX.play('heal');
+      log(`🍪 ${c.name} munched its Num-Nums! Restored ${heal} HP!`, 'effective');
+    }
+    let gearOwned = []; // gear ids the player has been given; which critter holds each is c.gear
+
+    function partyMembers() {
+      return [persistentPlayer || creatures.player, ...roster];
+    }
+
+    function gearHolder(id) {
+      return partyMembers().find(c => c.gear === id) || null;
+    }
+
+    function equipGear(id, critter) {
+      const prev = gearHolder(id);
+      if (prev) { prev.gear = null; clearBattleChanges(prev); }
+      critter.gear = id;  // any gear it held before goes back to the bag
+      clearBattleChanges(critter);
+      const g = GEAR[id];
+      showItemNotification(`${g.icon} ${critter.name} is holding the ${g.name}!`, true);
+      renderGearTab();
+    }
+
+    function unequipGear(id) {
+      const holder = gearHolder(id);
+      if (!holder) return;
+      holder.gear = null;
+      clearBattleChanges(holder);
+      renderGearTab();
+    }
+
+    function renderGearTab() {
+      const page = document.getElementById('bagGearPage');
+      page.innerHTML = '';
+      if (!gearOwned.length) {
+        page.innerHTML = `<div class="items-empty">No gear yet.<br>Some people around town might give you some.</div>`;
+        return;
+      }
+      const inBattle = gameState === 'battle';
+      gearOwned.forEach(id => {
+        const g = GEAR[id];
+        const holder = gearHolder(id);
+        const row = document.createElement('div');
+        row.className = 'bag-item';
+        row.innerHTML = `
+          <div class="bag-item-info">
+            <span class="bag-item-name">${g.icon} ${g.name}</span>
+            <span class="bag-item-desc">${g.desc} · ${holder ? `Held by ${holder.name}` : 'Not equipped'}</span>
+          </div>`;
+        if (!inBattle) {
+          const equip = document.createElement('button');
+          equip.className = 'bag-use-btn';
+          equip.textContent = holder ? 'Move' : 'Equip';
+          equip.onclick = () => showBagTargetPicker(
+            partyMembers().filter(c => c !== holder).map(c => ({ name: c.name, hp: c.hp ?? c.maxHp, maxHp: c.maxHp, img: c.img, ref: c })),
+            ref => equipGear(id, ref));
+          row.appendChild(equip);
+          if (holder) {
+            const off = document.createElement('button');
+            off.className = 'bag-use-btn';
+            off.textContent = 'Remove';
+            off.onclick = () => unequipGear(id);
+            row.appendChild(off);
+          }
+        }
+        page.appendChild(row);
+      });
+      if (inBattle) {
+        const note = document.createElement('div');
+        note.className = 'items-empty';
+        note.textContent = 'Change gear outside of battle.';
+        page.appendChild(note);
+      }
+    }
+
+    // NPCs who hand over gear the first time you talk to them. Their extra lines only show until then.
+    const GEAR_GIFTS = [
+      { type: 'shopnpc2', gear: 'powerBand', dialog: SHOP_NPC2_DIALOG, pages: [
+        ["Hey, you train",       "critters? Take this",  "POWER BAND I found!"],
+        ["Equip it from the",    "Bag's GEAR tab for",   "+3 ATK. Go get 'em!"] ] },
+      { type: 'clinicnurse', gear: 'sturdyShell', dialog: CLINIC_NURSE_DIALOG, pages: [
+        ["Oh, and take this",    "STURDY SHELL. It",     "helps critters last."],
+        ["Equip it from the",    "Bag's GEAR tab for",   "+3 DFC. Stay safe!"] ] },
+      { type: 'numshelf', gear: 'numNums', dialog: NUM_SHELF_DIALOG, replace: true, pages: [
+        ["A bag of NUM-NUMS",    "sits on the shelf.",   "\"FREE SAMPLE!\""] ] },
+      { type: 'labnpc7', gear: 'luckyCharm', dialog: NPC7_DIALOG, pages: [
+        ["Here - my LUCKY",      "CHARM! It's brought",  "me loads of luck."],
+        ["Equip it from the",    "Bag's GEAR tab for",   "+3 LCK. Good luck!"] ] },
+    ];
+    GEAR_GIFTS.forEach(gift => { gift.base = gift.dialog.slice(); });
+
+    function syncGiftDialogs() {
+      GEAR_GIFTS.forEach(gift => {
+        let pages = gift.base.slice();
+        if (!gearOwned.includes(gift.gear) && gift.replace) {
+          pages = gift.pages.slice();
+        } else if (!gearOwned.includes(gift.gear)) {
+          // Keep a trailing "Press A to close." page last
+          const last = pages[pages.length - 1];
+          const at = last && !last[0] && !last[1] ? pages.length - 1 : pages.length;
+          // A "Press A to close." squeezed onto a normal last page would show mid-conversation
+          if (at === pages.length && last && last[2] === 'Press A to close.') pages[at - 1] = [last[0], last[1], ''];
+          pages.splice(at, 0, ...gift.pages);
+        }
+        gift.dialog.length = 0;
+        gift.dialog.push(...pages);
+      });
+    }
+
+    function giveGiftGear(closingType) {
+      const gift = GEAR_GIFTS.find(g => g.type === closingType);
+      if (!gift || gearOwned.includes(gift.gear)) return;
+      gearOwned.push(gift.gear);
+      syncGiftDialogs();
+      SFX.play('keyItem');
+      const g = GEAR[gift.gear];
+      showItemNotification(`${g.icon} ${g.name}`);
+    }
 
     function hasWaterType() {
       const active = persistentPlayer || creatures.player;
@@ -4668,6 +5185,14 @@
       if (dx || dy) {
         const nx = player.tileX + dx;
         const ny = player.tileY + dy;
+        // Walking into the traveller at the end of the road (outdoors)
+        if (currentArea === 'outdoor' && nx === TRAVELLER.tileX && ny === TRAVELLER.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = travellerDefeated ? 'travellerwin' : 'traveller';
+          return;
+        }
         // Walking into Dr. Meadow triggers dialog (indoors only)
         if (currentArea === 'indoor' && nx === NPC.tileX && ny === NPC.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
@@ -4700,6 +5225,38 @@
           dialogType   = 'labnpc4';
           return;
         }
+        // Walking into the shadow researcher triggers Shadow form dialog (indoors only)
+        if (currentArea === 'indoor' && nx === NPC5.tileX && ny === NPC5.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'labnpc5';
+          return;
+        }
+        // Walking into the Alt Art artist triggers Alt Art dialog (indoors only)
+        if (currentArea === 'indoor' && nx === NPC6.tileX && ny === NPC6.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'labnpc6';
+          return;
+        }
+        // Walking into the Shiny fan triggers Shiny dialog (indoors only)
+        if (currentArea === 'indoor' && nx === NPC7.tileX && ny === NPC7.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'labnpc7';
+          return;
+        }
+        // Walking into the type-swap researcher triggers type-swap dialog (indoors only)
+        if (currentArea === 'indoor' && nx === NPC8.tileX && ny === NPC8.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'labnpc8';
+          return;
+        }
         // Walking into the healer triggers heal dialog (inside clinic only)
         if (currentArea === 'healer' && nx === HEALER.tileX && ny === HEALER.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
@@ -4714,6 +5271,22 @@
           dialogActive = true;
           dialogPage   = 0;
           dialogType   = 'shopmother';
+          return;
+        }
+        // Walking into the shelf next to the kid: Num-Nums (or crumbs once taken)
+        if (currentArea === 'shop' && nx === NUM_SHELF.tileX && ny === NUM_SHELF.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = 'numshelf';
+          return;
+        }
+        // Walking into the boy who wanted the Num-Nums
+        if (currentArea === 'shop' && nx === NUM_KID.tileX && ny === NUM_KID.tileY) {
+          player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
+          dialogActive = true;
+          dialogPage   = 0;
+          dialogType   = gearOwned.includes('numNums') ? 'numkid2' : 'numkid';
           return;
         }
         // Walking into shop child triggers dialog
@@ -4901,7 +5474,8 @@
         ctx.textAlign = 'left';
       }
 
-      // (Both NPCs are inside their buildings — not drawn outdoors)
+      // Traveller at the far right end of the road
+      drawTraveller(ctx, TRAVELLER.tileX * TILE_SIZE - camX, TRAVELLER.tileY * TILE_SIZE - camY);
 
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, player.pixelX - camX, player.pixelY - camY, player.dir, walkFrame);
@@ -4925,7 +5499,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : dialogType === 'traveller' ? TRAVELLER_DIALOG : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -4974,13 +5548,25 @@
       const npc4SY = INDOOR_OFFSET_Y + NPC4.tileY * TILE_SIZE;
       drawNPC4(ctx, npc4SX, npc4SY);
 
+      // Draw shadow researcher
+      drawNPC5(ctx, INDOOR_OFFSET_X + NPC5.tileX * TILE_SIZE, INDOOR_OFFSET_Y + NPC5.tileY * TILE_SIZE);
+
+      // Draw Alt Art artist
+      drawNPC6(ctx, INDOOR_OFFSET_X + NPC6.tileX * TILE_SIZE, INDOOR_OFFSET_Y + NPC6.tileY * TILE_SIZE);
+
+      // Draw Shiny fan
+      drawNPC7(ctx, INDOOR_OFFSET_X + NPC7.tileX * TILE_SIZE, INDOOR_OFFSET_Y + NPC7.tileY * TILE_SIZE);
+
+      // Draw type-swap researcher
+      drawNPC8(ctx, INDOOR_OFFSET_X + NPC8.tileX * TILE_SIZE, INDOOR_OFFSET_Y + NPC8.tileY * TILE_SIZE);
+
       // Draw player
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, INDOOR_OFFSET_X + player.pixelX, INDOOR_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       // Dialog box drawn on top
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -5103,6 +5689,18 @@
       const scSX = SHOP_OFFSET_X + SHOP_CHILD.tileX * TILE_SIZE;
       const scSY = SHOP_OFFSET_Y + SHOP_CHILD.tileY * TILE_SIZE;
       drawShopChild(ctx, scSX, scSY);
+      drawNumKid(ctx, SHOP_OFFSET_X + NUM_KID.tileX * TILE_SIZE, SHOP_OFFSET_Y + NUM_KID.tileY * TILE_SIZE);
+
+      // Twinkle on the Num-Nums shelf until they're picked up
+      if (!gearOwned.includes('numNums') && Math.floor(Date.now() / 450) % 2 === 0) {
+        const kx = SHOP_OFFSET_X + NUM_SHELF.tileX * TILE_SIZE + 24;
+        const ky = SHOP_OFFSET_Y + NUM_SHELF.tileY * TILE_SIZE + 6;
+        ctx.fillStyle = '#ffe066';
+        ctx.fillRect(kx, ky - 5, 3, 13);
+        ctx.fillRect(kx - 5, ky, 13, 3);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(kx, ky, 3, 3);
+      }
 
       // Customer NPC
       const snSX = SHOP_OFFSET_X + SHOP_NPC.tileX * TILE_SIZE;
@@ -5119,7 +5717,7 @@
       drawPlayer(ctx, SHOP_OFFSET_X + player.pixelX, SHOP_OFFSET_Y + player.pixelY, player.dir, walkFrame);
 
       if (dialogActive) {
-        const dlg = dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'numshelf' ? NUM_SHELF_DIALOG : dialogType === 'numkid' ? NUM_KID_DIALOG : dialogType === 'numkid2' ? NUM_KID_AFTER_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -5774,6 +6372,23 @@
       }
     };
 
+    const TRAVELLER_CATCHER = {
+      name: 'The Traveller',
+      critter: {
+        name: 'Shacklith',
+        type: 'shadow',
+        img: 'shacklith.png',
+        maxHp: 200,
+        atk: 21, dfc: 20, mag: 15, mdf: 16, spd: 10, lck: 6,
+        moves: [
+          { name: 'Chain Lash', type: 'shadow', cat: 'physical', power: 20 },
+          { name: 'Void Pulse', type: 'shadow', cat: 'magic',    power: 19 },
+          { name: 'Shackle',    type: 'shadow', cat: 'status',   effect: { stat: 'spd', target: 'opponent', amount: -3 } },
+          { name: 'Drill Arm',  type: 'basic',  cat: 'physical', power: 14 },
+        ]
+      }
+    };
+
     let state = null;
     let persistentPlayer = null; // carries HP (and active creature) between battles
     let isCatcherBattle  = false;
@@ -5799,8 +6414,10 @@
       if (!c) return;
       ensureTrueStats(c);
       STAT_KEYS.forEach(k => c[k] = c.trueStats[k]);
+      const g = c.gear && GEAR[c.gear];
+      if (g && g.stat) c[g.stat] += g.amount;
       c.statusEffects = { ...(c.statusEffects || {}) };
-      if (c.statusEffects.charred) c.atk = Math.max(1, Math.floor(c.trueStats.atk / 2));
+      if (c.statusEffects.charred) c.atk = Math.max(1, Math.floor(c.atk / 2));
     }
 
     // A defeated wild critter joins with its clean stats, not whatever the battle did to it
@@ -5829,8 +6446,10 @@
       const playerCopy   = { ...playerBase };
       const opponentCopy = { ...opponent, hp: opponent.maxHp };
       clearBattleChanges(playerCopy);
+      playerCopy.numNumsUsed = false;
       snapBaseStats(opponentCopy);
       opponentCopy.statusEffects = {};
+      if (opponentCopy.shadowOf) applyShadowArt(opponentCopy);
       state = { player: playerCopy, opponent: opponentCopy, over: false, isCatcher: !!catcherCritter };
     }
 
@@ -6064,6 +6683,7 @@
           // Each hit rolls its own lucky hit (attacker's luck), same odds as a single-hit move
           if (Math.random() < (attacker.lck ?? 0) * 0.028) { dmg = Math.round(dmg * 1.5); crits++; }
           defender.hp -= dmg;
+          if (defender.hp > 0) checkNumNums(defender);
           totalDamage += dmg;
         }
         log(`💥 Hit ${hitCount} times! (${totalDamage} total dmg)`, 'effective');
@@ -6084,6 +6704,7 @@
               if (activeCatcher === HEDGEOSAUR_CATCHER)   ivyDefeated = true;
               if (activeCatcher === CERAFLAME_CATCHER)    emberDefeated = true;
               if (activeCatcher === PTERRENT_CATCHER)     skyeDefeated = true;
+              if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
               log(`You beat ${activeCatcher.name}!`, 'win');
               isCatcherBattle = false;
               activeCatcher   = null;
@@ -6136,6 +6757,7 @@
       }
 
       defender.hp -= damage;
+      if (defender.hp > 0) checkNumNums(defender);
 
       // Sound: damage hit or defeat
       if (defender.hp <= 0) {
@@ -6171,6 +6793,7 @@
             if (activeCatcher === HEDGEOSAUR_CATCHER)   ivyDefeated = true;
             if (activeCatcher === CERAFLAME_CATCHER)    emberDefeated = true;
             if (activeCatcher === PTERRENT_CATCHER)     skyeDefeated = true;
+            if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
             log(`You beat ${activeCatcher.name}!`, 'win');
             isCatcherBattle = false;
             activeCatcher   = null;
@@ -6213,6 +6836,7 @@
           if (activeCatcher === HEDGEOSAUR_CATCHER) ivyDefeated = true;
           if (activeCatcher === CERAFLAME_CATCHER)  emberDefeated = true;
           if (activeCatcher === PTERRENT_CATCHER)   skyeDefeated = true;
+          if (activeCatcher === TRAVELLER_CATCHER)    travellerDefeated = true;
           log(`You beat ${activeCatcher.name}!`, 'win');
           isCatcherBattle = false;
           activeCatcher   = null;
@@ -6246,6 +6870,7 @@
           c.hp = Math.max(0, c.hp - 10);
           log(`☠️ ${c.name} took 10 damage from toxic!`, 'weak');
           if (c.hp <= 0) { handleStatusFaint(side); return; }
+          checkNumNums(c);
         }
 
         // ── Seeded: lose 5 HP, attacker gains 5 HP ────────────────
@@ -6257,6 +6882,7 @@
             beneficiary.hp = Math.min(beneficiary.maxHp, beneficiary.hp + 5);
           log(`🌱 ${c.name} lost 5 HP! ${beneficiary.name} absorbed 5 HP!`, 'effective');
           if (c.hp <= 0) { handleStatusFaint(side); return; }
+          checkNumNums(c);
         }
         // Charred & Drenched have no per-turn damage — handled elsewhere
       });
@@ -6408,11 +7034,20 @@
     // Rouxls's "Challenge him?" box. Movement pauses while it's open; "Leave him be" starts selected.
     let rouxlsIndex = 1;
 
-    function showRouxlsChoice() {
+    // Optional boss fights (Rouxls Kaard, The Traveller) share this "Challenge him?" box
+    let challengeTarget = null;
+
+    function showChallengeChoice(catcher, yesLabel = 'Challenge him!', noLabel = 'Leave him be') {
+      challengeTarget = catcher;
       rouxlsIndex = 1;
+      document.getElementById('challengeName').textContent = catcher.name;
+      document.getElementById('rouxlsYes').textContent = yesLabel;
+      document.getElementById('rouxlsNo').textContent  = noLabel;
       document.getElementById('rouxlsChoice').style.display = 'flex';
       highlightRouxlsChoice();
     }
+
+    function showRouxlsChoice() { showChallengeChoice(ROUXLS_CATCHER); }
 
     function highlightRouxlsChoice() {
       ['rouxlsYes', 'rouxlsNo'].forEach((id, i) =>
@@ -6421,7 +7056,8 @@
 
     function rouxlsChallenge() {
       document.getElementById('rouxlsChoice').style.display = 'none';
-      setTimeout(() => triggerCatcherBattle(ROUXLS_CATCHER), 100);
+      const target = challengeTarget || ROUXLS_CATCHER;
+      setTimeout(() => triggerCatcherBattle(target), 100);
     }
 
     function rouxlsLeave() {
@@ -6678,7 +7314,7 @@
 
     function getFlags() {
       return { meadowMet, houseNpcMet, rouxlsDefeated, alvinDefeated, deweyDefeated, bubblesDefeated,
-               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen };
+               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen, travellerDefeated };
     }
 
     function setFlags(f) {
@@ -6688,6 +7324,7 @@
       ivyDefeated     = !!f.ivyDefeated;     emberDefeated  = !!f.emberDefeated;
       skyeDefeated    = !!f.skyeDefeated;    skyeWinSeen    = !!f.skyeWinSeen;
       demoEndSeen     = !!f.demoEndSeen;
+      travellerDefeated = !!f.travellerDefeated;
       // Beaten trainers step aside, same as when you beat them
       if (deweyDefeated)   HOUSE_NPC2.tileX  += 1;
       if (bubblesDefeated) HOUSE2_NPC2.tileX += 1;
@@ -6697,6 +7334,9 @@
       const o = JSON.parse(JSON.stringify(c));
       delete o._baseStats;
       if (o.hp == null) o.hp = o.maxHp;
+      // Always include these, so a critter reads the same before and after its first battle
+      if (!o.statusEffects) o.statusEffects = {};
+      if (!o.trueStats) { o.trueStats = {}; STAT_KEYS.forEach(k => o.trueStats[k] = o[k]); }
       // Shadow art is a temporary blob in memory; save the normal picture and rebuild the art on load
       if (o.shadowOf) {
         o.img       = o.shadowOf.toLowerCase().replace(/\s+/g, '') + '.png';
@@ -6716,10 +7356,9 @@
       try { localStorage.removeItem(saveKey(n)); } catch (_) {}
     }
 
-    function saveGame() {
-      if (!currentSlot) return false;
+    function buildSaveData() {
       const lead = persistentPlayer || { ...creatures.player, hp: creatures.player.maxHp };
-      const data = {
+      return {
         v: SAVE_VERSION,
         savedAt: Date.now(),
         area: currentArea,
@@ -6728,13 +7367,49 @@
         surfing: isSurfing,
         coins,
         inventory: { ...inventory },
+        gear: gearOwned.slice(),
         flags: getFlags(),
         lead: serializeCritter(lead),
         roster: roster.map(serializeCritter),
       };
-      try { localStorage.setItem(saveKey(currentSlot), JSON.stringify(data)); return true; }
-      catch (_) { return false; }
     }
+
+    // Everything a save holds except the timestamp, with keys sorted, so two snapshots match
+    // whenever nothing has changed (a battle can reorder a critter's fields without changing them)
+    function sortedJSON(v) {
+      if (Array.isArray(v)) return `[${v.map(sortedJSON).join(',')}]`;
+      if (v && typeof v === 'object') {
+        return `{${Object.keys(v).sort().filter(k => v[k] !== undefined)
+          .map(k => `${JSON.stringify(k)}:${sortedJSON(v[k])}`).join(',')}}`;
+      }
+      return JSON.stringify(v);
+    }
+
+    function progressSnapshot(data = buildSaveData()) {
+      return sortedJSON({ ...data, savedAt: 0 });
+    }
+
+    let lastSavedSnapshot = null;
+    let leavingOnPurpose  = false; // Return to Title / Delete Save / credits: the player already chose to leave
+
+    function saveGame() {
+      if (!currentSlot) return false;
+      const data = buildSaveData();
+      try {
+        localStorage.setItem(saveKey(currentSlot), JSON.stringify(data));
+        lastSavedSnapshot = progressSnapshot(data);
+        return true;
+      } catch (_) { return false; }
+    }
+
+    // Closing or reloading the tab with unsaved progress makes the browser ask "Leave site?"
+    window.addEventListener('beforeunload', e => {
+      if (leavingOnPurpose || !currentSlot || gameState === 'title') return;
+      if (gameState === 'battle' || progressSnapshot() !== lastSavedSnapshot) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
 
     function loadGame(data) {
       currentArea = data.area;
@@ -6746,12 +7421,15 @@
       isSurfing = !!data.surfing;
       coins     = data.coins | 0;
       inventory = { potions: 0, revives: 0, trioMedal: false, ...data.inventory };
+      gearOwned = Array.isArray(data.gear) ? data.gear.filter(id => GEAR[id]) : [];
+      syncGiftDialogs();
       setFlags(data.flags || {});
       creatures.player = data.lead;
       persistentPlayer = data.lead;
       roster = data.roster || [];
       [persistentPlayer, ...roster].forEach(c => { if (c.shadowOf) applyShadowArt(c); });
       initState();
+      lastSavedSnapshot = progressSnapshot();
     }
 
     function slotSummary(data) {
@@ -6760,6 +7438,8 @@
       return `${data.lead.name} · ${party} critter${party === 1 ? '' : 's'}<br>` +
              `🪙 ${data.coins} · ${date}`;
     }
+
+    syncGiftDialogs();
 
     // Start in the world
     showWorld();
@@ -7339,6 +8019,9 @@
 
       return { play };
     })();
+
+    // Start muted if the player turned the music off last time
+    try { if (localStorage.getItem('cardCatchers.musicMuted') === '1') MUSIC.toggleMute(); } catch (_) {}
 
     // ── Intro sequence ────────────────────────────────────────────
     (function runIntro() {
