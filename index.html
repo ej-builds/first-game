@@ -1532,7 +1532,7 @@
 
     // ── Return to world after battle ───────────────────────────
     let lostBattle = false; // set when every critter faints; returnToWorld then sends you to Nurse Nina
-    let afterBattleDialog = null; // a dialog that plays straight after a won battle (The Traveller's defeat lines)
+    let afterBattleDialog = null; // a dialog that plays straight after a won battle (The Traveller's and Rouxls's defeat lines)
 
     function returnToWorld() {
       cancelTurnTimers(); // an attack still waiting must not land after you've left
@@ -7810,7 +7810,7 @@
             log(`${defender.name} fainted!`, 'win');
             log(`💰 You earned ${earned} coins!`, 'win');
             if (isCatcherBattle) {
-              if (activeCatcher === ROUXLS_CATCHER)      rouxlsDefeated = true;
+              if (activeCatcher === ROUXLS_CATCHER)      { rouxlsDefeated = true; afterBattleDialog = 'rouxlswin'; }
               if (activeCatcher === ALVIN_CATCHER)       alvinDefeated = true;
               if (activeCatcher === DEWEY_CATCHER)        { deweyDefeated = true; HOUSE_NPC2.tileX += 1; }
               if (activeCatcher === BUBBLES_CATCHER)      { bubblesDefeated = true; HOUSE2_NPC2.tileX += 1; }
@@ -7915,7 +7915,7 @@
           log(`💰 You earned ${earned} coins!`, 'win');
           if (isCatcherBattle) {
             // Catcher battle win — no recruit, set defeated flag
-            if (activeCatcher === ROUXLS_CATCHER)      rouxlsDefeated = true;
+            if (activeCatcher === ROUXLS_CATCHER)      { rouxlsDefeated = true; afterBattleDialog = 'rouxlswin'; }
             if (activeCatcher === ALVIN_CATCHER)       alvinDefeated = true;
             if (activeCatcher === DEWEY_CATCHER)        { deweyDefeated = true; HOUSE_NPC2.tileX += 1; }
             if (activeCatcher === BUBBLES_CATCHER)      { bubblesDefeated = true; HOUSE2_NPC2.tileX += 1; }
@@ -7959,7 +7959,7 @@
         log(`${c.name} fainted!`, 'win');
         log(`💰 You earned ${earned} coins!`, 'win');
         if (isCatcherBattle) {
-          if (activeCatcher === ROUXLS_CATCHER)    rouxlsDefeated = true;
+          if (activeCatcher === ROUXLS_CATCHER)    { rouxlsDefeated = true; afterBattleDialog = 'rouxlswin'; }
           if (activeCatcher === ALVIN_CATCHER)     alvinDefeated = true;
           if (activeCatcher === DEWEY_CATCHER)     { deweyDefeated = true; HOUSE_NPC2.tileX += 1; }
           if (activeCatcher === BUBBLES_CATCHER)   { bubblesDefeated = true; HOUSE2_NPC2.tileX += 1; }
