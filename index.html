@@ -3166,19 +3166,67 @@
       ["BUT THAT WAS ONLY",     "MY FIRST PHASE!",       ""],
       ["...But I'll give you",  "time to prepare,",      "chump."],
     ];
-    // Narration once he's gone, right after the black flash
-    const TRAVELLER_GONE_DIALOG = [
-      ["The Traveller says,",   "\"Until next time...",  "Champ.\""],
-      ["He runs into the",      "trees and disappears.", ""],
-    ];
     const TRAVELLER2_DIALOG = [
       ["So, are you ready to",  "get TROUNCED, chump?",  ""],
     ];
     // What he says after handing over the Shackle Plate (the gift lines are in GEAR_GIFTS)
     const TRAVELLER2_WIN_DIALOG = [
       ["...Impossible.",        "Both of my phases...",  "beaten?!"],
-      ["Fine. You win.",        "I'll be on my way.",    ""],
+      ["Fine. You win.",        "But I'm not done",      "with you yet, champ."],
     ];
+    // His side quest after both phases: own every species (any form counts), team or Lab Backyard
+    const TRAVELLER_QUEST_DIALOG = [
+      ["Hold on, chump.",        "I'm not done with",      "you yet."],
+      ["I've travelled every",   "corner of this land",    ""],
+      ["looking for powerful",   "catchers.",              ""],
+      ["See, I found this",      "old text.",              ""],
+      ["It reads...",            "\"Catch EVERY kind of",  "critter around here.\""],
+      ["That's all 12 of 'em.",  "Your team AND the Lab",  "Backyard should count."],
+      ["Rare forms should",      "count too.",             ""],
+      ["Come back when you've",  "got them all!",          ""],
+    ];
+    // Narration once the screen clears after his last words
+    const TRAVELLER_LEFT_DIALOG = [
+      ["The Traveller ran",      "into the trees and",     "disappeared."],
+    ];
+    let travellerProgressDialog = []; // built each time you check in: how many you have, who's missing
+    const TRAVELLER_QUEST_DONE_DIALOG = [
+      ["You... caught every",    "single kind?!",          ""],
+      ["Huh? The text is",       "changing...",            ""],
+      ["It now reads...",        "",                       ""],
+      ["\"YOO! You caught them",  "all! Mad respects,",     "dude!"],
+      ["I guess it's time to",   "give you that",          "reward..."],
+      ["....................",   "....................",   "...................."],
+      ["SIKE!! The only way",    "to get those items is",  "by scanning them in!"],
+      ["You really thought...",  "that's embarrassing.\"", ""],
+      ["...Well, that was",      "rude of it to say.",     ""],
+      ["But that's all I",       "have to do here.",       ""],
+      ["Get stronger for me,",   "OK...",                  "Champ."],
+    ];
+    // The 12 species the quest asks for: the starter plus every wild critter (any form counts)
+    function missingSpecies() {
+      const owned = [persistentPlayer || creatures.player, ...roster, ...backyard].map(c => c.name);
+      return ['Scorchspine', ...wildCreatures.map(c => c.name)]
+        .filter(n => !owned.some(o => o === n || o.endsWith(' ' + n)));
+    }
+
+    // "You've got 9 of 12", then the missing names wrapped to the dialog box's width
+    function buildTravellerProgress() {
+      const missing = missingSpecies();
+      const lines = [];
+      let line = 'Still missing:';
+      missing.forEach((n, i) => {
+        const word = n + (i < missing.length - 1 ? ',' : '.');
+        if ((line + ' ' + word).length > 21) { lines.push(line); line = word; }
+        else line += ' ' + word;
+      });
+      lines.push(line);
+      const pages = [["Still hunting, champ?", `You've got ${12 - missing.length} of 12.`, ""]];
+      for (let i = 0; i < lines.length; i += 3) pages.push([lines[i], lines[i + 1] || '', lines[i + 2] || '']);
+      pages.push(["Come back when you've", "got them all!", ""]);
+      travellerProgressDialog = pages;
+    }
+
 
     const STATUS_NPC = { tileX: 2, tileY: 3 }; // patient in the clinic's top-left corner
     const STATUS_NPC_DIALOG = [
@@ -3259,7 +3307,9 @@
     let travellerDefeated = false; // secret boss at the end of the road
     let travellerWinSeen  = false; // read his "first phase" lines after the first win
     let traveller2Defeated = false; // beat his second phase
-    let travellerGone      = false; // vanished after handing over the Shackle Plate
+    let travellerQuestGiven = false; // heard his catch-every-species side quest
+    let travellerQuestDone  = false; // finished it
+    let travellerLeft       = false; // faded away for good after the quest
     let demoEndSeen     = false;  // end-of-demo message shown once after leaving with Trio Medal
 
     function drawNPC(ctx, sx, sy, playerAdjacent, noAlert) {
@@ -4753,7 +4803,10 @@
                           : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG
                           : dialogType === 'traveller2'  ? TRAVELLER2_DIALOG
                           : dialogType === 'traveller2win' ? TRAVELLER2_WIN_DIALOG
-                          : dialogType === 'travellergone' ? TRAVELLER_GONE_DIALOG
+                          : dialogType === 'travellerquest' ? TRAVELLER_QUEST_DIALOG
+                          : dialogType === 'travellerprogress' ? travellerProgressDialog
+                          : dialogType === 'travellerquestdone' ? TRAVELLER_QUEST_DONE_DIALOG
+                          : dialogType === 'travellerleft' ? TRAVELLER_LEFT_DIALOG
                           : dialogType === 'numkid'      ? NUM_KID_DIALOG
                           : dialogType === 'numkid2'     ? NUM_KID_AFTER_DIALOG
                           : dialogType === 'prof2'       ? NPC2_DIALOG
@@ -4811,25 +4864,30 @@
         if (closingType === 'house2npc' && !rouxlsDefeated) {
           setTimeout(showRouxlsChoice, 100);
         }
-        // His final lines end with a black flash, and he's gone when it clears
-        if (closingType === 'traveller2win' && !travellerGone) {
+        // After his defeat lines and the Shackle Plate, he stays and sets the side quest
+        if (closingType === 'traveller2win' && !travellerQuestGiven) {
+          setTimeout(() => { dialogActive = true; dialogPage = 0; dialogType = 'travellerquest'; }, 150);
+        }
+        if (closingType === 'travellerquest')     travellerQuestGiven = true;
+        // His last words end in a slow fade to black, and he's gone for good when it clears
+        if (closingType === 'travellerquestdone' && !travellerLeft) {
+          travellerQuestDone = true;
           gameState = 'transitioning';
           const overlay = document.getElementById('transitionOverlay');
-          overlay.style.transition = 'none';
           overlay.style.background = '#000';
+          overlay.style.transition = 'opacity 900ms ease';
           overlay.style.opacity    = 1;
           setTimeout(() => {
-            travellerGone = true;
+            travellerLeft = true;
             gameState = 'world';
-            overlay.style.transition = 'opacity 700ms ease';
-            overlay.style.opacity    = 0;
+            overlay.style.opacity = 0;
             setTimeout(() => {
               overlay.style.transition = '';
               dialogActive = true;
               dialogPage   = 0;
-              dialogType   = 'travellergone';
-            }, 700);
-          }, 600);
+              dialogType   = 'travellerleft';
+            }, 900);
+          }, 1500);
         }
         // After his "first phase" lines, later talks offer the phase-two fight
         if (closingType === 'travellerwin') travellerWinSeen = true;
@@ -5599,7 +5657,7 @@
         ["A bag of NUM-NUMS",    "sits on the shelf.",   "\"FREE SAMPLE!\""] ] },
       { type: 'traveller2win', gear: 'shacklePlate', dialog: TRAVELLER2_WIN_DIALOG, replace: true, pages: [
         ["...Impossible.",       "Both of my phases...",  "beaten?!"],
-        ["Fine. You win.",       "I'll be on my way, but", "first..."],
+        ["Fine. You win.",       "But first...",           ""],
         ["I believe this is",    "now yours.",            ""],
         ["That SHACKLE PLATE",   "blocks the first hit",  "in every battle."] ] },
       { type: 'labnpc3', id: 'studentPriority', item: 'potions', count: 2, dialog: NPC3_DIALOG, beforeLast: true, pages: [
@@ -5652,6 +5710,15 @@
     function badgeBoost(attackerSide, move) {
       if (attackerSide !== 'player') return 1;
       return inventory.keyItems.some(id => KEY_ITEMS[id]?.boostsType === move.type) ? BADGE_BOOST : 1;
+    }
+
+    // Boosted damage, with the leftover fraction rounded up at random (4.4 becomes 5 forty percent
+    // of the time), so small hits gain as much on average as big ones: a true +10% for every move
+    function applyBadgeBoost(damage, attackerSide, move) {
+      const boost = badgeBoost(attackerSide, move);
+      if (boost === 1 || damage <= 0) return damage;
+      const exact = damage * boost;
+      return Math.floor(exact) + (Math.random() < exact - Math.floor(exact) ? 1 : 0);
     }
 
     function keyItemFor(npcType) {
@@ -5964,14 +6031,16 @@
         const nx = player.tileX + dx;
         const ny = player.tileY + dy;
         // Walking into the traveller at the end of the road (outdoors)
-        if (currentArea === 'outdoor' && !travellerGone && nx === TRAVELLER.tileX && ny === TRAVELLER.tileY) {
+        if (currentArea === 'outdoor' && !travellerLeft && nx === TRAVELLER.tileX && ny === TRAVELLER.tileY) {
           player.dir = (dx === -1 ? 'left' : dx === 1 ? 'right' : dy === -1 ? 'up' : 'down');
           dialogActive = true;
           dialogPage   = 0;
-          dialogType   = !travellerDefeated ? 'traveller'
-                       : !travellerWinSeen  ? 'travellerwin'
+          dialogType   = !travellerDefeated  ? 'traveller'
+                       : !travellerWinSeen   ? 'travellerwin'
                        : !traveller2Defeated ? 'traveller2'
-                       : 'traveller2win';
+                       : !travellerQuestGiven ? 'travellerquest'
+                       : missingSpecies().length === 0 ? 'travellerquestdone'
+                       : (buildTravellerProgress(), 'travellerprogress');
           return;
         }
         // Walking into Dr. Meadow triggers dialog (indoors only)
@@ -6297,7 +6366,7 @@
       drawSaveGuide(ctx, SAVE_GUIDE.tileX * TILE_SIZE - camX, SAVE_GUIDE.tileY * TILE_SIZE - camY);
 
       // Traveller at the far right end of the road
-      if (!travellerGone) drawTraveller(ctx, TRAVELLER.tileX * TILE_SIZE - camX, TRAVELLER.tileY * TILE_SIZE - camY);
+      if (!travellerLeft) drawTraveller(ctx, TRAVELLER.tileX * TILE_SIZE - camX, TRAVELLER.tileY * TILE_SIZE - camY);
 
       const walkFrame = player.moving ? Math.floor(player.moveProgress * 4) % 4 : 0;
       drawPlayer(ctx, player.pixelX - camX, player.pixelY - camY, player.dir, walkFrame);
@@ -6325,7 +6394,7 @@
       }
 
       if (dialogActive) {
-        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'saveguide' ? SAVE_GUIDE_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : dialogType === 'traveller' ? TRAVELLER_DIALOG : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG : dialogType === 'traveller2' ? TRAVELLER2_DIALOG : dialogType === 'traveller2win' ? TRAVELLER2_WIN_DIALOG : dialogType === 'travellergone' ? TRAVELLER_GONE_DIALOG : NPC_DIALOG;
+        const dlg = dialogType === 'healer' ? HEALER_DIALOG : dialogType === 'labnpc3' ? NPC3_DIALOG : dialogType === 'labnpc4' ? NPC4_DIALOG : dialogType === 'labnpc5' ? NPC5_DIALOG : dialogType === 'labnpc6' ? NPC6_DIALOG : dialogType === 'labnpc7' ? NPC7_DIALOG : dialogType === 'labnpc8' ? NPC8_DIALOG : dialogType === 'saveguide' ? SAVE_GUIDE_DIALOG : dialogType === 'prof2' ? NPC2_DIALOG : dialogType === 'shopnpc' ? SHOP_NPC_DIALOG : dialogType === 'shopnpc2' ? SHOP_NPC2_DIALOG : dialogType === 'shopchild' ? SHOP_CHILD_DIALOG : dialogType === 'shopmother' ? SHOP_MOTHER_DIALOG : dialogType === 'clinicnpc' ? CLINIC_NPC_DIALOG : dialogType === 'clinicnpc2' ? CLINIC_NPC2_DIALOG : dialogType === 'clinicnpc3' ? CLINIC_NPC3_DIALOG : dialogType === 'clinicnurse' ? CLINIC_NURSE_DIALOG : dialogType === 'house2npc' ? HOUSE2_NPC_DIALOG : dialogType === 'housenpc' ? HOUSE_NPC_DIALOG : dialogType === 'alvinwin' ? ALVIN_REMATCH_DIALOG : dialogType === 'deweynpc' ? DEWEY_DIALOG : dialogType === 'deweywin' ? DEWEY_WIN_DIALOG : dialogType === 'bubblesnpc' ? BUBBLES_DIALOG : dialogType === 'bubbleswin' ? BUBBLES_WIN_DIALOG : dialogType === 'ivynpc' ? IVY_DIALOG : dialogType === 'ivywin' ? IVY_WIN_DIALOG : dialogType === 'embernpc' ? EMBER_DIALOG : dialogType === 'emberwin' ? EMBER_WIN_DIALOG : dialogType === 'skyenpc' ? SKYE_DIALOG : dialogType === 'skyewin' ? SKYE_WIN_DIALOG : dialogType === 'demoend' ? DEMO_END_DIALOG : dialogType === 'traveller' ? TRAVELLER_DIALOG : dialogType === 'travellerwin' ? TRAVELLER_WIN_DIALOG : dialogType === 'traveller2' ? TRAVELLER2_DIALOG : dialogType === 'traveller2win' ? TRAVELLER2_WIN_DIALOG : dialogType === 'travellerquest' ? TRAVELLER_QUEST_DIALOG : dialogType === 'travellerprogress' ? travellerProgressDialog : dialogType === 'travellerquestdone' ? TRAVELLER_QUEST_DONE_DIALOG : dialogType === 'travellerleft' ? TRAVELLER_LEFT_DIALOG : NPC_DIALOG;
         drawDialog(ctx, dlg[dialogPage]);
       }
     }
@@ -7586,12 +7655,19 @@
           if (defender.hp <= 0) break;
           let dmg = Math.round((attacker.atk + move.power) / 2);
           const eff = typeEff(move.type, defender);
-          dmg = Math.round(reduceByDefence(dmg * eff, defender.dfc) * badgeBoost(attackerSide, move));
+          dmg = reduceByDefence(dmg * eff, defender.dfc);
           // Each hit rolls its own lucky hit (attacker's luck), same odds as a single-hit move
           if (Math.random() < (attacker.lck ?? 0) * 0.028) { dmg = Math.round(dmg * 1.5); crits++; }
           defender.hp -= dmg;
           if (defender.hp > 0) checkNumNums(defender);
           totalDamage += dmg;
+        }
+        // Elemental badge: boost the move's total once, not each small hit
+        const badgeExtra = plated ? 0 : applyBadgeBoost(totalDamage, attackerSide, move) - totalDamage;
+        if (badgeExtra > 0) {
+          defender.hp -= badgeExtra;
+          totalDamage += badgeExtra;
+          if (defender.hp > 0) checkNumNums(defender);
         }
         if (!plated) log(`💥 Hit ${hitCount} times! (${totalDamage} total dmg)`, 'effective');
         if (totalDamage === 0 && !plated) log(`🛡️ ${defender.name} shrugged it off! No damage!`, 'weak');
@@ -7661,7 +7737,7 @@
       }
 
       // Elemental badge: the player's moves of its type hit harder
-      damage = Math.round(damage * badgeBoost(attackerSide, move));
+      damage = applyBadgeBoost(damage, attackerSide, move);
 
       // ── LCK: Lucky hit check (attacker's luck) ──────────────────────────
       const critChance = (attacker.lck ?? 0) * 0.028;   // lck 9 → 25.2%
@@ -8258,8 +8334,9 @@
 
     // ── NFC inbox ─────────────────────────────────────────────────
     // Badge tags open tag.html, which only queues an event here: it never starts a game or touches
-    // a save. The game collects queued events into the save being played, whenever the player is
-    // free to see the message (not in battle, a dialog or a menu). Nothing is lost if no game is open.
+    // a save. The game collects queued events into the save being played, whenever the player can
+    // see the message: the tab is on screen, and not in battle, a dialog or a menu. Nothing is lost
+    // if no game is open; switching back to the tab checks again.
     const INBOX_KEY = 'cardCatchers.inbox';
 
     function readInbox() {
@@ -8267,15 +8344,28 @@
       catch (_) { return []; }
     }
 
+    const canCollectInbox = () =>
+      !document.hidden && gameState === 'world' && currentSlot && !dialogActive && !isMenuUIOpen();
+
+    // Two game tabs could both see the same badge. A browser lock lets only one collect at a time;
+    // the other skips, and by its next check the inbox is empty. Browsers without locks just collect.
     function processInbox() {
-      if (gameState !== 'world' || !currentSlot || dialogActive || isMenuUIOpen()) return;
+      if (!canCollectInbox() || !readInbox().length) return;
+      if (navigator.locks) navigator.locks.request(INBOX_KEY, { ifAvailable: true }, lock => { if (lock) collectInbox(); });
+      else collectInbox();
+    }
+
+    function collectInbox() {
+      if (!canCollectInbox()) return;
       const events = readInbox();
       if (!events.length) return;
-      const got = [], had = [];
+      const got = [], had = [], locked = [];
       events.forEach(ev => {
         const k = ev && ev.type === 'keyItem' && KEY_ITEMS[ev.item];
         if (!k) return; // unknown event: dropped below
-        if (inventory.keyItems.includes(ev.item)) had.push(k);
+        // Badges only work once The Traveller's side quest is done; until then the tap is turned away
+        if (k.boostsType && !travellerQuestDone) locked.push(k);
+        else if (inventory.keyItems.includes(ev.item)) had.push(k);
         else { inventory.keyItems.push(ev.item); got.push(k); }
       });
       if (got.length && !saveGame()) {
@@ -8292,6 +8382,7 @@
       const list = ks => ks.map(k => `${k.icon} ${k.name}`).join(' and ');
       if (got.length) { SFX.play('recruit'); showItemNotification(`Got the ${list(got)}!`, true); }
       else if (had.length) showItemNotification(`You already have the ${list(had)}!`, true);
+      else if (locked.length) showItemNotification(`🔒 ${list(locked)} only work${locked.length > 1 ? '' : 's'} after you finish The Traveller's quest. Tap again then!`, true);
     }
 
     // A tag tapped in another tab arrives at once; the timer catches anything queued while busy
@@ -8314,7 +8405,7 @@
 
     function getFlags() {
       return { meadowMet, houseNpcMet, rouxlsDefeated, alvinDefeated, deweyDefeated, bubblesDefeated,
-               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen, travellerDefeated, travellerWinSeen, traveller2Defeated, travellerGone, yardMeadowMet };
+               ivyDefeated, emberDefeated, skyeDefeated, skyeWinSeen, demoEndSeen, travellerDefeated, travellerWinSeen, traveller2Defeated, travellerQuestGiven, travellerQuestDone, travellerLeft, yardMeadowMet };
     }
 
     function setFlags(f) {
@@ -8327,7 +8418,9 @@
       travellerDefeated = !!f.travellerDefeated;
       travellerWinSeen  = !!f.travellerWinSeen;
       traveller2Defeated = !!f.traveller2Defeated;
-      travellerGone      = !!f.travellerGone;
+      travellerQuestGiven = !!f.travellerQuestGiven;
+      travellerQuestDone  = !!f.travellerQuestDone;
+      travellerLeft       = !!f.travellerLeft || travellerQuestDone; // finished the quest = he's gone
       yardMeadowMet      = !!f.yardMeadowMet;
       // Beaten trainers step aside, same as when you beat them
       if (deweyDefeated)   HOUSE_NPC2.tileX  += 1;
