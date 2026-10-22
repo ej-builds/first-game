@@ -5034,13 +5034,13 @@
         showItemNotification(ok ? `💾 Saved to Slot ${currentSlot}!` : '⚠️ Could not save on this browser', true);
       } else if (opt === 'scan') {
         closeMenu();
-        showConfirm('Save, then scan a card with this phone\'s camera? The critter will join your team (or the Lab Backyard if it\'s full).',
+        showConfirm('Save, then scan a card with this phone\'s camera and come back to this tab. The critter will join your team (or the Lab Backyard if it\'s full).',
           '📷 Save and scan', () => {
             if (!saveGame() || !setPendingScan(currentSlot)) {
               showItemNotification('⚠️ Could not save on this browser', true);
               return;
             }
-            showItemNotification(`💾 Saved! Scan a card now to add it to Slot ${currentSlot}.`, true);
+            showItemNotification(`💾 Saved! Scan a card, then come back to this tab.`, true);
           }, () => openMenu());
       } else if (opt === 'settings') {
         closeMenu(); openSettings();
@@ -5685,16 +5685,16 @@
     // Keepsake key items from the form researchers (no battle effect)
     const KEY_ITEMS = {
       glowEyePhoto:   { name: 'Glow-Eye Photo',  icon: '📸', form: 'shadow', npc: 'labnpc5',
-                        desc: 'Shadow critters show up 5x as often in the wild.',
+                        desc: 'Shadow critters show up 25x as often in the wild.',
                         page: ["Here - a GLOW-EYE",    "PHOTO! Carry it and", "Shadows find YOU."] },
       signedSketch:   { name: 'Signed Sketch',   icon: '✏️', form: 'altart', npc: 'labnpc6',
-                        desc: 'Alt Art critters show up 5x as often in the wild.',
+                        desc: 'Alt Art critters show up 25x as often in the wild.',
                         page: ["Here's my SIGNED",     "SKETCH! Alt Arts will", "flock to you now."] },
       sparklySticker: { name: 'Sparkly Sticker', icon: '⭐', form: 'shiny',  npc: 'labnpc7',
-                        desc: 'Shiny critters show up 5x as often in the wild.',
+                        desc: 'Shiny critters show up 25x as often in the wild.',
                         page: ["Take this SPARKLY",    "STICKER! Shinies are", "drawn to it!"] },
       elementChart:   { name: 'Element Chart',   icon: '🗺️', form: 'swap',   npc: 'labnpc8',
-                        desc: 'Type-swapped critters show up 5x as often in the wild.',
+                        desc: 'Type-swapped critters show up 25x as often in the wild.',
                         page: ["Take my ELEMENT",      "CHART! It'll lead you", "to more type swaps."] },
       // Elemental badges, from NFC tags: your moves of that type hit harder
       lavaBadge:      { name: 'Lava Badge',      icon: '🔥', boostsType: 'lava',
@@ -5727,7 +5727,7 @@
     }
 
     // Each form's key item makes that form this many times as likely in the wild
-    const KEY_ITEM_FORM_BOOST = 5;
+    const KEY_ITEM_FORM_BOOST = 25;
 
     // Picks a rare form for a wild critter (or null). Each of the 5 forms has an equal share of FORM_CHANCE,
     // multiplied for any form whose key item you hold.
@@ -8334,7 +8334,7 @@
 
     // ── NFC inbox ─────────────────────────────────────────────────
     // Badge tags open tag.html, which only queues an event here: it never starts a game or touches
-    // a save. The game collects queued events into the save being played, whenever the player can
+    // a save. A card scanned after "Scan a Card" is queued here too, addressed to that save. The game collects queued events into the save being played, whenever the player can
     // see the message: the tab is on screen, and not in battle, a dialog or a menu. Nothing is lost
     // if no game is open; switching back to the tab checks again.
     const INBOX_KEY = 'cardCatchers.inbox';
@@ -8342,6 +8342,11 @@
     function readInbox() {
       try { const events = JSON.parse(localStorage.getItem(INBOX_KEY)); return Array.isArray(events) ? events : []; }
       catch (_) { return []; }
+    }
+
+    function queueInbox(event) {
+      try { localStorage.setItem(INBOX_KEY, JSON.stringify([...readInbox(), event])); return true; }
+      catch (_) { return false; }
     }
 
     const canCollectInbox = () =>
@@ -8359,30 +8364,47 @@
       if (!canCollectInbox()) return;
       const events = readInbox();
       if (!events.length) return;
-      const got = [], had = [], locked = [];
+      const got = [], had = [], locked = [], critters = [], handled = new Set();
+      const undo = { roster: roster.slice(), backyard: backyard.slice(), keyItems: inventory.keyItems.slice() };
       events.forEach(ev => {
+        // A card scanned after "Scan a Card" belongs to the save that asked for it: it waits while another is open
+        if (ev && ev.type === 'critter') {
+          if (ev.slot !== currentSlot || !ev.critter) return;
+          const c = { ...ev.critter, hp: ev.critter.maxHp, statusEffects: {} };
+          if (c.shadowOf) applyShadowArt(c);
+          const toTeam = 1 + roster.length < MAX_PARTY;
+          if (toTeam) roster.push(c); else sendToYard(c);
+          critters.push({ c, toTeam });
+          handled.add(ev.id);
+          return;
+        }
+        handled.add(ev && ev.id);
         const k = ev && ev.type === 'keyItem' && KEY_ITEMS[ev.item];
-        if (!k) return; // unknown event: dropped below
+        if (!k) return; // unknown event: dropped
         // Badges only work once The Traveller's side quest is done; until then the tap is turned away
         if (k.boostsType && !travellerQuestDone) locked.push(k);
         else if (inventory.keyItems.includes(ev.item)) had.push(k);
         else { inventory.keyItems.push(ev.item); got.push(k); }
       });
-      if (got.length && !saveGame()) {
+      if (!handled.size) return;
+      if ((got.length || critters.length) && !saveGame()) {
         // Couldn't save: undo, and leave the events in the inbox to try again
-        inventory.keyItems = inventory.keyItems.filter(id => !got.some(k => KEY_ITEMS[id] === k));
+        roster = undo.roster; backyard = undo.backyard; inventory.keyItems = undo.keyItems;
         return;
       }
-      // Remove only what was handled, in case a tag queued something new meanwhile
-      const done = new Set(events.map(ev => ev && ev.id));
+      // Remove only what was handled, in case something new was queued meanwhile
       try {
-        const rest = readInbox().filter(ev => !done.has(ev && ev.id));
+        const rest = readInbox().filter(ev => !handled.has(ev && ev.id));
         rest.length ? localStorage.setItem(INBOX_KEY, JSON.stringify(rest)) : localStorage.removeItem(INBOX_KEY);
       } catch (_) {}
       const list = ks => ks.map(k => `${k.icon} ${k.name}`).join(' and ');
-      if (got.length) { SFX.play('recruit'); showItemNotification(`Got the ${list(got)}!`, true); }
-      else if (had.length) showItemNotification(`You already have the ${list(had)}!`, true);
-      else if (locked.length) showItemNotification(`🔒 ${list(locked)} only work${locked.length > 1 ? '' : 's'} after you finish The Traveller's quest. Tap again then!`, true);
+      const notes = critters.map(({ c, toTeam }) =>
+        `${c.form ? '🌈 Rare form! ' : '🃏 '}${c.name} ${toTeam ? 'joined your team!' : 'went to the Lab Backyard!'}`);
+      if (got.length) notes.push(`Got the ${list(got)}!`);
+      else if (had.length) notes.push(`You already have the ${list(had)}!`);
+      else if (locked.length) notes.push(`🔒 ${list(locked)} only work${locked.length > 1 ? '' : 's'} after you finish The Traveller's quest. Tap again then!`);
+      if (got.length || critters.length) SFX.play('recruit');
+      notes.forEach((n, i) => setTimeout(() => showItemNotification(n, true), i * 3000));
     }
 
     // A tag tapped in another tab arrives at once; the timer catches anything queued while busy
@@ -9239,7 +9261,24 @@
         begin(false, note);
       }
 
-      // A card scanned after "Scan a Card": open the waiting save and add the scanned critter to it
+      // A card scanned after "Scan a Card" is sent to the tab the player was already in. This tab
+      // only queues it and points them back there, with a way to play here if that tab was closed.
+      function sendScanToGame(pending) {
+        const card = creatures.player; // the scanned critter
+        const sent = queueInbox({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, type: 'critter',
+          slot: pending.slot, critter: serializeCritter({ ...card, hp: card.maxHp, statusEffects: {} }), at: Date.now() });
+        if (!sent) { deliverScan(pending); return; } // no inbox on this browser: add it here instead
+        clearPendingScan();
+        if (location.search) history.replaceState(null, '', location.pathname);
+        pressKey.style.display = 'none';
+        picker.style.display = 'flex';
+        showView(`📨 ${card.name} was sent to Slot ${pending.slot}!<br>Go back to the tab you were playing in.`, [
+          ["▶ My game isn't open, play here", slotSummary(readSlot(pending.slot) || pending.data),
+           () => continueGame(pending.slot, readSlot(pending.slot) || pending.data)],
+        ], 'You can close this tab.');
+      }
+
+      // Fallback when the inbox can't be written: open the waiting save here and add the critter to it
       function deliverScan({ slot, data }) {
         const card = creatures.player; // the scanned critter, before the save replaces it
         const c = { ...card, hp: card.maxHp, statusEffects: {}, moves: card.moves.map(m => ({ ...m })) };
@@ -9278,7 +9317,7 @@
         titleCard.classList.add('visible');
         ready = true;
         SFX.play('recruit');
-        if (pendingScan) deliverScan(pendingScan); else showSlots();
+        if (pendingScan) sendScanToGame(pendingScan); else showSlots();
       }
 
       function onTitleKey(e) {
