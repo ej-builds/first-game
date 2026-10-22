@@ -5031,7 +5031,8 @@
         closeMenu(); openParty();
       } else if (opt === 'save') {
         const ok = saveGame();
-        showItemNotification(ok ? `💾 Saved to Slot ${currentSlot}!` : '⚠️ Could not save on this browser', true);
+        showItemNotification(ok ? `💾 Saved to Slot ${currentSlot}!`
+          : saveTakenOver ? '⚠️ This save is open in another tab' : '⚠️ Could not save on this browser', true);
       } else if (opt === 'scan') {
         closeMenu();
         showConfirm('Save, then scan a card with this phone\'s camera and come back to this tab. The critter will join your team (or the Lab Backyard if it\'s full).',
@@ -5184,7 +5185,7 @@
       const hp = Math.max(0, c.hp ?? c.maxHp);
       return `<img src="${c.img}"${imgAttrs(c)} alt="">
         <div class="party-info">
-          <div class="party-name">${c.name}${count > 1 ? ` ×${count}` : ''}</div>
+          <div class="party-name">${c.name}${count > 1 ? ` ×${count}` : ''}${c.isStarter && count === 1 ? ' <span class="party-tag">STARTER</span>' : ''}</div>
           <div class="party-type">${c.type} · HP ${hp}/${c.maxHp}${hp <= 0 ? ' · fainted' : ''} ${statusIcons(c)}${tag ? ' · ' + tag : ''}</div>
         </div>`;
     }
@@ -5212,7 +5213,12 @@
       return names;
     }
 
+    // Your starter can never be released: it's left out of every release
+    const releasable = list => list.filter(b => !backyard[b].isStarter);
+
     function confirmRelease(indexes, then) {
+      indexes = releasable(indexes);
+      if (!indexes.length) return;
       const name  = backyard[indexes[0]].name;
       const count = indexes.length;
       showConfirm(count > 1 ? `Release all ${count} ${name}? They won't come back.` : `Release ${name}? It won't come back.`,
@@ -5235,7 +5241,8 @@
         head = yardRow(c);
         msg = `${c.name} is relaxing in the yard. (Team ${teamSize}/${MAX_PARTY})`;
         yardOpts.push({ label: full ? 'Swap onto your team' : 'Bring back to your team', act: () => { yardKind = null; takeFromYard(yardPick); } });
-        yardOpts.push({ label: 'Release', act: () => confirmRelease([yardPick], closeYard) });
+        if (c.isStarter) msg = `${c.name} is relaxing in the yard. Your starter stays with you for good! (Team ${teamSize}/${MAX_PARTY})`;
+        else yardOpts.push({ label: 'Release', act: () => confirmRelease([yardPick], closeYard) });
         yardOpts.push({ label: 'Leave it be', act: closeYard });
       } else if (yardMode === 'swap') {
         msg = `Your team is full! Who stays in the yard so ${backyard[yardPick].name} can join?`;
@@ -5253,8 +5260,9 @@
           ? `${list.length} ${yardKind} are waiting by the gate. (Team ${teamSize}/${MAX_PARTY})`
           : `${yardKind} is waiting by the gate. (Team ${teamSize}/${MAX_PARTY})`;
         yardOpts.push({ label: full ? 'Swap one onto your team' : 'Take one back', act: () => takeFromYard(best) });
-        yardOpts.push({ label: 'Release one', act: () => confirmRelease([weakest(list)], renderYardMenu) });
-        if (list.length > 1) yardOpts.push({ label: `Release all ${list.length}`, act: () => confirmRelease(list, renderYardMenu) });
+        const canGo = releasable(list);
+        if (canGo.length) yardOpts.push({ label: 'Release one', act: () => confirmRelease([weakest(canGo)], renderYardMenu) });
+        if (canGo.length > 1) yardOpts.push({ label: `Release all ${canGo.length}`, act: () => confirmRelease(canGo, renderYardMenu) });
         yardOpts.push({ label: 'Back', act: yardBack });
       } else {
         const gate = yardGate();
@@ -7136,6 +7144,39 @@
       return 'swap';
     }
 
+    // ── Keeping saved critters up to date ─────────────────────────
+    // A saved critter carries its own stats and moves, so balance changes would only reach new ones.
+    // This rebuilds it from its species' current definition, in the same rare form, and keeps what's
+    // personal to it: gear, status conditions, HP percentage and the starter mark.
+    function speciesDefinition(name) {
+      return [SCORCHSPINE, ...wildCreatures, HEDGEOSAUR_CATCHER.critter, CERAFLAME_CATCHER.critter,
+              PTERRENT_CATCHER.critter, ROUXLS_CATCHER.critter].find(c => c.name === name) || null;
+    }
+
+    function refreshCritter(c) {
+      if (!c) return c;
+      const kind = formKind(c);
+      const speciesName = kind === 'shadow' ? c.shadowOf
+                        : kind === 'shiny'  ? c.name.replace(/^Shiny /, '')
+                        : kind === 'altart' ? c.name.replace(/^Alt Art /, '')
+                        : kind === 'swap'   ? c.name.replace(/^(Verdant|Blazing|Tidal) /, '')
+                        : c.name;
+      const base = speciesDefinition(speciesName);
+      if (!base) return c; // not a species we have a definition for: leave it as saved
+      const formIdx = kind === 'shiny' ? 0 : kind === 'altart' ? 1 : kind === 'shadow' ? 2
+                    : kind === 'swap' ? 3 + ELEMENT_TYPES.filter(e => e !== base.type).indexOf(c.type) : -1;
+      const copy = { ...base, moves: base.moves.map(m => ({ ...m })) };
+      const fresh = formIdx >= 0 ? makeForm(copy, formIdx) : copy;
+      if (fresh.name !== c.name) return c; // couldn't rebuild the same form: leave it as saved
+      const share = c.maxHp > 0 ? Math.max(0, c.hp ?? c.maxHp) / c.maxHp : 1;
+      const out = { ...fresh, gear: c.gear || null, statusEffects: { ...(c.statusEffects || {}) },
+                    hp: share > 0 ? Math.max(1, Math.round(fresh.maxHp * share)) : 0 };
+      if (c.isStarter) out.isStarter = true;
+      delete out.trueStats;
+      clearBattleChanges(out); // applies gear bonuses and Charred to the new stats
+      return out;
+    }
+
     // Type effectiveness, with the Shadow Veil softening a Shadow critter's double-damage weakness to 1.5x
     function typeEff(moveType, defender) {
       const eff = typeChart[moveType]?.[defender.type] ?? 1.0;
@@ -8321,6 +8362,45 @@
     const saveKey = n => `cardCatchers.save.${n}`;
     let currentSlot = null; // the slot picked on the title screen; Save writes here
 
+    // ── One tab per save ───────────────────────────────────────────
+    // A tab playing a save marks it as open and refreshes the mark every 2 seconds. Another tab can see
+    // that, so it won't open the same save by accident. If the player opens it there anyway, this tab
+    // notices it was taken over and stops saving, so neither tab overwrites the other.
+    const TAB_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const openKey = n => `cardCatchers.openIn.${n}`;
+    const OPEN_FRESH_MS = 5000;
+    let saveTakenOver = false;
+
+    function readOpenMark(n) {
+      try { return JSON.parse(localStorage.getItem(openKey(n))); } catch (_) { return null; }
+    }
+
+    // Open right now in a different tab?
+    function slotOpenElsewhere(n) {
+      const mark = readOpenMark(n);
+      return !!mark && mark.tab !== TAB_ID && Date.now() - mark.at < OPEN_FRESH_MS;
+    }
+
+    // Opening a save always claims it (the player chose this tab); the regular check only notices a takeover
+    function markSlotOpen(claim = false) {
+      if (!currentSlot || saveTakenOver) return;
+      const mark = readOpenMark(currentSlot);
+      if (!claim && mark && mark.tab !== TAB_ID && Date.now() - mark.at < OPEN_FRESH_MS) {
+        saveTakenOver = true;
+        showConfirm('This save was opened in another tab, so this tab has stopped saving. Keep playing in the other tab.',
+          '↻ Reload this tab', () => { leavingOnPurpose = true; location.reload(); }, () => {});
+        return;
+      }
+      try { localStorage.setItem(openKey(currentSlot), JSON.stringify({ tab: TAB_ID, at: Date.now() })); } catch (_) {}
+    }
+
+    setInterval(() => markSlotOpen(), 2000);
+    window.addEventListener('pagehide', () => {
+      if (currentSlot && !saveTakenOver && readOpenMark(currentSlot)?.tab === TAB_ID) {
+        try { localStorage.removeItem(openKey(currentSlot)); } catch (_) {}
+      }
+    });
+
     // "Scan a Card" in the B menu saves and leaves this note, so the next card scanned on this device
     // opens that save and adds the critter instead of offering it as a new game's starter.
     // It lasts two hours, so a forgotten note doesn't hijack a scan days later.
@@ -8350,7 +8430,7 @@
     }
 
     const canCollectInbox = () =>
-      !document.hidden && gameState === 'world' && currentSlot && !dialogActive && !isMenuUIOpen();
+      !document.hidden && !saveTakenOver && gameState === 'world' && currentSlot && !dialogActive && !isMenuUIOpen();
 
     // Two game tabs could both see the same badge. A browser lock lets only one collect at a time;
     // the other skips, and by its next check the inbox is empty. Browsers without locks just collect.
@@ -8370,7 +8450,7 @@
         // A card scanned after "Scan a Card" belongs to the save that asked for it: it waits while another is open
         if (ev && ev.type === 'critter') {
           if (ev.slot !== currentSlot || !ev.critter) return;
-          const c = { ...ev.critter, hp: ev.critter.maxHp, statusEffects: {} };
+          const c = refreshCritter({ ...ev.critter, hp: ev.critter.maxHp, statusEffects: {} });
           if (c.shadowOf) applyShadowArt(c);
           const toTeam = 1 + roster.length < MAX_PARTY;
           if (toTeam) roster.push(c); else sendToYard(c);
@@ -8515,7 +8595,7 @@
     let leavingOnPurpose  = false; // Return to Title / Delete Save / credits: the player already chose to leave
 
     function saveGame() {
-      if (!currentSlot) return false;
+      if (!currentSlot || saveTakenOver) return false;
       const data = buildSaveData();
       try {
         localStorage.setItem(saveKey(currentSlot), JSON.stringify(data));
@@ -8548,14 +8628,21 @@
       giftsClaimed = Array.isArray(data.gifts) ? data.gifts.slice() : [];
       syncGiftDialogs();
       setFlags(data.flags || {});
-      creatures.player = data.lead;
-      persistentPlayer = data.lead;
-      roster = data.roster || [];
-      backyard = Array.isArray(data.backyard) ? data.backyard : [];
+      // Every saved critter picks up the current stats and moves for its species
+      creatures.player = refreshCritter(data.lead);
+      persistentPlayer = creatures.player;
+      roster = (data.roster || []).map(refreshCritter);
+      backyard = (Array.isArray(data.backyard) ? data.backyard : []).map(refreshCritter);
       backyard.forEach(settleInYard); // saves from before the garden healed
       // Saves from before the starter was recorded: if you own no Scorchspine, treat it as a different start
       starterSpecies = data.starter ||
         ([data.lead, ...roster, ...backyard].some(c => c && /Scorchspine$/.test(c.name)) ? 'Scorchspine' : 'unknown');
+      // Saves from before the starter was marked: the first critter of the starter's species is the starter
+      const owned = [persistentPlayer, ...roster, ...backyard];
+      if (!owned.some(c => c.isStarter)) {
+        const first = owned.find(c => c.name === starterSpecies || c.name.endsWith(' ' + starterSpecies));
+        if (first) first.isStarter = true;
+      }
       [persistentPlayer, ...roster, ...backyard].forEach(c => { if (c.shadowOf) applyShadowArt(c); });
       initState();
       lastSavedSnapshot = progressSnapshot();
@@ -9204,7 +9291,7 @@
         const hintEl = document.createElement('div');
         hintEl.className = 'slot-hint'; hintEl.textContent = hint;
         picker.appendChild(hintEl);
-        picker.querySelector('.slot-opt').focus();
+        picker.querySelector('.slot-opt')?.focus();
         pickerShownAt = Date.now();
       }
 
@@ -9222,7 +9309,16 @@
         }), HINT_MAIN);
       }
 
+      // A save already open in another tab: say so, and only open it here if the player insists
+      function openElsewhereView(n, back, openHere) {
+        showView(`Slot ${n} is already open in another tab.<br>Switch to that tab to keep playing.`, [
+          ['← Back', '', back],
+          ['Open it here instead', 'The other tab will stop saving', openHere, true],
+        ], HINT_BACK);
+      }
+
       function showSlotChoices(n, data) {
+        if (slotOpenElsewhere(n)) { openElsewhereView(n, showSlots, () => continueGame(n, readSlot(n) || data)); return; }
         const newLabel = scannedStarter ? `New game with ${scannedStarter}` : 'New game';
         showView(`Slot ${n}`, [
           ['▶ Continue', slotSummary(data), () => continueGame(n, data)],
@@ -9242,6 +9338,7 @@
         // The card's code has done its job; drop it so a reload goes back to the normal title screen
         if (location.search) history.replaceState(null, '', location.pathname);
         gameState = 'world';
+        markSlotOpen(true); // this tab now has the save open
         updateAreaMusic();
         if (isNew && scannedStarter) {
           note = creatures.player.form ? `🌈 Rare form! ${scannedStarter} is your partner!` : `🃏 ${scannedStarter} is your partner!`;
@@ -9251,6 +9348,7 @@
 
       function startNewGame(n) {
         currentSlot = n;
+        creatures.player.isStarter = true; // your starter can never be released
         saveGame();
         begin(true);
       }
@@ -9272,9 +9370,15 @@
         if (location.search) history.replaceState(null, '', location.pathname);
         pressKey.style.display = 'none';
         picker.style.display = 'flex';
+        const playHere = () => continueGame(pending.slot, readSlot(pending.slot) || pending.data);
+        if (slotOpenElsewhere(pending.slot)) {
+          // The game tab is still open: send the player back there, with no "play here" to trip over
+          showView(`📨 ${card.name} was sent to Slot ${pending.slot}!<br>Your game is open in another tab. Switch to it to get ${card.name}.`,
+            [], 'You can close this tab.');
+          return;
+        }
         showView(`📨 ${card.name} was sent to Slot ${pending.slot}!<br>Go back to the tab you were playing in.`, [
-          ["▶ My game isn't open, play here", slotSummary(readSlot(pending.slot) || pending.data),
-           () => continueGame(pending.slot, readSlot(pending.slot) || pending.data)],
+          ["▶ My game isn't open, play here", slotSummary(readSlot(pending.slot) || pending.data), playHere],
         ], 'You can close this tab.');
       }
 
@@ -9327,6 +9431,7 @@
         e.stopPropagation();
         if (picker.style.display === 'none') { showSlots(); return; }
         const opts = [...picker.querySelectorAll('.slot-opt')];
+        if (!opts.length) return; // a message with nothing to pick
         const i = opts.indexOf(document.activeElement);
         if (['ArrowDown', 's', 'S', 'ArrowUp', 'w', 'W'].includes(e.key)) {
           e.preventDefault();
