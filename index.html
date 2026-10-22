@@ -3039,10 +3039,12 @@
     const NPC2_DIALOG = [
       ["Hi! I'm Dr. Fern,",    "I study water routes", "and wild habitats."],
       ["Did you know you",     "can SURF on water?",   ""],
-      ["If you have an OCEAN", "type in your party,",  "head to the shore..."],
+      ["If an OCEAN critter",  "is in your party,",    "head to the shore..."],
       ["...stand next to",     "the water and press",  "the (A) button!"],
       ["You'll hop on and",    "glide across. Some",   "critters hide there!"],
       ["Step off the water",   "and you'll stop",      "surfing automatically."],
+      ["OCEAN critters can",   "surf in any form,",    "even Shadow or Blazing!"],
+      ["But a TIDAL form of",  "another critter",      "can't surf."],
       ["Happy exploring!",     "",                      "Press A to close."],
     ];
 
@@ -5904,6 +5906,7 @@
 
     function hasWaterType() {
       const active = persistentPlayer || creatures.player;
+      // Only Ocean species surf, in any form (a Blazing Pterrent can; a Tidal Kiwivy can't)
       const isOcean = c => (c.baseType || c.type) === 'ocean';
       return isOcean(active) || roster.some(isOcean);
     }
@@ -7201,6 +7204,7 @@
         const t = ELEMENT_TYPES.filter(e => e !== base.type)[formIdx - 3];
         c.name = `${TYPE_FORM_PREFIX[t]} ${base.name}`;
         c.type = t;
+        c.baseType = base.type; // its species' own type, e.g. so a Blazing Pterrent can still surf
         c.moves.forEach(m => { if (m.type === base.type) m.type = t; });
         c.imgFilter = TYPE_SWAP_FILTERS[base.name]?.[t] || `hue-rotate(${TYPE_HUE[t] - TYPE_HUE[base.type]}deg)`;
       }
