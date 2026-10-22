@@ -5141,9 +5141,78 @@
       return shown;
     }
 
+    // Phone browsers (Safari) ignore the canvas \`filter\` setting, so a rare form's colours would vanish
+    // on the grass. Instead each form's CSS filter is applied to the pixels once, into a small sprite,
+    // using the same colour maths browsers use for CSS filters. Its glow (drop-shadow) is drawn with the
+    // canvas's own shadow, which every browser supports.
+    const YARD_SPRITE_SIZE = 96;
+
     function yardImage(c) {
-      if (!yardImages[c.img]) { const img = new Image(); img.src = c.img; yardImages[c.img] = img; }
-      return yardImages[c.img];
+      const key = c.img + '|' + (c.imgFilter || '');
+      if (!(key in yardImages)) {
+        yardImages[key] = null; // still loading
+        const img = new Image();
+        img.onload = () => { yardImages[key] = bakeFilter(img, c.imgFilter || ''); };
+        img.src = c.img;
+      }
+      return yardImages[key];
+    }
+
+    // The colour steps of a CSS filter string, e.g. "hue-rotate(140deg) saturate(1.3)", as 3×3 matrices
+    // or per-channel functions, applied in order with clamping between steps (as browsers do)
+    function filterSteps(filter) {
+      const steps = [];
+      for (const [, fn, arg] of filter.matchAll(/([a-z-]+)\(([^)]*)\)/g)) {
+        const n = parseFloat(arg) * (arg.trim().endsWith('%') ? 0.01 : 1);
+        if (fn === 'hue-rotate') {
+          const t = n * Math.PI / 180, cos = Math.cos(t), sin = Math.sin(t);
+          steps.push([0.213 + cos*0.787 - sin*0.213, 0.715 - cos*0.715 - sin*0.715, 0.072 - cos*0.072 + sin*0.928,
+                      0.213 - cos*0.213 + sin*0.143, 0.715 + cos*0.285 + sin*0.140, 0.072 - cos*0.072 - sin*0.283,
+                      0.213 - cos*0.213 - sin*0.787, 0.715 - cos*0.715 + sin*0.715, 0.072 + cos*0.928 + sin*0.072]);
+        } else if (fn === 'saturate') {
+          steps.push([0.213 + 0.787*n, 0.715 - 0.715*n, 0.072 - 0.072*n,
+                      0.213 - 0.213*n, 0.715 + 0.285*n, 0.072 - 0.072*n,
+                      0.213 - 0.213*n, 0.715 - 0.715*n, 0.072 + 0.928*n]);
+        } else if (fn === 'grayscale') {
+          const a = 1 - Math.min(1, n);
+          steps.push([0.2126 + 0.7874*a, 0.7152 - 0.7152*a, 0.0722 - 0.0722*a,
+                      0.2126 - 0.2126*a, 0.7152 + 0.2848*a, 0.0722 - 0.0722*a,
+                      0.2126 - 0.2126*a, 0.7152 - 0.7152*a, 0.0722 + 0.9278*a]);
+        } else if (fn === 'sepia') {
+          const a = 1 - Math.min(1, n);
+          steps.push([0.393 + 0.607*a, 0.769 - 0.769*a, 0.189 - 0.189*a,
+                      0.349 - 0.349*a, 0.686 + 0.314*a, 0.168 - 0.168*a,
+                      0.272 - 0.272*a, 0.534 - 0.534*a, 0.131 + 0.869*a]);
+        } else if (fn === 'brightness') steps.push(v => v * n);
+        else if (fn === 'contrast')   steps.push(v => (v - 0.5) * n + 0.5);
+        else if (fn === 'invert')     { const a = Math.min(1, n); steps.push(v => a + v * (1 - 2 * a)); }
+      }
+      return steps;
+    }
+
+    function bakeFilter(img, filter) {
+      const scale = YARD_SPRITE_SIZE / Math.max(img.width, img.height);
+      const cv = document.createElement('canvas');
+      cv.width = Math.max(1, Math.round(img.width * scale)); cv.height = Math.max(1, Math.round(img.height * scale));
+      const g = cv.getContext('2d');
+      g.drawImage(img, 0, 0, cv.width, cv.height);
+      const steps = filterSteps(filter);
+      if (steps.length) {
+        const data = g.getImageData(0, 0, cv.width, cv.height), p = data.data;
+        const clamp = v => v < 0 ? 0 : v > 1 ? 1 : v;
+        for (let i = 0; i < p.length; i += 4) {
+          let r = p[i] / 255, gr = p[i+1] / 255, b = p[i+2] / 255;
+          for (const st of steps) {
+            if (typeof st === 'function') { r = clamp(st(r)); gr = clamp(st(gr)); b = clamp(st(b)); }
+            else { const nr = st[0]*r + st[1]*gr + st[2]*b, ng = st[3]*r + st[4]*gr + st[5]*b, nb = st[6]*r + st[7]*gr + st[8]*b;
+                   r = clamp(nr); gr = clamp(ng); b = clamp(nb); }
+          }
+          p[i] = r * 255; p[i+1] = gr * 255; p[i+2] = b * 255;
+        }
+        g.putImageData(data, 0, 0);
+      }
+      const glow = filter.match(/drop-shadow\(\s*[-\d.]+px\s+[-\d.]+px\s+([\d.]+)px\s+([^)]+)\)/);
+      return { canvas: cv, glowBlur: glow ? parseFloat(glow[1]) : 0, glowColor: glow ? glow[2].trim() : null };
     }
 
     // Getting a critter ready to live in the yard. Gear stays with the team: anything held goes back
@@ -6712,11 +6781,11 @@
         ctx.beginPath();
         ctx.ellipse(sx + 16, sy + 28, 10, 3, 0, 0, Math.PI * 2);
         ctx.fill();
-        const img = yardImage(c);
-        if (img.complete && img.naturalWidth) {
+        const sprite = yardImage(c);
+        if (sprite) {
           ctx.save();
-          if (c.imgFilter) ctx.filter = c.imgFilter;
-          ctx.drawImage(img, sx + 1, sy - 2 + bob, 30, 30);
+          if (sprite.glowColor) { ctx.shadowColor = sprite.glowColor; ctx.shadowBlur = sprite.glowBlur; }
+          ctx.drawImage(sprite.canvas, sx + 1, sy - 2 + bob, 30, 30);
           ctx.restore();
         }
       });
@@ -7113,10 +7182,10 @@
         c.lck += 2;
         c.imgFilter = SHINY_FILTERS[base.name] || 'hue-rotate(160deg) saturate(1.4) brightness(1.1)';
       } else if (formIdx === 1) {
-        // Alt art: own picture (e.g. sharqua-alt.png); falls back to the normal one until it exists
+        // Alt art: own picture (e.g. sharqua-alt.jpg); falls back to the normal one if it's missing
         c.name    = `Alt Art ${base.name}`;
         c.maxHp  += 5;
-        c.img     = base.img.replace(/\.png$/, '-alt.png');
+        c.img     = base.img.replace(/\.png$/, '-alt.jpg');
         c.baseImg = base.img;
       } else if (formIdx === 2) {
         // Shadow: becomes the shadow type, and so do its same-type moves
@@ -7250,7 +7319,7 @@
           if (!blob) return;
           SHADOW_ART[name] = URL.createObjectURL(blob);
           // Critters made before the art finished (e.g. a scanned starter) get it now
-          [creatures.player, persistentPlayer, ...roster, state && state.player, state && state.opponent]
+          [creatures.player, persistentPlayer, ...roster, ...backyard, state && state.player, state && state.opponent]
             .forEach(c => { if (c && c.shadowOf === name) applyShadowArt(c); });
           if (state && gameState === 'battle') render();
         });
@@ -7258,9 +7327,20 @@
       img.src = src;
     }
 
+    // Shadow art is built the first time a Shadow critter needs it. Building all of them at start-up
+    // decoded every full-size picture at once, which used up an iPhone's image memory and left other
+    // pictures (Alt Art especially) blank. Until it's ready, the critter shows the darkened CSS look.
+    const SHADOW_ART_PENDING = new Set();
+
+    function requestShadowArt(name) {
+      if (SHADOW_ART[name] || SHADOW_ART_PENDING.has(name)) return;
+      SHADOW_ART_PENDING.add(name);
+      buildShadowArt(name, name.toLowerCase().replace(/\s+/g, '') + '.png');
+    }
+
     function applyShadowArt(c) {
       const art = SHADOW_ART[c.shadowOf];
-      if (!art) return;
+      if (!art) { requestShadowArt(c.shadowOf); return; }
       c.img       = art;
       c.imgFilter = 'drop-shadow(0 0 10px #8b5cf6)';
     }
@@ -8313,9 +8393,6 @@
     // ── Physical card scan: ?c=CODE picks the starter critter ──
     const CARD_CODES = Object.fromEntries(Object.entries(SCAN_CARDS).map(([code, [name]]) => [code, name]));
     const SCAN_FORM_CHANCE = 0.05; // 1 in 20 scanned cards comes out as a rare form
-    [creatures.player, ...wildCreatures,
-     ...[ROUXLS_CATCHER, HEDGEOSAUR_CATCHER, CERAFLAME_CATCHER, PTERRENT_CATCHER].map(c => c.critter)]
-      .forEach(c => buildShadowArt(c.name, c.img));
 
     // Scorchspine as defined before a scanned card can replace the starter: it turns up in the
     // tall grass whenever you started with a different critter
