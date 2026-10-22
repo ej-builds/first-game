@@ -411,11 +411,14 @@
       justify-items: center;
     }
 
+    /* A fixed 5:7 card squeezed the art once the swap button (after your first recruit) or a wrapped
+       tag appeared. The art keeps a fixed height instead, and the card grows to fit. */
+    .arena .creature-card { aspect-ratio: auto; }
+    .creature-card .card-art { flex: none; height: 150px; }
+
     @media (max-width: 700px) {
       .arena { grid-template-columns: 1fr; gap: 20px; }
-      /* Fixed 5:7 card squeezes the art once the swap button and wrapped tags appear */
-      .arena .creature-card { aspect-ratio: auto; }
-      .creature-card .card-art { flex: none; height: 170px; }
+      .creature-card .card-art { height: 170px; }
     }
 
     /* ── Opponent wrapper & flick hint ── */
@@ -8365,11 +8368,14 @@
     // ── One tab per save ───────────────────────────────────────────
     // A tab playing a save marks it as open and refreshes the mark every 2 seconds. Another tab can see
     // that, so it won't open the same save by accident. If the player opens it there anyway, this tab
-    // notices it was taken over and stops saving, so neither tab overwrites the other.
+    // notices it was taken over and stops saving, so neither tab overwrites the other. The mark also
+    // records when the save was opened: a later opening wins even if its mark has gone stale, which
+    // happens when a phone pauses the newer tab in the background.
     const TAB_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const openKey = n => `cardCatchers.openIn.${n}`;
     const OPEN_FRESH_MS = 5000;
     let saveTakenOver = false;
+    let openedAt = 0; // when this tab opened its save
 
     function readOpenMark(n) {
       try { return JSON.parse(localStorage.getItem(openKey(n))); } catch (_) { return null; }
@@ -8384,14 +8390,17 @@
     // Opening a save always claims it (the player chose this tab); the regular check only notices a takeover
     function markSlotOpen(claim = false) {
       if (!currentSlot || saveTakenOver) return;
+      if (claim) openedAt = Date.now();
       const mark = readOpenMark(currentSlot);
-      if (!claim && mark && mark.tab !== TAB_ID && Date.now() - mark.at < OPEN_FRESH_MS) {
+      const openedLaterElsewhere = mark && mark.tab !== TAB_ID &&
+        (Date.now() - mark.at < OPEN_FRESH_MS || (mark.since || 0) > openedAt);
+      if (!claim && openedLaterElsewhere) {
         saveTakenOver = true;
         showConfirm('This save was opened in another tab, so this tab has stopped saving. Keep playing in the other tab.',
           '↻ Reload this tab', () => { leavingOnPurpose = true; location.reload(); }, () => {});
         return;
       }
-      try { localStorage.setItem(openKey(currentSlot), JSON.stringify({ tab: TAB_ID, at: Date.now() })); } catch (_) {}
+      try { localStorage.setItem(openKey(currentSlot), JSON.stringify({ tab: TAB_ID, at: Date.now(), since: openedAt })); } catch (_) {}
     }
 
     setInterval(() => markSlotOpen(), 2000);
